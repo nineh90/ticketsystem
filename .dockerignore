@@ -1,0 +1,39 @@
+# Was NICHT ins Abbild gehört.
+#
+# Der wichtigste Eintrag ist deploy/.env: dort stehen Datenbankpasswort und
+# API-Token. Ohne diese Datei hier landeten sie über COPY . . im Abbild und
+# damit in jeder Schicht, die man später exportieren oder weitergeben könnte.
+.env
+.env.*
+deploy/.env
+
+.git
+.github
+
+# Kommen aus den Bau-Stufen, nicht aus dem Arbeitsverzeichnis.
+node_modules
+vendor
+public/build
+
+# Von Filament publizierte Vendor-Assets — legt filament:upgrade im
+# Einstiegsskript neu an.
+public/css/filament
+public/js/filament
+public/fonts/filament
+
+# Entwicklungskram
+tests
+phpunit.xml
+.phpunit.cache
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/app/*.sql
+
+*.md
+!README.md
+docs
+.editorconfig
+.gitattributes
+.gitignore
