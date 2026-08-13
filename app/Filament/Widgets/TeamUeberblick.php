@@ -5,48 +5,46 @@ namespace App\Filament\Widgets;
 use App\Models\Ticket;
 use App\Models\TimeEntry;
 use App\Models\User;
-use App\Support\Sichtbarkeit;
+use App\Support\Raster;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Der Blick aufs Ganze — jeder auf seinen Ausschnitt davon.
+ * Der Blick aufs Ganze — nur für Administratoren.
  *
  * MeinUeberblick beantwortet "was muss ich heute tun". Diese Zahlen
  * beantworten die andere Frage: was läuft gerade, unabhängig davon, wem es
- * zugewiesen ist. Ein Ticket, das seit vier Tagen unbeachtet in meinem
- * Projekt liegt, taucht in keiner persönlichen Liste auf — hier schon.
+ * zugewiesen ist.
  *
- * Der Ausschnitt ist die übliche Rollenregel: der Administrator sieht den
- * Betrieb, ein Mitarbeiter seine Projekte. Deshalb läuft jede Zahl über
- * sichtbarFuer und nicht über eine ungefilterte Gesamtsumme.
+ * Bewusst nicht für Mitarbeiter: acht Kacheln über der eigentlichen Arbeit
+ * sind keine Übersicht mehr, sondern eine Wand aus Zahlen. Wer an einem
+ * Ticket sitzt, braucht oben seine vier — was er offen hat, was diese Woche
+ * fällig ist, was frei herumliegt und wie viel Zeit er gebucht hat. Wie
+ * ausgelastet das Projekt insgesamt ist, steht im Diagramm unten.
+ *
+ * Die Abfragen laufen trotzdem über sichtbarFuer statt über ungefilterte
+ * Gesamtsummen — sonst hinge die Rollentrennung dieses Widgets allein an
+ * canView(), und die wäre beim nächsten "zeig das doch auch dem Team"
+ * lautlos weg.
  */
 class TeamUeberblick extends StatsOverviewWidget
 {
     protected static ?int $sort = 2;
 
     /** Steht neben MeinUeberblick, deshalb halbe Breite und zwei Kacheln je Reihe. */
-    protected int|string|array $columnSpan = 1;
+    protected int|string|array $columnSpan = Raster::HALB;
 
-    protected int|array|null $columns = 2;
+    protected int|array|null $columns = ['default' => 4, 'xl' => 2];
 
     /** Wie lange ein offenes Ticket ruhen darf, bevor es auffällt. */
     private const RUHEND_AB_TAGEN = 3;
 
-    /**
-     * Wer keinem Kunden und keinem Projekt zugeordnet ist, bekommt hier vier
-     * Nullen ohne erkennbaren Grund. Die Erklärung dazu steht schon in
-     * MeinUeberblick; ein zweites Mal danebengestellt wäre sie nur Lärm.
-     */
+    protected ?string $heading = 'Im Betrieb';
+
     public static function canView(): bool
     {
-        return auth()->check() && ! Sichtbarkeit::ohneProjekte();
-    }
-
-    public function getHeading(): ?string
-    {
-        return auth()->user()?->istAdmin() ? 'Im Betrieb' : 'In meinen Projekten';
+        return auth()->user()?->istAdmin() ?? false;
     }
 
     protected function getStats(): array

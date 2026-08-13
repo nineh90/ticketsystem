@@ -14,7 +14,7 @@ use App\Filament\Widgets\Geschehen;
 use App\Filament\Widgets\MeineTickets;
 use App\Filament\Widgets\MeinUeberblick;
 use App\Filament\Widgets\TeamUeberblick;
-use App\Filament\Widgets\TicketsJeKunde;
+use App\Filament\Widgets\TicketsVerteilung;
 use App\Http\Middleware\SicherheitsHeader;
 use Filament\Enums\ThemeMode;
 use Filament\Support\Colors\Color;
@@ -77,15 +77,15 @@ class AdminPanelProvider extends PanelProvider
             // AccountWidget und FilamentInfoWidget sind bewusst raus: das eine
             // wiederholt nur den Namen aus der Kopfleiste, das andere wirbt für
             // Filament. Beide kosten die beste Stelle des Dashboards.
-            // Reihenfolge auf dem Dashboard: erst die eigenen Zahlen, dann —
-            // für Administratoren — die des Betriebs, dann was passiert ist,
-            // dann die eigene Arbeitsliste und zuletzt die Verteilung.
+            // Reihenfolge auf dem Dashboard: erst die eigenen Zahlen, daneben
+            // die des Betriebs bzw. der eigenen Projekte, darunter die eigene
+            // Arbeitsliste neben dem Geschehen, zuletzt die Verteilung.
             ->widgets([
                 MeinUeberblick::class,
                 TeamUeberblick::class,
                 Geschehen::class,
                 MeineTickets::class,
-                TicketsJeKunde::class,
+                TicketsVerteilung::class,
             ])
             ->middleware([
                 EncryptCookies::class,

@@ -260,10 +260,16 @@ class GeschehenTest extends TestCase
             ->assertSuccessful();
     }
 
-    public function test_teamueberblick_bleibt_ohne_zuordnung_verborgen(): void
+    public function test_teamueberblick_bleibt_mitarbeitern_verborgen(): void
     {
-        // Ohne Kunde und ohne Projekt wären es vier Nullen ohne Erklärung.
-        $this->actingAs($this->mitarbeiter());
+        // Auch mit Projektzuordnung nicht: die Betriebszahlen sind Sache des
+        // Administrators. Ein Mitarbeiter bekommt oben seine vier eigenen
+        // Kacheln, alles Weitere zu seinen Projekten steht im Diagramm und im
+        // Ereignisstrom.
+        $mitarbeiter = $this->mitarbeiter();
+        Project::factory()->create()->mitarbeiter()->attach($mitarbeiter);
+
+        $this->actingAs($mitarbeiter);
 
         $this->assertFalse(TeamUeberblick::canView());
     }
@@ -285,37 +291,24 @@ class GeschehenTest extends TestCase
             ->assertSee('2');
     }
 
-    public function test_mitarbeiter_bekommt_die_zahlen_seiner_projekte(): void
+    public function test_teamueberblick_zaehlt_ueber_sichtbarfuer(): void
     {
+        // Das Widget ist zwar Administratoren vorbehalten, seine Abfragen
+        // laufen aber trotzdem über sichtbarFuer. Sollte es je jemand
+        // freigeben, hängt die Rollentrennung nicht allein an canView().
         $mitarbeiter = $this->mitarbeiter();
         $status = TicketStatus::factory()->create(['ist_abschluss' => false]);
 
         $meins = Project::factory()->create();
         $meins->mitarbeiter()->attach($mitarbeiter);
 
-        // Drei offene Tickets im eigenen Projekt, keines davon ihm zugewiesen
-        // — genau der Fall, den der persönliche Überblick nicht zeigt.
         Ticket::factory()->count(3)->for($meins, 'project')->create([
             'ticket_status_id' => $status->id,
         ]);
-
-        // Und fünf in einem fremden Projekt, die nicht mitzählen dürfen.
         Ticket::factory()->count(5)->create(['ticket_status_id' => $status->id]);
 
-        $this->actingAs($mitarbeiter);
-        $this->assertTrue(TeamUeberblick::canView());
-
-        Livewire::actingAs($mitarbeiter)
-            ->test(TeamUeberblick::class)
-            ->assertSuccessful()
-            ->assertSee('In meinen Projekten')
-            ->assertSee('Offen gesamt');
-
-        // Gezählt wird auf der Abfrage, nicht im HTML: eine Zahl wie "8"
-        // steht auch in den Pfaddaten der Icons, ein assertDontSee('8') wäre
-        // also grün oder rot aus Gründen, die mit der Rollentrennung nichts
-        // zu tun haben.
         $this->assertSame(3, Ticket::query()->sichtbarFuer($mitarbeiter)->offen()->count());
+        $this->assertSame(8, Ticket::query()->offen()->count());
     }
 
     public function test_dashboard_laedt_mit_allen_widgets(): void

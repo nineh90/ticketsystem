@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Support\DashboardBesuch;
 use App\Support\Ereignis;
 use App\Support\Ereignisstrom;
+use App\Support\Raster;
 use App\Support\Sichtbarkeit;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Carbon;
@@ -26,7 +27,7 @@ class Geschehen extends Widget
     protected static ?int $sort = 4;
 
     /** Halbe Breite, neben der eigenen Ticketliste. */
-    protected int|string|array $columnSpan = 1;
+    protected int|string|array $columnSpan = Raster::HALB;
 
     /** Wie viele Zeilen gerade gezeigt werden — wächst per "Mehr anzeigen". */
     public int $anzahl = 15;

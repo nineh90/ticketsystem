@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Enums\Rolle;
 use App\Filament\Widgets\MeineTickets;
 use App\Filament\Widgets\MeinUeberblick;
-use App\Filament\Widgets\TicketsJeKunde;
+use App\Filament\Widgets\TicketsVerteilung;
 use App\Models\Customer;
 use App\Models\Project;
 use App\Models\Ticket;
@@ -64,7 +64,7 @@ class DashboardTest extends TestCase
             ->create(['ticket_status_id' => $status->id]);
 
         Livewire::actingAs($admin)
-            ->test(TicketsJeKunde::class)
+            ->test(TicketsVerteilung::class)
             ->assertSuccessful();
     }
 
@@ -121,8 +121,10 @@ class DashboardTest extends TestCase
             ->assertCanNotSeeTableRecords([$fremd]);
     }
 
-    public function test_kundendiagramm_ist_fuer_mitarbeiter_unsichtbar(): void
+    public function test_diagramm_bleibt_ohne_zuordnung_weg(): void
     {
+        // Ohne Kunde und ohne Projekt gäbe es nichts zu verteilen; das
+        // Diagramm zeigte dann eine leere Achse ohne erkennbaren Grund.
         $mitarbeiter = User::factory()->create([
             'rolle' => Rolle::Mitarbeiter,
             'panel_zugang' => true,
@@ -130,6 +132,39 @@ class DashboardTest extends TestCase
 
         $this->actingAs($mitarbeiter);
 
-        $this->assertFalse(TicketsJeKunde::canView());
+        $this->assertFalse(TicketsVerteilung::canView());
+    }
+
+    public function test_mitarbeiter_sieht_die_verteilung_seiner_projekte(): void
+    {
+        $mitarbeiter = User::factory()->create([
+            'rolle' => Rolle::Mitarbeiter,
+            'panel_zugang' => true,
+        ]);
+
+        $status = TicketStatus::factory()->create(['ist_abschluss' => false]);
+
+        $meins = Project::factory()->create(['name' => 'Mein Projekt']);
+        $meins->mitarbeiter()->attach($mitarbeiter);
+        Ticket::factory()->count(2)->for($meins, 'project')->create([
+            'ticket_status_id' => $status->id,
+        ]);
+
+        // Fremdes Projekt mit mehr Tickets — es darf im Diagramm nicht
+        // auftauchen, sonst verriete die Verteilung fremde Auslastung.
+        $fremd = Project::factory()->create(['name' => 'Fremdes Projekt']);
+        Ticket::factory()->count(4)->for($fremd, 'project')->create([
+            'ticket_status_id' => $status->id,
+        ]);
+
+        $this->actingAs($mitarbeiter);
+        $this->assertTrue(TicketsVerteilung::canView());
+
+        Livewire::actingAs($mitarbeiter)
+            ->test(TicketsVerteilung::class)
+            ->assertSuccessful()
+            ->assertSee('Offene Tickets je Projekt')
+            ->assertSee('Mein Projekt')
+            ->assertDontSee('Fremdes Projekt');
     }
 }

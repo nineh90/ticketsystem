@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Models\Ticket;
+use App\Support\Raster;
 use App\Support\Sichtbarkeit;
 use Filament\Support\Colors\Color;
 use Filament\Tables\Columns\TextColumn;
@@ -26,7 +27,7 @@ class MeineTickets extends TableWidget
      * hat. Auf einem Dashboard sollen beide Fragen ohne Scrollen beantwortet
      * sein.
      */
-    protected int|string|array $columnSpan = 1;
+    protected int|string|array $columnSpan = Raster::HALB;
 
     public function getTableHeading(): string
     {
@@ -85,8 +86,12 @@ class MeineTickets extends TableWidget
                         : null),
             ])
             ->recordUrl(fn (Ticket $record) => TicketResource::getUrl('view', ['record' => $record]))
-            ->paginated([10, 25, 50])
-            ->defaultPaginationPageOption(10)
+            // Fünf Zeilen, weil eine Zeile mit umbrochenem Titel und
+            // Kunde/Projekt darunter fast hundert Pixel hoch ist. Bei zehn
+            // wäre diese Karte doppelt so hoch wie der Strom daneben, und die
+            // rechte Spalte endete in einem Feld aus Nichts.
+            ->paginated([5, 10, 25])
+            ->defaultPaginationPageOption(5)
             ->emptyStateHeading(fn () => Sichtbarkeit::ueberschrift('Nichts offen'))
             ->emptyStateDescription(fn () => Sichtbarkeit::beschreibung(
                 'Dir ist gerade kein offenes Ticket zugewiesen.',

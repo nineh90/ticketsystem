@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\Ticket;
 use App\Models\TimeEntry;
+use App\Support\Raster;
 use App\Support\Sichtbarkeit;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -34,13 +35,15 @@ class MeinUeberblick extends StatsOverviewWidget
      */
     public function getColumnSpan(): int|string|array
     {
-        return TeamUeberblick::canView() ? 1 : 'full';
+        return TeamUeberblick::canView() ? Raster::HALB : 'full';
     }
 
     protected function getColumns(): int|array|null
     {
-        // Halbe Breite trägt zwei Kacheln nebeneinander, volle vier.
-        return $this->getColumnSpan() === 1 ? 2 : 4;
+        // Halbe Breite trägt zwei Kacheln nebeneinander, volle vier — und
+        // unterhalb von xl steht die Karte wieder über die ganze Breite, dann
+        // passen dort auch wieder vier.
+        return TeamUeberblick::canView() ? ['default' => 4, 'xl' => 2] : 4;
     }
 
     protected function getStats(): array
