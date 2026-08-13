@@ -1,7 +1,8 @@
 # Ticketsystem Nils-Digital
 
 Internes Ticket- und Projektsystem. Struktur: **Kunde → Projekt → Ticket**.
-Läuft unter `intern.nils-digital.de` auf dem Hostinger-VPS.
+
+Live: <https://intern.nils-digital.de> — Push auf `main` rollt aus.
 
 **Stack:** Laravel 13 · Filament 5 · PostgreSQL 16 · Tailwind 4 · PHP 8.4
 
@@ -72,6 +73,9 @@ eine bewusste Abweichung von `kein-einzelfall`, das ohne JS-Framework gebaut
 ist und die Policy deshalb enger fassen kann. Details im Klassenkommentar.
 
 ## Dokumentation
+
+- [`docs/betrieb.md`](docs/betrieb.md) — Live-System, Deploy, Backup, Nutzer
+- [`docs/n8n.md`](docs/n8n.md) — Schnittstelle für automatisch erzeugte Tickets
 
 Der vollständige Aufbauplan liegt unter
 `~/.claude/plans/ich-m-chte-gerne-ein-joyful-badger.md`.
