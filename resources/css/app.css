@@ -3,7 +3,15 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/*
+ * Dieses Stylesheet gilt für Seiten außerhalb des Filament-Panels — in v1
+ * gibt es davon keine. Die Schriftfestlegung bleibt trotzdem konsistent zur
+ * Marke, damit eine später ergänzte öffentliche Seite nicht plötzlich in
+ * einer anderen Schrift erscheint. Das Panel selbst bringt seine Schriften
+ * über resources/css/filament/admin/theme.css mit.
+ */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Roboto Mono', ui-monospace, SFMono-Regular, monospace;
+    --color-background: #0d1117;
+    --color-foreground: #f9fafb;
 }

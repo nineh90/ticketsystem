@@ -10,11 +10,12 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use App\Filament\AvatarProviders\InitialenAvatar;
+use App\Filament\Widgets\MeineTickets;
+use App\Filament\Widgets\MeinUeberblick;
+use App\Filament\Widgets\TicketsJeKunde;
 use App\Http\Middleware\SicherheitsHeader;
 use Filament\Enums\ThemeMode;
 use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -33,8 +34,12 @@ class AdminPanelProvider extends PanelProvider
             // ins Dashboard bzw. auf /login. Ein späterer Kundenbereich wird
             // ein zweites Panel mit ->id('kunde')->path('kunde').
             ->path('')
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->login()
             ->brandName('Nils-Digital')
+            // Logo UND Schriftzug: Filament zeigt sonst nur eines von beiden.
+            ->brandLogo(fn () => view('filament.marke'))
+            ->favicon(asset('favicon-32x32.png'))
             // Markenfarbe der Website (css/main.css: --accent: #00bcd4).
             ->colors([
                 'primary' => Color::hex('#00bcd4'),
@@ -51,9 +56,13 @@ class AdminPanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
+            // AccountWidget und FilamentInfoWidget sind bewusst raus: das eine
+            // wiederholt nur den Namen aus der Kopfleiste, das andere wirbt für
+            // Filament. Beide kosten die beste Stelle des Dashboards.
             ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
+                MeinUeberblick::class,
+                MeineTickets::class,
+                TicketsJeKunde::class,
             ])
             ->middleware([
                 EncryptCookies::class,

@@ -1,18 +1,21 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
-import { bunny } from 'laravel-vite-plugin/fonts';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
-            refresh: true,
-            fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
-                }),
+            input: [
+                'resources/css/app.css',
+                'resources/js/app.js',
+                'resources/css/filament/admin/theme.css',
             ],
+            refresh: true,
+            // Der Skeleton lädt hier "Instrument Sans" über den bunny-Helfer
+            // nach. Das ist bewusst entfernt: die Marke schreibt Fredoka und
+            // Roboto Mono vor, beide liegen als @fontsource-Paket lokal und
+            // werden im Theme eingebunden. Eine dritte Schrift wäre nur
+            // Ballast im Bundle.
         }),
         tailwindcss(),
     ],

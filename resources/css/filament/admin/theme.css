@@ -1,0 +1,84 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+/*
+ * Schriften der Marke, selbst gehostet.
+ *
+ * Die @fontsource-Pakete liegen in node_modules und werden von Vite in
+ * public/build gebündelt — es geht kein Request an Google Fonts oder eine
+ * andere fremde Adresse. Das ist hier nicht bloß Geschmackssache: unsere CSP
+ * begrenzt font-src auf 'self', ein externer Font käme gar nicht an.
+ *
+ * Fredoka 500/600 für Überschriften, Roboto Mono 400/500 für Fließtext —
+ * dieselbe Kombination wie nils-digital.de. Der Monospace-Fließtext ist ein
+ * prägendes Merkmal der Marke, kein Versehen.
+ */
+@import '@fontsource/fredoka/500.css';
+@import '@fontsource/fredoka/600.css';
+@import '@fontsource/roboto-mono/400.css';
+@import '@fontsource/roboto-mono/500.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+@theme {
+    --font-sans: 'Roboto Mono', ui-monospace, SFMono-Regular, monospace;
+
+    /*
+     * Filaments Grauskala auf die Farben von nils-digital.de gelegt
+     * (css/main.css). Im dunklen Modus zieht Filament den Seitenhintergrund
+     * aus gray-950 und Karten, Kopf- und Seitenleiste aus gray-900 — genau
+     * die beiden Werte, die die Website als --bg-main und --bg-card führt.
+     */
+    --color-gray-50: #f9fafb;
+    --color-gray-100: #f3f4f6;
+    --color-gray-200: #e5e7eb;
+    --color-gray-300: #d1d5db;
+    --color-gray-400: #9ca3af;  /* --text-muted */
+    --color-gray-500: #6b7280;
+    --color-gray-600: #4b5563;
+    --color-gray-700: #333c49;
+    --color-gray-800: #262d38;
+    --color-gray-900: #1a1f27;  /* --bg-card */
+    --color-gray-950: #0d1117;  /* --bg-main */
+}
+
+/*
+ * Überschriften in Fredoka. Filament setzt überall font-sans; die Zuordnung
+ * muss deshalb an den konkreten Elementen erfolgen.
+ */
+.fi-header-heading,
+.fi-section-header-heading,
+.fi-modal-heading,
+.fi-ta-empty-state-heading,
+.fi-in-section-header-heading,
+.fi-topbar .fi-logo,
+.fi-sidebar-header .fi-logo {
+    font-family: 'Fredoka', system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+/*
+ * Die Marke arbeitet mit cyanfarbenem Schein statt neutraler Schlagschatten
+ * (main.css: --shadow-accent). Zurückhaltend dosiert — in einem Werkzeug, das
+ * man den ganzen Tag offen hat, ermüdet zu viel Leuchten.
+ */
+.fi-btn[class*='fi-color-primary']:hover {
+    box-shadow: 0 0 12px rgb(0 188 212 / 0.35);
+}
+
+.fi-input:focus-within,
+.fi-select:focus-within {
+    box-shadow: 0 0 0 3px rgb(0 188 212 / 0.15);
+}
+
+/* Karten heben sich beim Überfahren leicht an — wie auf der Website. */
+.fi-wi-stats-overview-stat {
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.fi-wi-stats-overview-stat:hover {
+    transform: translateY(-4px);
+    border-color: rgb(0 188 212 / 0.35);
+    box-shadow: 0 10px 36px rgb(0 188 212 / 0.1);
+}
