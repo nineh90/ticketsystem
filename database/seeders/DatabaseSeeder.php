@@ -2,24 +2,23 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+/**
+ * Läuft bei jedem Deploy mit (siehe deploy/deploy.sh).
+ *
+ * Deshalb darf hier ausschließlich stehen, was idempotent ist und produktiv
+ * gebraucht wird — keine Demo- oder Testdaten. Der Seeder aus
+ * fahrlehrerin_sarah setzt beim Laufen das Schema neu auf und ist genau
+ * deswegen bewusst aus dem Deploy herausgehalten worden; diesen Umweg sparen
+ * wir uns, indem hier gar nichts Destruktives landet.
+ */
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            TicketStatusSeeder::class,
         ]);
     }
 }

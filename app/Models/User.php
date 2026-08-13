@@ -9,6 +9,9 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -64,5 +67,33 @@ class User extends Authenticatable implements FilamentUser
     public function istAdmin(): bool
     {
         return $this->rolle === Rolle::Admin;
+    }
+
+    /** Projekte, die dieser Nutzer sehen darf. Für Admins ohne Bedeutung. */
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class)->withTimestamps();
+    }
+
+    /** Nur für die Rolle "kunde" gesetzt — in v1 bei allen leer. */
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function zugewieseneTickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class, 'assigned_to');
+    }
+
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class);
+    }
+
+    /** Die gerade laufende Zeitbuchung, falls es eine gibt. */
+    public function laufendeZeit(): ?TimeEntry
+    {
+        return $this->timeEntries()->laufend()->latest('gestartet_am')->first();
     }
 }
