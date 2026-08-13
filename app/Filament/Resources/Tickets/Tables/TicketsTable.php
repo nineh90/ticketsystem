@@ -6,7 +6,9 @@ use App\Enums\Prioritaet;
 use App\Enums\Quelle;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\Tickets\TicketResource;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Support\Colors\Color;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -140,7 +142,11 @@ class TicketsTable
                     ->query(fn (Builder $query) => $query->whereNull('assigned_to'))
                     ->toggle(),
             ])
+            // Klick auf die Zeile führt auf die Detailseite mit Kommentaren,
+            // Zeiten und Verlauf — nicht direkt ins Bearbeiten-Formular.
+            ->recordUrl(fn ($record) => TicketResource::getUrl('view', ['record' => $record]))
             ->recordActions([
+                ViewAction::make()->label('Öffnen'),
                 EditAction::make()->label('Bearbeiten'),
             ])
             ->toolbarActions([

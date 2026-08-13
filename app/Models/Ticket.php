@@ -10,7 +10,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\DB;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 #[Fillable([
     'project_id', 'titel', 'beschreibung', 'ticket_status_id', 'prioritaet',
@@ -18,7 +21,30 @@ use Illuminate\Support\Facades\DB;
 ])]
 class Ticket extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
+
+    /**
+     * Was im Verlauf protokolliert wird.
+     *
+     * Bewusst nicht die Beschreibung: sie wird beim Schreiben oft mehrfach
+     * überarbeitet und würde den Verlauf mit Textwänden zumüllen, in denen
+     * die eigentlich interessanten Ereignisse untergehen — wer hat den
+     * Status geändert, wer hat zugewiesen, wann wurde es fällig gestellt.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'titel',
+                'ticket_status_id',
+                'prioritaet',
+                'assigned_to',
+                'faellig_am',
+            ])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges()
+            ->useLogName('ticket');
+    }
 
     protected $attributes = [
         'prioritaet' => 'normal',
@@ -150,6 +176,18 @@ class Ticket extends Model
     public function timeEntries(): HasMany
     {
         return $this->hasMany(TimeEntry::class);
+    }
+
+    /**
+     * Der Verlauf.
+     *
+     * Von Hand definiert statt über das Trait HasActivity: das würde
+     * CausesActivity mitbringen, und ein Ticket ist nie Verursacher einer
+     * Änderung — nur ihr Gegenstand.
+     */
+    public function activities(): MorphMany
+    {
+        return $this->activitiesAsSubject();
     }
 
     /** Summe der erfassten Minuten. */

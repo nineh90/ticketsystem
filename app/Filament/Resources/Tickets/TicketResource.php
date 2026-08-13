@@ -5,6 +5,10 @@ namespace App\Filament\Resources\Tickets;
 use App\Filament\Resources\Tickets\Pages\CreateTicket;
 use App\Filament\Resources\Tickets\Pages\EditTicket;
 use App\Filament\Resources\Tickets\Pages\ListTickets;
+use App\Filament\Resources\Tickets\Pages\ViewTicket;
+use App\Filament\Resources\Tickets\RelationManagers\AktivitaetRelationManager;
+use App\Filament\Resources\Tickets\RelationManagers\CommentsRelationManager;
+use App\Filament\Resources\Tickets\RelationManagers\TimeEntriesRelationManager;
 use App\Filament\Resources\Tickets\Schemas\TicketForm;
 use App\Filament\Resources\Tickets\Tables\TicketsTable;
 use App\Models\Ticket;
@@ -61,7 +65,9 @@ class TicketResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            CommentsRelationManager::class,
+            TimeEntriesRelationManager::class,
+            AktivitaetRelationManager::class,
         ];
     }
 
@@ -70,6 +76,7 @@ class TicketResource extends Resource
         return [
             'index' => ListTickets::route('/'),
             'create' => CreateTicket::route('/create'),
+            'view' => ViewTicket::route('/{record}'),
             'edit' => EditTicket::route('/{record}/edit'),
         ];
     }
