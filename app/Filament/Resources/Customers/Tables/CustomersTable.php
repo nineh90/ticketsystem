@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Customers\Tables;
 
+use App\Support\Sichtbarkeit;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -70,7 +71,9 @@ class CustomersTable
                     DeleteBulkAction::make()->label('Löschen'),
                 ]),
             ])
-            ->emptyStateHeading('Noch keine Kunden')
-            ->emptyStateDescription('Lege einen Kunden an, darunter kommen die Projekte.');
+            ->emptyStateHeading(fn () => Sichtbarkeit::ueberschrift('Noch keine Kunden'))
+            ->emptyStateDescription(fn () => Sichtbarkeit::beschreibung(
+                'Lege einen Kunden an, darunter kommen die Projekte.',
+            ));
     }
 }

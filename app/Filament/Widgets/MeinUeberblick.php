@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\Ticket;
 use App\Models\TimeEntry;
+use App\Support\Sichtbarkeit;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -22,6 +23,18 @@ class MeinUeberblick extends StatsOverviewWidget
     protected function getStats(): array
     {
         $nutzer = auth()->user();
+
+        // Ohne Projektzuordnung sind alle vier Zahlen null, und zwar ohne
+        // erkennbaren Grund. Statt vier Nullen anzuzeigen, die wie ein
+        // kaputtes System aussehen, wird hier gesagt, was fehlt.
+        if (Sichtbarkeit::ohneProjekte($nutzer)) {
+            return [
+                Stat::make('Kein Projekt zugeordnet', '—')
+                    ->description('Ein Administrator muss dich unter Verwaltung → Nutzer einem Projekt zuordnen. Bis dahin siehst du keine Kunden, Projekte oder Tickets.')
+                    ->descriptionIcon('heroicon-m-information-circle')
+                    ->color('warning'),
+            ];
+        }
 
         $meine = Ticket::query()
             ->sichtbarFuer($nutzer)

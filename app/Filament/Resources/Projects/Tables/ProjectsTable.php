@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Projects\Tables;
 
 use App\Enums\ProjektStatus;
+use App\Support\Sichtbarkeit;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -92,7 +93,9 @@ class ProjectsTable
                     DeleteBulkAction::make()->label('Löschen'),
                 ]),
             ])
-            ->emptyStateHeading('Noch keine Projekte')
-            ->emptyStateDescription('Projekte hängen an einem Kunden — leg zuerst einen Kunden an.');
+            ->emptyStateHeading(fn () => Sichtbarkeit::ueberschrift('Noch keine Projekte'))
+            ->emptyStateDescription(fn () => Sichtbarkeit::beschreibung(
+                'Projekte hängen an einem Kunden — leg zuerst einen Kunden an.',
+            ));
     }
 }

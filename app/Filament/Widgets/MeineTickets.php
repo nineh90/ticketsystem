@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Models\Ticket;
+use App\Support\Sichtbarkeit;
 use Filament\Support\Colors\Color;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -77,8 +78,10 @@ class MeineTickets extends TableWidget
             ->recordUrl(fn (Ticket $record) => TicketResource::getUrl('view', ['record' => $record]))
             ->paginated([5, 10, 25])
             ->defaultPaginationPageOption(5)
-            ->emptyStateHeading('Nichts offen')
-            ->emptyStateDescription('Dir ist gerade kein offenes Ticket zugewiesen.')
+            ->emptyStateHeading(fn () => Sichtbarkeit::ueberschrift('Nichts offen'))
+            ->emptyStateDescription(fn () => Sichtbarkeit::beschreibung(
+                'Dir ist gerade kein offenes Ticket zugewiesen.',
+            ))
             ->emptyStateIcon('heroicon-o-check-circle');
     }
 }

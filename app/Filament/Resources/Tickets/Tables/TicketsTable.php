@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Tickets\Tables;
 
 use App\Enums\Prioritaet;
+use App\Support\Sichtbarkeit;
 use App\Enums\Quelle;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -154,7 +155,9 @@ class TicketsTable
                     DeleteBulkAction::make()->label('Löschen'),
                 ]),
             ])
-            ->emptyStateHeading('Keine Tickets')
-            ->emptyStateDescription('Entweder gibt es noch keine, oder die Filter sind zu eng gesetzt.');
+            ->emptyStateHeading(fn () => Sichtbarkeit::ueberschrift('Keine Tickets'))
+            ->emptyStateDescription(fn () => Sichtbarkeit::beschreibung(
+                'Entweder gibt es noch keine, oder die Filter sind zu eng gesetzt.',
+            ));
     }
 }
