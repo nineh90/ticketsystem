@@ -1,0 +1,6 @@
+Hält das Verzeichnis im Repo.
+
+phpunit.xml deklariert eine Testsuite "Unit" auf diesem Ordner. Git überträgt
+leere Verzeichnisse nicht — ohne diese Datei fehlt der Ordner auf einem
+frischen Checkout, und phpunit bricht mit "Test directory not found" ab. Lokal
+fällt das nicht auf, weil der Ordner dort vom Anlegen des Projekts übrig ist.
