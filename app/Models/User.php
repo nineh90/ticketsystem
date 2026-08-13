@@ -81,6 +81,18 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsTo(Customer::class);
     }
 
+    /**
+     * Kunden, die diesem Mitarbeiter als Ganzes zugeordnet sind.
+     *
+     * Nicht zu verwechseln mit customer(): das ist die Kundenzugehörigkeit
+     * eines späteren Kundenzugangs, dies hier die Zuständigkeit eines
+     * Mitarbeiters.
+     */
+    public function customers(): BelongsToMany
+    {
+        return $this->belongsToMany(Customer::class)->withTimestamps();
+    }
+
     public function zugewieseneTickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'assigned_to');

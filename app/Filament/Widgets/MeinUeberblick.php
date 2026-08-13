@@ -29,8 +29,8 @@ class MeinUeberblick extends StatsOverviewWidget
         // kaputtes System aussehen, wird hier gesagt, was fehlt.
         if (Sichtbarkeit::ohneProjekte($nutzer)) {
             return [
-                Stat::make('Kein Projekt zugeordnet', '—')
-                    ->description('Ein Administrator muss dich unter Verwaltung → Nutzer einem Projekt zuordnen. Bis dahin siehst du keine Kunden, Projekte oder Tickets.')
+                Stat::make('Keine Zuordnung', '—')
+                    ->description('Ein Administrator muss dich unter Verwaltung → Nutzer einem Kunden oder einzelnen Projekten zuordnen. Bis dahin siehst du keine Kunden, Projekte oder Tickets.')
                     ->descriptionIcon('heroicon-m-information-circle')
                     ->color('warning'),
             ];

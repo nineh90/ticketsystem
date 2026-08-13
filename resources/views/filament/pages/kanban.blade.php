@@ -18,8 +18,8 @@
              Grund. Der Hinweis steht deshalb über den Spalten, nicht nur in
              deren Leerzustand. --}}
         <div class="rounded-xl bg-warning-500/10 p-4 text-sm text-warning-400 ring-1 ring-warning-500/30">
-            Dir ist noch kein Projekt zugeordnet — deshalb ist das Brett leer.
-            Ein Administrator ordnet dich unter <strong>Verwaltung → Nutzer</strong> einem Projekt zu.
+            Dir ist noch kein Kunde und kein Projekt zugeordnet — deshalb ist das Brett leer.
+            Ein Administrator ordnet dich unter <strong>Verwaltung → Nutzer</strong> zu.
         </div>
     @endif
 

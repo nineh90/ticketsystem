@@ -25,6 +25,10 @@ class CustomerPolicy
             return true;
         }
 
+        if ($customer->mitarbeiter()->whereKey($user->getKey())->exists()) {
+            return true;
+        }
+
         return $customer->projects()
             ->whereHas('mitarbeiter', fn ($q) => $q->whereKey($user->getKey()))
             ->exists();

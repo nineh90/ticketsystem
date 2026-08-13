@@ -46,8 +46,17 @@ class ProjectPolicy
         return $user->istAdmin();
     }
 
+    /**
+     * Zugeordnet über das Projekt selbst ODER über dessen Kunden. Muss
+     * dieselben zwei Wege kennen wie Project::scopeSichtbarFuer — sonst
+     * zeigte die Liste ein Projekt an, das sich nicht öffnen lässt.
+     */
     private function istZugeordnet(User $user, Project $project): bool
     {
-        return $project->mitarbeiter()->whereKey($user->getKey())->exists();
+        if ($project->mitarbeiter()->whereKey($user->getKey())->exists()) {
+            return true;
+        }
+
+        return $project->customer->mitarbeiter()->whereKey($user->getKey())->exists();
     }
 }

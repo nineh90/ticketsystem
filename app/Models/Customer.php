@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
@@ -50,6 +51,17 @@ class Customer extends Model
         return $this->hasMany(Ticket::class);
     }
 
+    /**
+     * Mitarbeiter, die diesem Kunden als Ganzes zugeordnet sind.
+     *
+     * Sie sehen alle Projekte des Kunden — auch die, die erst später
+     * entstehen. Das ist der Unterschied zur Zuordnung einzelner Projekte.
+     */
+    public function mitarbeiter(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)->withTimestamps();
+    }
+
     public function scopeAktiv(Builder $query): Builder
     {
         return $query->where('aktiv', true);
@@ -68,9 +80,10 @@ class Customer extends Model
             return $query;
         }
 
-        return $query->whereHas(
-            'projects.mitarbeiter',
-            fn (Builder $q) => $q->whereKey($nutzer->getKey()),
-        );
+        // Zwei Wege: direkt dem Kunden zugeordnet, oder einem seiner
+        // Projekte. Einer von beiden genügt.
+        return $query->where(fn (Builder $q) => $q
+            ->whereHas('mitarbeiter', fn (Builder $m) => $m->whereKey($nutzer->getKey()))
+            ->orWhereHas('projects.mitarbeiter', fn (Builder $m) => $m->whereKey($nutzer->getKey())));
     }
 }

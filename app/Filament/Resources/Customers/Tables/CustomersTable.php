@@ -53,6 +53,12 @@ class CustomersTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                TextColumn::make('mitarbeiter_count')
+                    ->label('Team')
+                    ->counts('mitarbeiter')
+                    ->alignEnd()
+                    ->tooltip('Mitarbeiter, die diesen Kunden komplett betreuen'),
+
                 IconColumn::make('aktiv')
                     ->label('Aktiv')
                     ->boolean(),

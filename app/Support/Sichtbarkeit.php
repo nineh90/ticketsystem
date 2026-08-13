@@ -27,7 +27,10 @@ class Sichtbarkeit
             return false;
         }
 
-        return $nutzer->projects()->doesntExist();
+        // Beide Wege prüfen: erst wer weder einem Projekt noch einem Kunden
+        // zugeordnet ist, sieht wirklich nichts.
+        return $nutzer->projects()->doesntExist()
+            && $nutzer->customers()->doesntExist();
     }
 
     /**
@@ -40,14 +43,14 @@ class Sichtbarkeit
             return null;
         }
 
-        return 'Dir ist noch kein Projekt zugeordnet — deshalb ist hier nichts zu sehen. '
-            .'Ein Administrator ordnet dich unter Verwaltung → Nutzer einem Projekt zu.';
+        return 'Dir ist noch kein Kunde und kein Projekt zugeordnet — deshalb ist hier nichts zu sehen. '
+            .'Ein Administrator ordnet dich unter Verwaltung → Nutzer zu.';
     }
 
     /** Überschrift für den Leerzustand. */
     public static function ueberschrift(string $standard): string
     {
-        return self::ohneProjekte() ? 'Kein Projekt zugeordnet' : $standard;
+        return self::ohneProjekte() ? 'Keine Zuordnung' : $standard;
     }
 
     /** Beschreibung für den Leerzustand. */

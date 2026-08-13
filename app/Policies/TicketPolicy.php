@@ -41,11 +41,13 @@ class TicketPolicy
         return $user->istAdmin();
     }
 
+    /** Dieselben zwei Wege wie Ticket::scopeSichtbarFuer. */
     private function imEigenenProjekt(User $user, Ticket $ticket): bool
     {
-        return $ticket->project
-            ->mitarbeiter()
-            ->whereKey($user->getKey())
-            ->exists();
+        if ($ticket->project->mitarbeiter()->whereKey($user->getKey())->exists()) {
+            return true;
+        }
+
+        return $ticket->customer->mitarbeiter()->whereKey($user->getKey())->exists();
     }
 }

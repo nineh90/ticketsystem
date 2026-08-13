@@ -12,6 +12,23 @@ use Illuminate\Support\Facades\Hash;
 
 class UserForm
 {
+    /**
+     * Rolle aus dem Formularzustand lesen.
+     *
+     * Nötig, weil $get('rolle') je nach Lage etwas anderes liefert: beim
+     * Anlegen den String aus ->default(), beim Bearbeiten den gecasteten
+     * Enum-Fall aus dem Model. Ein schlichtes === gegen den String schlug
+     * deshalb beim Bearbeiten immer fehl — mit der Folge, dass der Abschnitt
+     * "Zuständigkeit" unsichtbar blieb und sich einem bestehenden Mitarbeiter
+     * überhaupt kein Projekt zuweisen ließ.
+     */
+    private static function rolle(callable $get): ?Rolle
+    {
+        $wert = $get('rolle');
+
+        return $wert instanceof Rolle ? $wert : Rolle::tryFrom((string) $wert);
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -68,7 +85,7 @@ class UserForm
                             ->preload()
                             // Nur für die Rolle "kunde" sinnvoll, die in v1
                             // nicht vergeben wird.
-                            ->visible(fn ($get) => $get('rolle') === Rolle::Kunde->value)
+                            ->visible(fn ($get) => self::rolle($get) === Rolle::Kunde)
                             ->helperText('Nur für Kundenzugänge (kommt später).'),
 
                         Toggle::make('panel_zugang')
@@ -81,11 +98,22 @@ class UserForm
                             ->helperText('Ausgeschiedene Personen deaktivieren statt löschen — ihre Tickets und Zeiten bleiben zuordenbar.'),
                     ]),
 
-                Section::make('Projekte')
-                    ->description('Mitarbeiter sehen ausschließlich die Projekte, die hier zugeordnet sind. Für Administratoren ohne Bedeutung — sie sehen ohnehin alles.')
+                Section::make('Zuständigkeit')
+                    ->description('Mitarbeiter sehen ausschließlich, was hier zugeordnet ist. Beide Wege gelten nebeneinander — einer genügt. Für Administratoren ohne Bedeutung, sie sehen ohnehin alles.')
                     ->schema([
+                        Select::make('customers')
+                            ->label('Ganze Kunden')
+                            ->relationship('customers', 'name', fn ($query) => $query->aktiv()->orderBy('name'))
+                            ->multiple()
+                            ->searchable()
+                            ->preload()
+                            ->getOptionLabelFromRecordUsing(
+                                fn ($record) => $record->kuerzel.' — '.$record->name,
+                            )
+                            ->helperText('Schließt alle Projekte dieses Kunden ein, auch die, die erst später entstehen. Der bequemere Weg, wenn jemand einen Kunden komplett betreut.'),
+
                         Select::make('projects')
-                            ->label('Zugeordnete Projekte')
+                            ->label('Einzelne Projekte')
                             ->relationship('projects', 'name')
                             ->multiple()
                             ->searchable()
@@ -94,9 +122,10 @@ class UserForm
                             // dürfen beide ein Projekt "Website" haben.
                             ->getOptionLabelFromRecordUsing(
                                 fn ($record) => $record->customer->name.' — '.$record->name,
-                            ),
+                            )
+                            ->helperText('Nur diese Projekte. Bei einem neuen Projekt desselben Kunden muss hier nachgetragen werden.'),
                     ])
-                    ->visible(fn ($get) => $get('rolle') === Rolle::Mitarbeiter->value),
+                    ->visible(fn ($get) => self::rolle($get) === Rolle::Mitarbeiter),
             ]);
     }
 }

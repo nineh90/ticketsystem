@@ -216,9 +216,8 @@ class Ticket extends Model
             return $query;
         }
 
-        return $query->whereHas(
-            'project.mitarbeiter',
-            fn (Builder $q) => $q->whereKey($nutzer->getKey()),
-        );
+        return $query->where(fn (Builder $q) => $q
+            ->whereHas('project.mitarbeiter', fn (Builder $m) => $m->whereKey($nutzer->getKey()))
+            ->orWhereHas('customer.mitarbeiter', fn (Builder $m) => $m->whereKey($nutzer->getKey())));
     }
 }

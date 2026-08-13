@@ -63,9 +63,11 @@ class Project extends Model
             return $query;
         }
 
-        return $query->whereHas(
-            'mitarbeiter',
-            fn (Builder $q) => $q->whereKey($nutzer->getKey()),
-        );
+        // Sichtbar, wenn der Nutzer diesem Projekt zugeordnet ist ODER
+        // seinem Kunden. Die Kundenzuordnung schließt künftige Projekte
+        // automatisch ein — dafür gibt es sie.
+        return $query->where(fn (Builder $q) => $q
+            ->whereHas('mitarbeiter', fn (Builder $m) => $m->whereKey($nutzer->getKey()))
+            ->orWhereHas('customer.mitarbeiter', fn (Builder $m) => $m->whereKey($nutzer->getKey())));
     }
 }

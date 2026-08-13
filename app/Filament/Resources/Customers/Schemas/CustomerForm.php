@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Customers\Schemas;
 
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
@@ -83,6 +84,21 @@ class CustomerForm
                             ->label('Notizen')
                             ->rows(4)
                             ->columnSpanFull(),
+                    ]),
+
+                Section::make('Zuständige Mitarbeiter')
+                    ->description('Wer hier steht, sieht alle Projekte und Tickets dieses Kunden — auch künftige. Administratoren müssen nicht eingetragen werden.')
+                    ->schema([
+                        Select::make('mitarbeiter')
+                            ->label('Mitarbeiter')
+                            ->relationship(
+                                'mitarbeiter',
+                                'name',
+                                fn ($query) => $query->where('aktiv', true)->orderBy('name'),
+                            )
+                            ->multiple()
+                            ->searchable()
+                            ->preload(),
                     ]),
 
                 Section::make('Status')

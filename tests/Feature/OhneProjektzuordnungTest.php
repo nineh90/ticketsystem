@@ -69,7 +69,7 @@ class OhneProjektzuordnungTest extends TestCase
         Livewire::actingAs($this->mitarbeiter())
             ->test(MeinUeberblick::class)
             ->assertSuccessful()
-            ->assertSee('Kein Projekt zugeordnet')
+            ->assertSee('Keine Zuordnung')
             ->assertSee('Verwaltung');
     }
 
@@ -86,6 +86,6 @@ class OhneProjektzuordnungTest extends TestCase
         $this->actingAs($this->mitarbeiter())
             ->get('/tickets')
             ->assertOk()
-            ->assertSee('Kein Projekt zugeordnet');
+            ->assertSee('Keine Zuordnung');
     }
 }
