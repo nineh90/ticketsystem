@@ -61,6 +61,14 @@ class TeamUeberblick extends StatsOverviewWidget
             ->whereDate('faellig_am', '<', today())
             ->count();
 
+        // Was offen ist und noch niemandem gehört. Steht als Beschreibung an
+        // der Gesamtzahl statt in einer eigenen Kachel: es ist kein zweiter
+        // Sachverhalt, sondern ein Teil derselben Menge.
+        $unzugewiesen = $sichtbar()
+            ->offen()
+            ->whereNull('assigned_to')
+            ->count();
+
         $neuHeute = $sichtbar()
             ->whereDate('created_at', today())
             ->count();
@@ -91,7 +99,10 @@ class TeamUeberblick extends StatsOverviewWidget
 
         return [
             Stat::make('Offen gesamt', (string) $offen)
-                ->description($ueberfaellig > 0 ? "{$ueberfaellig} davon überfällig" : 'nichts überfällig')
+                ->description(
+                    ($ueberfaellig > 0 ? "{$ueberfaellig} überfällig" : 'nichts überfällig')
+                    .', '.$unzugewiesen.' nicht zugeteilt',
+                )
                 ->descriptionIcon($ueberfaellig > 0 ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-check-circle')
                 ->color($ueberfaellig > 0 ? 'danger' : 'success'),
 

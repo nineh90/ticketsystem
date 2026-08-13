@@ -40,10 +40,10 @@ class MeinUeberblick extends StatsOverviewWidget
 
     protected function getColumns(): int|array|null
     {
-        // Halbe Breite trägt zwei Kacheln nebeneinander, volle vier — und
+        // Halbe Breite trägt zwei Kacheln nebeneinander, volle drei — und
         // unterhalb von xl steht die Karte wieder über die ganze Breite, dann
-        // passen dort auch wieder vier.
-        return TeamUeberblick::canView() ? ['default' => 4, 'xl' => 2] : 4;
+        // passen dort auch wieder alle drei nebeneinander.
+        return TeamUeberblick::canView() ? ['default' => 3, 'xl' => 2] : 3;
     }
 
     protected function getStats(): array
@@ -80,12 +80,6 @@ class MeinUeberblick extends StatsOverviewWidget
             ->where('gestartet_am', '>=', today()->startOfWeek())
             ->sum('minuten');
 
-        $unzugewiesen = Ticket::query()
-            ->sichtbarFuer($nutzer)
-            ->offen()
-            ->whereNull('assigned_to')
-            ->count();
-
         return [
             Stat::make('Meine offenen Tickets', (string) $meine->count())
                 ->description($ueberfaellig > 0 ? "{$ueberfaellig} davon überfällig" : 'nichts überfällig')
@@ -102,10 +96,10 @@ class MeinUeberblick extends StatsOverviewWidget
                 ->descriptionIcon('heroicon-m-clock')
                 ->color('primary'),
 
-            Stat::make('Unzugewiesen', (string) $unzugewiesen)
-                ->description('offen, noch niemandem zugeteilt')
-                ->descriptionIcon('heroicon-m-inbox')
-                ->color($unzugewiesen > 0 ? 'warning' : 'gray'),
+            // Bewusst keine vierte Kachel mit den unzugewiesenen Tickets:
+            // Zuteilen ist Sache des Administrators, und eine Zahl, auf die
+            // man nicht handeln kann, ist auf einem Dashboard nur Beiwerk.
+            // Für den Administrator steht sie nebenan unter "Im Betrieb".
         ];
     }
 
