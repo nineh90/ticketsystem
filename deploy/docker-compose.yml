@@ -1,0 +1,100 @@
+# intern.nils-digital.de
+#
+# Hängt sich an den vorhandenen Traefik des n8n-Stacks (Netz n8n_default) —
+# genauso wie fahrsignal, fahrlehrerin-sarah und kein-einzelfall. Es wird KEIN
+# Port veröffentlicht, Traefik ist der einzige Weg hinein. An Traefik selbst
+# wird nichts geändert: der Docker-Provider läuft mit exposedbydefault=false,
+# jeder Container bringt seine eigene Route als Label mit. Die Nachbarprojekte
+# merken von diesem hier nichts.
+#
+# Aufruf auf dem Server (aus /docker/ticketsystem/deploy):
+#   docker compose up -d --build
+name: ticketsystem
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: ticketsystem:aktuell
+    container_name: ticketsystem
+    restart: unless-stopped
+
+    environment:
+      TZ: Europe/Berlin
+      APP_ENV: production
+      APP_DEBUG: 'false'
+      APP_URL: https://intern.nils-digital.de
+      APP_KEY: ${APP_KEY:?deploy/.env fehlt oder APP_KEY ist leer}
+
+      APP_LOCALE: de
+      APP_FALLBACK_LOCALE: de
+      APP_TIMEZONE: Europe/Berlin
+
+      # Postgres steckt im n8n-Stack und ist über das gemeinsame Netz unter
+      # seinem Dienstnamen erreichbar. Eigene Datenbank mit eigenem Benutzer,
+      # damit n8n nicht an die Ticketdaten kommt und umgekehrt.
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ticketsystem
+      DB_USERNAME: ticketsystem
+      DB_PASSWORD: ${DB_PASSWORD:?deploy/.env fehlt oder DB_PASSWORD ist leer}
+
+      SESSION_DRIVER: database
+      SESSION_LIFETIME: 120
+      # Ohne das wird das Sitzungs-Cookie auch über unverschlüsselte
+      # Verbindungen mitgeschickt. In kein-einzelfall steht genau dieser Punkt
+      # bis heute offen auf der Übergabe-Checkliste.
+      SESSION_SECURE_COOKIE: 'true'
+
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+
+      LOG_CHANNEL: stack
+      LOG_STACK: single
+      LOG_LEVEL: warning
+
+      MAIL_MAILER: log
+      MAIL_FROM_ADDRESS: ticketsystem@nils-digital.de
+
+      TICKET_API_TOKEN: ${TICKET_API_TOKEN:-}
+
+    volumes:
+      # Nur der Speicher wird beständig gehalten. Der Code kommt vollständig
+      # aus dem Abbild — ein Bind-Mount des Projekts würde beim nächsten
+      # Neubau alte und neue Dateien vermischen.
+      - ticketsystem-storage:/var/www/html/storage
+
+    networks:
+      - n8n_default
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=n8n_default"
+
+      # Hier darf nur stehen, was im DNS auch auf diesen Server zeigt.
+      # Traefik fordert für jeden Hostnamen sofort ein Zertifikat an; zeigt
+      # der Name woanders hin, scheitert die Validierung — und nach fünf
+      # Fehlversuchen sperrt Let's Encrypt den Namen für eine Stunde.
+      #
+      # Geprüft am 13.08.2026: intern.nils-digital.de löst auch beim
+      # autoritativen Strato-Nameserver auf 187.124.178.193 auf.
+      - "traefik.http.routers.ticketsystem.rule=Host(`intern.nils-digital.de`)"
+      - "traefik.http.routers.ticketsystem.entrypoints=web,websecure"
+      - "traefik.http.routers.ticketsystem.tls=true"
+      - "traefik.http.routers.ticketsystem.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.ticketsystem.loadbalancer.server.port=80"
+
+      # Ein internes Werkzeug gehört in keinen Suchindex. Die Anwendung ist
+      # ohnehin hinter dem Login, aber die Adresse selbst soll gar nicht erst
+      # auftauchen.
+      - "traefik.http.middlewares.ticketsystem-noindex.headers.customresponseheaders.X-Robots-Tag=noindex, nofollow, noarchive"
+      - "traefik.http.routers.ticketsystem.middlewares=ticketsystem-noindex@docker"
+
+volumes:
+  ticketsystem-storage:
+
+networks:
+  n8n_default:
+    external: true

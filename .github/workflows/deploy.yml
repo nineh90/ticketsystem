@@ -1,0 +1,75 @@
+# Deploy nach intern.nils-digital.de
+#
+# Push auf main stößt über SSH das Skript /docker/ticketsystem/deploy/deploy.sh
+# auf dem VPS an. Der hinterlegte Schlüssel ist in authorized_keys per
+# erzwungenem Kommando auf genau dieses Skript festgenagelt — eine Shell
+# bekommt man damit nicht, und der Schlüssel gilt nur für dieses Projekt.
+#
+# Dasselbe Vorgehen wie bei kein-einzelfall.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Zwei gleichzeitige Deploys würden sich beim Bauen des Abbilds in die Quere
+# kommen. Der laufende darf zu Ende laufen, ein neuerer Push wartet.
+concurrency:
+  group: ticketsystem-deploy
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ticketsystem
+          POSTGRES_PASSWORD: ticketsystem_dev
+          POSTGRES_DB: ticketsystem_test
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, intl, zip, gd, mbstring
+          coverage: none
+
+      - run: composer install --no-interaction --prefer-dist
+
+      - run: cp .env.example .env && php artisan key:generate
+
+      # Die Tests laufen gegen Postgres, nicht gegen SQLite — siehe
+      # phpunit.xml. Sonst prüften wir eine andere Datenbank als die
+      # betriebene.
+      - run: php artisan test
+
+  deploy:
+    name: Ausrollen
+    needs: tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH-Schlüssel hinterlegen
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy anstoßen
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes \
+            "root@${{ secrets.VPS_HOST }}" deploy-ticketsystem
