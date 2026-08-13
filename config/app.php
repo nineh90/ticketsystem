@@ -60,12 +60,18 @@ return [
     |--------------------------------------------------------------------------
     |
     | Here you may specify the default timezone for your application, which
-    | will be used by the PHP date and date-time functions. The timezone
-    | is set to "UTC" by default as it is suitable for most use cases.
+    | will be used by the PHP date and date-time functions.
+    |
+    | Muss env() lesen und darf nicht fest auf UTC stehen: APP_TIMEZONE steht
+    | sowohl in der .env als auch im docker-compose des Servers auf
+    | Europe/Berlin, wurde aber von einem fest verdrahteten 'UTC' schlicht
+    | übergangen. Sichtbar wurde das erst im Dashboard, wo jeder Eintrag zwei
+    | Stunden in der Vergangenheit stand — geschrieben wurden die Zeitstempel
+    | nämlich genauso verkehrt, wie sie angezeigt wurden.
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
 
     /*
     |--------------------------------------------------------------------------
