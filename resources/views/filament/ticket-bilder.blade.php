@@ -8,6 +8,12 @@
 
     Die Adressen zeigen auf die geschützte Route, nicht auf public/.
 --}}
+@php
+    // Über $getRecord() statt über viewData: die Ansicht bekommt so in jedem
+    // Fall den Datensatz, den der Infolist gerade darstellt.
+    $bilder = $getRecord()->bilder;
+@endphp
+
 <div class="flex flex-wrap gap-3">
     @foreach ($bilder as $bild)
         <a

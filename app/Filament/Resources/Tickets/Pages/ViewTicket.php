@@ -88,8 +88,7 @@ class ViewTicket extends ViewRecord
                 ->schema([
                     ViewEntry::make('bilder')
                         ->hiddenLabel()
-                        ->view('filament.ticket-bilder')
-                        ->viewData(fn () => ['bilder' => $this->record->bilder]),
+                        ->view('filament.ticket-bilder'),
                 ])
                 ->visible(fn () => $this->record->bilder()->exists()),
 

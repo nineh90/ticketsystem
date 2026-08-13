@@ -3,13 +3,18 @@
 namespace Tests\Feature;
 
 use App\Enums\Rolle;
+use App\Filament\Resources\Tickets\Pages\ViewTicket;
+use App\Filament\Resources\Tickets\RelationManagers\AnhaengeRelationManager;
 use App\Models\Attachment;
+use Filament\Actions\Testing\TestAction;
 use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\TicketStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
@@ -191,6 +196,79 @@ class AnhaengeTest extends TestCase
             ->assertOk()
             ->assertSee('Bilder')
             ->assertSee($anhang->url(), escape: false);
+    }
+
+    public function test_upload_ueber_die_oberflaeche_legt_einen_anhang_an(): void
+    {
+        // Der Test, der gefehlt hat. Der erste Upload live scheiterte mit
+        // "Unresolvable dependency resolving [$path]", weil der Parameter der
+        // Closure in getUploadedFileNameForStorageUsing nicht $file hieß —
+        // Filament reicht dort über den Parameternamen durch, nicht über den
+        // Typ. Kein Unit-Test hätte das gefunden; nur ein Durchlauf durch die
+        // Oberfläche.
+        Storage::fake(Attachment::PLATTE);
+
+        $admin = User::factory()->create([
+            'rolle' => Rolle::Admin,
+            'panel_zugang' => true,
+        ]);
+        $ticket = Ticket::factory()->create();
+
+        Livewire::actingAs($admin)
+            ->test(AnhaengeRelationManager::class, [
+                'ownerRecord' => $ticket,
+                'pageClass' => ViewTicket::class,
+            ])
+            // ->table(): "create" ist eine Kopfaktion der TABELLE, keine
+            // Aktion der Komponente. Ohne den Kontext findet der Test sie
+            // nicht — genau wie im Browser, wo der Knopf
+            // mountAction('create', {}, {table: true}) aufruft.
+            ->callAction(TestAction::make('create')->table(), data: [
+                'pfad' => [
+                    UploadedFile::fake()->image('fehler-im-formular.png', 400, 300),
+                ],
+            ])
+            ->assertHasNoActionErrors();
+
+        $anhang = $ticket->fresh()->attachments()->first();
+
+        $this->assertNotNull($anhang, 'Es wurde kein Anhang angelegt.');
+        // Der ursprüngliche Dateiname muss erhalten bleiben, obwohl die Datei
+        // auf der Platte einen Zufallsnamen trägt.
+        $this->assertSame('fehler-im-formular.png', $anhang->dateiname);
+        $this->assertSame($admin->id, $anhang->user_id);
+        $this->assertTrue($anhang->istBild());
+        $this->assertTrue(Storage::disk(Attachment::PLATTE)->exists($anhang->pfad));
+        $this->assertStringContainsString('__', $anhang->pfad);
+    }
+
+    public function test_mehrere_dateien_in_einem_durchgang(): void
+    {
+        Storage::fake(Attachment::PLATTE);
+
+        $admin = User::factory()->create([
+            'rolle' => Rolle::Admin,
+            'panel_zugang' => true,
+        ]);
+        $ticket = Ticket::factory()->create();
+
+        Livewire::actingAs($admin)
+            ->test(AnhaengeRelationManager::class, [
+                'ownerRecord' => $ticket,
+                'pageClass' => ViewTicket::class,
+            ])
+            ->callAction(TestAction::make('create')->table(), data: [
+                'pfad' => [
+                    UploadedFile::fake()->image('eins.png'),
+                    UploadedFile::fake()->image('zwei.png'),
+                    UploadedFile::fake()->image('drei.png'),
+                ],
+            ])
+            ->assertHasNoActionErrors();
+
+        // Aus einem Upload werden drei Datensätze — dafür übernimmt using()
+        // das Anlegen selbst.
+        $this->assertSame(3, $ticket->fresh()->attachments()->count());
     }
 
     public function test_groesse_wird_lesbar_dargestellt(): void

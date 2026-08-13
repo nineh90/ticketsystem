@@ -22,6 +22,12 @@ class AnhaengeRelationManager extends RelationManager
 
     protected static ?string $title = 'Anhänge';
 
+    // Ohne diese beiden heißt das Fenster "Attachment erstellen" — Filament
+    // leitet die Beschriftung sonst aus dem Klassennamen ab.
+    protected static ?string $modelLabel = 'Anhang';
+
+    protected static ?string $pluralModelLabel = 'Anhänge';
+
     protected static string|\BackedEnum|null $icon = 'heroicon-o-paper-clip';
 
     /** Siehe CommentsRelationManager: sonst fehlen alle Knöpfe. */
@@ -46,12 +52,19 @@ class AnhaengeRelationManager extends RelationManager
                 // ursprüngliche Name hängt hinter dem Trenner "__" und wird
                 // beim Anlegen daraus gelesen, damit die Liste nicht lauter
                 // Zufallsketten zeigt.
+                // Der Parameter MUSS $file heißen: Filament reicht Werte an
+                // solche Closures über den Parameternamen durch, nicht über
+                // den Typ (siehe BaseFileUpload::getUploadedFileNameForStorage,
+                // 'file' => $file). Bei jedem anderen Namen versucht der
+                // Container, TemporaryUploadedFile selbst zu bauen, und der
+                // Upload scheitert mit "Unresolvable dependency resolving
+                // [$path]" — ohne dass die Meldung auf die Ursache zeigt.
                 ->getUploadedFileNameForStorageUsing(
-                    fn (TemporaryUploadedFile $datei): string => Str::random(24)
+                    fn (TemporaryUploadedFile $file): string => Str::random(24)
                         .'__'
                         // Nur harmlose Zeichen im Namen: Schrägstriche oder
                         // ".." dürfen niemals in einem Pfad landen.
-                        .Str::of($datei->getClientOriginalName())
+                        .Str::of($file->getClientOriginalName())
                             ->replaceMatches('/[^\p{L}\p{N}._-]+/u', '-')
                             ->limit(80, ''),
                 )
