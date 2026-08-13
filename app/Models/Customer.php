@@ -54,4 +54,23 @@ class Customer extends Model
     {
         return $query->where('aktiv', true);
     }
+
+    /**
+     * Kunden, mit denen dieser Nutzer zu tun hat.
+     *
+     * Für Mitarbeiter sind das nur die, bei denen ihnen ein Projekt
+     * zugeordnet ist — sonst stünden fremde Kundennamen in Auswahllisten
+     * und Zählern.
+     */
+    public function scopeSichtbarFuer(Builder $query, User $nutzer): Builder
+    {
+        if ($nutzer->istAdmin()) {
+            return $query;
+        }
+
+        return $query->whereHas(
+            'projects.mitarbeiter',
+            fn (Builder $q) => $q->whereKey($nutzer->getKey()),
+        );
+    }
 }
