@@ -49,7 +49,13 @@ class AdminPanelProvider extends PanelProvider
             ->brandName('Nils-Digital')
             // Logo UND Schriftzug: Filament zeigt sonst nur eines von beiden.
             ->brandLogo(fn () => view('filament.marke'))
-            ->favicon(asset('favicon-32x32.png'))
+            // Bewusst ein wurzelrelativer Pfad statt asset(): Provider
+            // laufen VOR der Middleware, trustProxies hat dort also noch
+            // nicht gegriffen, und asset() baute die Adresse mit http://
+            // zusammen. Ergebnis war gemischter Inhalt — der Browser meldete
+            // die Seite als nicht sicher, obwohl das Zertifikat einwandfrei
+            // ist. Ein relativer Pfad übernimmt schlicht das Schema der Seite.
+            ->favicon('/favicon-32x32.png')
             // Markenfarbe der Website (css/main.css: --accent: #00bcd4).
             ->colors([
                 'primary' => Color::hex('#00bcd4'),

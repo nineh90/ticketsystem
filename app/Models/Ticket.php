@@ -178,6 +178,18 @@ class Ticket extends Model
         return $this->hasMany(TimeEntry::class);
     }
 
+    /** Beliebig viele Anhänge je Ticket, vor allem Screenshots. */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(Attachment::class)->latest('id');
+    }
+
+    /** Nur die Bilder — für die Vorschau auf der Detailseite. */
+    public function bilder(): HasMany
+    {
+        return $this->attachments()->where('mime', 'like', 'image/%');
+    }
+
     /**
      * Der Verlauf.
      *

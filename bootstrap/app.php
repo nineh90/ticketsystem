@@ -25,6 +25,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // veröffentlicht keinen Port, Traefik ist der einzige Weg hinein.
         $middleware->trustProxies(at: '*');
 
+        // Laravels auth-Middleware leitet Gäste auf eine Route namens
+        // "login". Die gibt es hier nicht — Filaments Anmeldung heißt
+        // filament.admin.auth.login. Ohne diese Zeile endet jeder
+        // unangemeldete Aufruf einer eigenen Route (etwa eines Anhangs) in
+        // einem 500er statt auf der Anmeldeseite.
+        $middleware->redirectGuestsTo(fn () => route('filament.admin.auth.login'));
+
         // Gilt für jede Web-Antwort, also auch für die Filament-Oberfläche.
         // Die Middleware fasst nur HTML an, Downloads und JSON bleiben unberührt.
         $middleware->web(append: [

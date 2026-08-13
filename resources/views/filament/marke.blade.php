@@ -7,7 +7,7 @@
 --}}
 <div class="flex items-center gap-2">
     <img
-        src="{{ asset('logo.png') }}"
+        src="/logo.png"
         alt=""
         class="h-8 w-8 shrink-0"
     >

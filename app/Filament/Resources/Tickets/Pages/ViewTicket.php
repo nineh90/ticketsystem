@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Tickets\Pages;
 use App\Filament\Resources\Tickets\TicketResource;
 use Filament\Actions\EditAction;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ViewEntry;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -79,6 +80,18 @@ class ViewTicket extends ViewRecord
                         ->label('Herkunft')
                         ->badge(),
                 ]),
+
+            // Bilder direkt unter den Eckdaten. Wer ein Ticket öffnet, soll
+            // den Screenshot sehen, ohne erst einen Reiter zu suchen — das
+            // ist der ganze Zweck der Anhänge bei Fehlerberichten.
+            Section::make('Bilder')
+                ->schema([
+                    ViewEntry::make('bilder')
+                        ->hiddenLabel()
+                        ->view('filament.ticket-bilder')
+                        ->viewData(fn () => ['bilder' => $this->record->bilder]),
+                ])
+                ->visible(fn () => $this->record->bilder()->exists()),
 
             Section::make('Beschreibung')
                 ->schema([
