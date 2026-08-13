@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+#
+# Lokale Entwicklungsumgebung hochfahren.
+#
+# Vorbild ist bin/start aus kein-einzelfall, inklusive der wichtigsten Lehre
+# von dort: lieber hart abbrechen als halb starten. Eine App, die läuft, aber
+# deren Vite-Manifest fehlt, sieht aus wie ein kaputtes Stylesheet und kostet
+# eine halbe Stunde Fehlersuche an der falschen Stelle.
+#
+# Aufruf:  bin/start
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+blau()  { printf '\033[36m%s\033[0m\n' "$*"; }
+warn()  { printf '\033[33m%s\033[0m\n' "$*"; }
+fehler() { printf '\033[31m%s\033[0m\n' "$*" >&2; exit 1; }
+
+# --- Voraussetzungen ---------------------------------------------------
+
+command -v php >/dev/null      || fehler 'php fehlt.'
+command -v composer >/dev/null || fehler 'composer fehlt:  sudo dnf install composer'
+command -v npm >/dev/null      || fehler 'npm fehlt.'
+
+# Ohne diese Erweiterungen startet Laravel gar nicht erst bzw. Filament
+# rechnet Datumsangaben falsch. Einzeln geprüft, damit die Meldung sagt,
+# welche fehlt — nicht bloß "irgendwas stimmt nicht".
+for ext in pdo_pgsql intl mbstring zip gd; do
+    php -m | grep -qx "$ext" \
+        || fehler "PHP-Erweiterung '$ext' fehlt:  sudo dnf install php-pgsql php-intl php-zip php-gd"
+done
+
+# --- Datenbank ---------------------------------------------------------
+#
+# Eigener Container auf Port 5433. 5432 ist auf dieser Maschine vom
+# Landhaus-Projekt belegt; ein zweiter Dienst auf demselben Port würde
+# entweder nicht starten oder — schlimmer — Abfragen in die falsche
+# Datenbank schicken.
+if command -v podman >/dev/null; then
+    if ! podman ps --format '{{.Names}}' | grep -qx ticketsystem-postgres; then
+        blau '→ Postgres-Container starten …'
+        podman start ticketsystem-postgres >/dev/null 2>&1 || fehler \
+            'Container ticketsystem-postgres fehlt. Einmalig anlegen mit:
+  podman run -d --name ticketsystem-postgres \
+    -e POSTGRES_USER=ticketsystem -e POSTGRES_PASSWORD=ticketsystem_dev \
+    -e POSTGRES_DB=ticketsystem -p 5433:5432 \
+    -v ticketsystem-pgdata:/var/lib/postgresql/data \
+    --restart unless-stopped docker.io/library/postgres:16'
+
+        # Postgres meldet den Port, bevor er Verbindungen annimmt.
+        for _ in $(seq 1 30); do
+            podman exec ticketsystem-postgres pg_isready -U ticketsystem >/dev/null 2>&1 && break
+            sleep 0.5
+        done
+    fi
+else
+    warn '! podman nicht gefunden — es wird angenommen, dass Postgres anderweitig läuft.'
+fi
+
+# --- Abhängigkeiten ----------------------------------------------------
+
+[ -d vendor ]       || { blau '→ composer install …'; composer install; }
+[ -d node_modules ] || { blau '→ npm install …';      npm install; }
+
+if [ ! -f .env ]; then
+    blau '→ .env aus .env.example anlegen …'
+    cp .env.example .env
+    php artisan key:generate
+fi
+
+# --- Datenbank auf Stand bringen --------------------------------------
+#
+# migrate, nicht migrate:fresh. Das Vorbild in fahrlehrerin_sarah hat ein
+# Skript, das das Schema neu aufsetzt und dabei alle Daten verliert — es
+# läuft dort aus gutem Grund NICHT automatisch mit.
+blau '→ Migrationen …'
+php artisan migrate --no-interaction
+
+# --- Frontend ----------------------------------------------------------
+
+blau '→ Assets bauen …'
+npm run build
+
+[ -f public/build/manifest.json ] \
+    || fehler 'public/build/manifest.json fehlt — der Vite-Build ist fehlgeschlagen.
+Ohne Manifest startet die App zwar, liefert aber keine Stile aus.'
+
+# --- Los ---------------------------------------------------------------
+
+blau ''
+blau '  Ticketsystem läuft auf http://localhost:8000'
+blau ''
+
+php artisan serve --host=0.0.0.0 --port=8000
