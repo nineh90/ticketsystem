@@ -8,7 +8,23 @@
 # Gebaut wird auf dem VPS (deploy/deploy.sh), so wie bei kein-einzelfall.
 
 # --- Stufe 1: PHP-Abhängigkeiten -------------------------------------------
-FROM composer:2 AS composer-deps
+#
+# Bewusst php:8.4-cli mit nachinstalliertem intl statt des fertigen
+# composer-Abbilds: dort fehlt ext-intl, das filament/support voraussetzt, und
+# der Lauf bricht ab. Man könnte die Prüfung mit --ignore-platform-req
+# übergehen — dann prüft aber niemand mehr, ob die aufgelösten Pakete zur
+# Laufzeitumgebung passen. Hier ist es dieselbe PHP-Fassung wie in Stufe 3.
+FROM php:8.4-cli AS composer-deps
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libicu-dev \
+        libzip-dev \
+        unzip \
+        git \
+    && docker-php-ext-install -j"$(nproc)" intl zip \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
