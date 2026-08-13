@@ -47,9 +47,20 @@ jobs:
           extensions: pdo_pgsql, intl, zip, gd, mbstring
           coverage: none
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
       - run: composer install --no-interaction --prefer-dist
 
       - run: cp .env.example .env && php artisan key:generate
+
+      # Muss vor den Tests laufen: sie rendern Filament-Seiten, und Blade
+      # bricht ohne public/build/manifest.json mit "Vite manifest not found"
+      # ab. Lokal fällt das nicht auf, weil das Manifest vom letzten Build
+      # herumliegt.
+      - run: npm ci && npm run build
 
       # Die Tests laufen gegen Postgres, nicht gegen SQLite — siehe
       # phpunit.xml. Sonst prüften wir eine andere Datenbank als die

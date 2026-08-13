@@ -36,6 +36,16 @@ class AdminPanelProvider extends PanelProvider
             ->path('')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->login()
+            // Eigene Profilseite: jeder ändert Name und Passwort selbst.
+            // Ohne sie müsste ein Admin jedes Passwort vergeben — es ginge
+            // also durch fremde Hände und wäre nie nur dem Nutzer bekannt.
+            ->profile(isSimple: false)
+            // ->passwordReset() bleibt aus, solange MAIL_MAILER auf "log"
+            // steht: der Knopf verschickt eine Mail, die nirgends ankommt,
+            // und der Nutzer wartet auf etwas, das nie kommt. Sobald der
+            // Strato-SMTP hinterlegt ist, hier einkommentieren. Bis dahin
+            // setzt ein Admin ein vergessenes Passwort in der
+            // Nutzerverwaltung neu.
             ->brandName('Nils-Digital')
             // Logo UND Schriftzug: Filament zeigt sonst nur eines von beiden.
             ->brandLogo(fn () => view('filament.marke'))
