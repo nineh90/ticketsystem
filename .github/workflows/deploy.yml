@@ -78,9 +78,15 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          # ssh-keyscan scheitert gelegentlich (Netz, Zeitüberschreitung) und
+          # riss damit den ganzen Deploy mit, obwohl er nur den
+          # Schlüsselabdruck vorab holt. Ein Fehlschlag ist hier unschädlich:
+          # der Aufruf unten nimmt den Abdruck dann selbst beim ersten
+          # Verbinden an. Ohne || true bricht der Schritt wegen "bash -e" ab.
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Deploy anstoßen
         run: |
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes \
+            -o StrictHostKeyChecking=accept-new \
             "root@${{ secrets.VPS_HOST }}" deploy-ticketsystem
