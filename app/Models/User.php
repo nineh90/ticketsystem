@@ -45,6 +45,7 @@ class User extends Authenticatable implements FilamentUser
             'rolle' => Rolle::class,
             'panel_zugang' => 'boolean',
             'aktiv' => 'boolean',
+            'dashboard_gesehen_at' => 'datetime',
         ];
     }
 

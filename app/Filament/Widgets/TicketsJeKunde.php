@@ -13,7 +13,7 @@ use Filament\Widgets\ChartWidget;
  */
 class TicketsJeKunde extends ChartWidget
 {
-    protected static ?int $sort = 3;
+    protected static ?int $sort = 5;
 
     protected ?string $heading = 'Offene Tickets je Kunde';
 

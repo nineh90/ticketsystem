@@ -20,6 +20,29 @@ class MeinUeberblick extends StatsOverviewWidget
 {
     protected static ?int $sort = 1;
 
+    /**
+     * Überschrift, weil rechts daneben vier weitere Kacheln stehen. Ohne sie
+     * sähe man acht gleich aussehende Zahlen und wüsste bei keiner, ob sie
+     * die eigene Arbeit meint oder alles, was im Projekt läuft.
+     */
+    protected ?string $heading = 'Meine Arbeit';
+
+    /**
+     * Halbe Breite, sobald die Projektzahlen daneben stehen. Zwei volle
+     * Reihen Kacheln übereinander hätten das eigentliche Dashboard — Tickets
+     * und Geschehen — unter den Bildschirmrand geschoben.
+     */
+    public function getColumnSpan(): int|string|array
+    {
+        return TeamUeberblick::canView() ? 1 : 'full';
+    }
+
+    protected function getColumns(): int|array|null
+    {
+        // Halbe Breite trägt zwei Kacheln nebeneinander, volle vier.
+        return $this->getColumnSpan() === 1 ? 2 : 4;
+    }
+
     protected function getStats(): array
     {
         $nutzer = auth()->user();

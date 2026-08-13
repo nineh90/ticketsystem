@@ -16,9 +16,17 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class MeineTickets extends TableWidget
 {
-    protected static ?int $sort = 2;
+    protected static ?int $sort = 3;
 
-    protected int|string|array $columnSpan = 'full';
+    /**
+     * Halbe Breite, mit dem Geschehen daneben.
+     *
+     * Beides in voller Breite untereinander hieße: entweder sieht man seine
+     * Arbeit oder man sieht, was los ist — je nachdem, wie weit man gescrollt
+     * hat. Auf einem Dashboard sollen beide Fragen ohne Scrollen beantwortet
+     * sein.
+     */
+    protected int|string|array $columnSpan = 1;
 
     public function getTableHeading(): string
     {
@@ -46,11 +54,16 @@ class MeineTickets extends TableWidget
                     WHEN 'normal' THEN 2
                     ELSE 3 END"))
             ->columns([
+                // Die Priorität steckt in der Farbe der Nummer, statt eine
+                // eigene Spalte zu belegen. Auf halber Breite ist Platz das
+                // knappste Gut, und "dringend" erkennt man an Rot schneller
+                // als am gelesenen Wort.
                 TextColumn::make('kennung')
                     ->label('Nr.')
                     ->state(fn (Ticket $record) => $record->kennung())
                     ->badge()
-                    ->color('gray'),
+                    ->color(fn (Ticket $record) => $record->prioritaet->getColor())
+                    ->tooltip(fn (Ticket $record) => 'Priorität: '.$record->prioritaet->getLabel()),
 
                 TextColumn::make('titel')
                     ->label('Titel')
@@ -63,10 +76,6 @@ class MeineTickets extends TableWidget
                     ->badge()
                     ->color(fn (Ticket $record) => Color::hex($record->status->farbe)),
 
-                TextColumn::make('prioritaet')
-                    ->label('Priorität')
-                    ->badge(),
-
                 TextColumn::make('faellig_am')
                     ->label('Fällig')
                     ->date('d.m.Y')
@@ -76,8 +85,8 @@ class MeineTickets extends TableWidget
                         : null),
             ])
             ->recordUrl(fn (Ticket $record) => TicketResource::getUrl('view', ['record' => $record]))
-            ->paginated([5, 10, 25])
-            ->defaultPaginationPageOption(5)
+            ->paginated([10, 25, 50])
+            ->defaultPaginationPageOption(10)
             ->emptyStateHeading(fn () => Sichtbarkeit::ueberschrift('Nichts offen'))
             ->emptyStateDescription(fn () => Sichtbarkeit::beschreibung(
                 'Dir ist gerade kein offenes Ticket zugewiesen.',

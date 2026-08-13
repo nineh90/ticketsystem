@@ -91,4 +91,10 @@ blau ''
 blau '  Ticketsystem läuft auf http://localhost:8000'
 blau ''
 
-php artisan serve --host=0.0.0.0 --port=8000
+# Mehrere Arbeiter, sonst beantwortet der eingebaute Server nur eine Anfrage
+# nach der anderen. Das Dashboard lädt jedes Widget einzeln nach; mit einem
+# einzigen Arbeiter stehen sie in der Schlange und der Aufbau dauert
+# zwanzig Sekunden, obwohl jede einzelne Abfrage Millisekunden braucht.
+# --no-reload ist dafür Voraussetzung (PHP kann nur so vorab abzweigen); es
+# kostet lediglich den automatischen Neustart bei Änderungen an der .env.
+PHP_CLI_SERVER_WORKERS=8 php artisan serve --host=0.0.0.0 --port=8000 --no-reload
