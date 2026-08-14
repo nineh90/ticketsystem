@@ -5,6 +5,8 @@ namespace App\Filament\Resources\Tickets\Pages;
 use App\Filament\Resources\Tickets\TicketResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
+use Illuminate\Database\Eloquent\Builder;
 
 class ListTickets extends ListRecords
 {
@@ -15,5 +17,97 @@ class ListTickets extends ListRecords
         return [
             CreateAction::make(),
         ];
+    }
+
+    /**
+     * Die Ansichten, die man täglich braucht — als Reiter über der Liste.
+     *
+     * Vorher steckten dieselben Einschränkungen als Schalter im
+     * Filtermenü hinter dem Trichter. Das war zwar möglich, aber unsichtbar:
+     * wer "nur meine Tickets" sehen will, klickt erst ein Menü auf, sucht
+     * einen Schalter und schließt das Menü wieder — für den häufigsten
+     * Handgriff des Tages drei Klicks an einer Stelle, die man kennen muss.
+     *
+     * Die Zahl am Reiter ist ausdrücklich Teil der Sache: sie beantwortet
+     * "habe ich etwas Überfälliges?", ohne dass man den Reiter überhaupt
+     * anklickt.
+     */
+    public function getTabs(): array
+    {
+        // Der Parameter muss $query heißen. Filament reicht die Abfrage unter
+        // diesem Namen hinein; heißt er anders, greift die Auflösung über den
+        // Typ — und die holt sich einen frisch gebauten Builder aus dem
+        // Container, der zu keinem Model gehört. Das Ergebnis war ein
+        // "Call to undefined method Builder::offen()" beim Aufruf der Liste.
+        return [
+            'offen' => Tab::make('Offen')
+                ->icon('heroicon-m-inbox')
+                ->badge($this->zaehlen(fn (Builder $query) => $query->offen()))
+                ->modifyQueryUsing(fn (Builder $query) => $query->offen()),
+
+            'meine' => Tab::make('Meine')
+                ->icon('heroicon-m-user')
+                ->badge($this->zaehlen(fn (Builder $query) => $query->offen()->where('assigned_to', auth()->id())))
+                ->badgeColor('primary')
+                ->modifyQueryUsing(fn (Builder $query) => $query->offen()->where('assigned_to', auth()->id())),
+
+            'ueberfaellig' => Tab::make('Überfällig')
+                ->icon('heroicon-m-exclamation-triangle')
+                ->badge($this->zaehlen(fn (Builder $query) => $this->ueberfaellig($query)))
+                ->badgeColor('danger')
+                ->modifyQueryUsing(fn (Builder $query) => $this->ueberfaellig($query)),
+
+            // Seit es den Kundenbereich gibt: was von draußen hereinkommt.
+            // Der eigene Reiter, weil auf der anderen Seite jemand wartet —
+            // ein Kundenanliegen, das drei Tage im Backlog liegt, ist etwas
+            // anderes als eine eigene Notiz, die dort drei Tage liegt.
+            'von-kunden' => Tab::make('Von Kunden')
+                ->icon('heroicon-m-inbox-arrow-down')
+                ->badge($this->zaehlen(fn (Builder $query) => $query->offen()->vomKunden()))
+                ->badgeColor('info')
+                ->modifyQueryUsing(fn (Builder $query) => $query->offen()->vomKunden()),
+
+            'unzugewiesen' => Tab::make('Unzugewiesen')
+                ->icon('heroicon-m-question-mark-circle')
+                ->badge($this->zaehlen(fn (Builder $query) => $query->offen()->whereNull('assigned_to')))
+                ->badgeColor('warning')
+                ->modifyQueryUsing(fn (Builder $query) => $query->offen()->whereNull('assigned_to')),
+
+            'erledigt' => Tab::make('Erledigt')
+                ->icon('heroicon-m-check-circle')
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereNotNull('erledigt_at')),
+
+            // Ohne diesen Reiter käme man an ein erledigtes Ticket, das nie
+            // ein erledigt_at bekommen hat, überhaupt nicht mehr heran.
+            'alle' => Tab::make('Alle')
+                ->icon('heroicon-m-bars-3'),
+        ];
+    }
+
+    /**
+     * Offen und der Termin liegt in der Vergangenheit.
+     *
+     * Beide Bedingungen gehören zusammen: ein erledigtes Ticket mit altem
+     * Termin ist nicht überfällig, sondern fertig.
+     */
+    private function ueberfaellig(Builder $query): Builder
+    {
+        return $query
+            ->offen()
+            ->whereDate('faellig_am', '<', today());
+    }
+
+    /**
+     * Zählt auf der Abfrage der Ressource — also mit derselben
+     * Sichtbarkeitsregel wie die Liste darunter. Eine Zahl am Reiter, die
+     * fremde Tickets mitzählt, wäre schlimmer als keine.
+     */
+    private function zaehlen(callable $einschraenken): ?string
+    {
+        $anzahl = $einschraenken(TicketResource::getEloquentQuery())->count();
+
+        // Kein Abzeichen für "0" — eine Null in einem Abzeichen liest sich wie
+        // eine Meldung, dabei ist sie das Gegenteil davon.
+        return $anzahl > 0 ? (string) $anzahl : null;
     }
 }

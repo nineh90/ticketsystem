@@ -3,19 +3,19 @@
 namespace App\Filament\Resources\Tickets\Tables;
 
 use App\Enums\Prioritaet;
-use App\Support\Sichtbarkeit;
 use App\Enums\Quelle;
+use App\Enums\TicketArt;
+use App\Filament\Resources\Tickets\TicketResource;
+use App\Support\Sichtbarkeit;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use App\Filament\Resources\Tickets\TicketResource;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Support\Colors\Color;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Filter;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class TicketsTable
 {
@@ -33,12 +33,24 @@ class TicketsTable
                     ->sortable(['nummer'])
                     ->searchable(['nummer']),
 
+                TextColumn::make('art')
+                    ->label('Art')
+                    ->badge()
+                    ->sortable()
+                    ->toggleable(),
+
                 TextColumn::make('titel')
                     ->label('Titel')
                     ->searchable()
                     ->wrap()
                     ->weight('medium')
-                    ->description(fn ($record) => $record->project->name),
+                    // Bei Kundenmeldungen steht es an der Zeile: das ist die
+                    // Angabe, die über die Reihenfolge des Tages entscheidet,
+                    // und sie soll nicht hinter einer ausblendbaren Spalte
+                    // liegen.
+                    ->description(fn ($record) => $record->istVomKunden()
+                        ? $record->project->name.' · vom Kunden gemeldet'
+                        : $record->project->name),
 
                 TextColumn::make('customer.name')
                     ->label('Kunde')
@@ -118,31 +130,27 @@ class TicketsTable
                     ->label('Herkunft')
                     ->options(Quelle::class),
 
-                Filter::make('nur_meine')
-                    ->label('Nur meine')
-                    ->query(fn (Builder $query) => $query->where('assigned_to', auth()->id()))
-                    ->toggle(),
+                SelectFilter::make('art')
+                    ->label('Art')
+                    ->options(TicketArt::class)
+                    ->multiple(),
 
-                Filter::make('nur_offene')
-                    ->label('Nur offene')
-                    ->query(fn (Builder $query) => $query->offen())
-                    ->toggle()
-                    // Standardmäßig an: erledigte Tickets sammeln sich an und
-                    // machen die Liste sonst binnen Wochen unbrauchbar.
-                    ->default(),
-
-                Filter::make('ueberfaellig')
-                    ->label('Überfällig')
-                    ->query(fn (Builder $query) => $query
-                        ->whereDate('faellig_am', '<', now())
-                        ->whereNull('erledigt_at'))
-                    ->toggle(),
-
-                Filter::make('unzugewiesen')
-                    ->label('Unzugewiesen')
-                    ->query(fn (Builder $query) => $query->whereNull('assigned_to'))
-                    ->toggle(),
+                // "Nur meine", "Nur offene", "Überfällig" und "Unzugewiesen"
+                // standen hier einmal als Schalter. Sie sind jetzt Reiter über
+                // der Liste (siehe ListTickets) — sichtbar statt hinter einem
+                // Menü, und mit Zahl daneben.
+                //
+                // Sie hier zusätzlich stehen zu lassen wäre nicht bloß
+                // doppelt, sondern falsch: "Nur offene" war voreingestellt und
+                // hätte den Reiter "Erledigt" auf eine dauerhaft leere Liste
+                // zeigen lassen.
             ])
+            // Filter über der Liste statt hinter dem Trichter, zusammengeklappt
+            // — sonst nähme die Filterzeile mehr Platz ein als die ersten
+            // Ticketzeilen. Ein Klick öffnet sie, und die gesetzten Filter
+            // stehen auch im geschlossenen Zustand als Abzeichen daneben.
+            ->filtersLayout(FiltersLayout::AboveContentCollapsible)
+            ->filtersFormColumns(3)
             // Klick auf die Zeile führt auf die Detailseite mit Kommentaren,
             // Zeiten und Verlauf — nicht direkt ins Bearbeiten-Formular.
             ->recordUrl(fn ($record) => TicketResource::getUrl('view', ['record' => $record]))

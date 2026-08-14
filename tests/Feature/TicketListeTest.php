@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\Rolle;
 use App\Filament\Resources\Tickets\Pages\ListTickets;
+use App\Filament\Resources\Tickets\TicketResource;
 use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\TicketStatus;
@@ -65,8 +66,9 @@ class TicketListeTest extends TestCase
 
     public function test_erledigte_tickets_sind_standardmaessig_ausgeblendet(): void
     {
-        // Der Filter "Nur offene" steht bewusst auf an — erledigte Tickets
-        // sammeln sich an und machen die Liste sonst binnen Wochen unbrauchbar.
+        // "Offen" ist der erste Reiter und damit der voreingestellte —
+        // erledigte Tickets sammeln sich an und machen die Liste sonst binnen
+        // Wochen unbrauchbar.
         $admin = User::factory()->create([
             'rolle' => Rolle::Admin,
             'panel_zugang' => true,
@@ -82,6 +84,87 @@ class TicketListeTest extends TestCase
             ->test(ListTickets::class)
             ->assertCanSeeTableRecords([$laufend])
             ->assertCanNotSeeTableRecords([$erledigt]);
+    }
+
+    public function test_reiter_meine_zeigt_nur_die_eigenen_tickets(): void
+    {
+        // Der Handgriff, um den es Kevin ging: ein Klick oben, und die Liste
+        // zeigt nur, was ihm zugewiesen ist.
+        $mitarbeiter = User::factory()->create([
+            'rolle' => Rolle::Mitarbeiter,
+            'panel_zugang' => true,
+        ]);
+
+        $offen = TicketStatus::factory()->create();
+        $projekt = Project::factory()->create();
+        $projekt->mitarbeiter()->attach($mitarbeiter);
+
+        $meins = Ticket::factory()->for($projekt, 'project')->create([
+            'ticket_status_id' => $offen->id,
+            'assigned_to' => $mitarbeiter->id,
+        ]);
+        // Aus demselben Projekt, aber jemand anderem zugewiesen: im Reiter
+        // "Offen" sichtbar, unter "Meine" nicht.
+        $vomKollegen = Ticket::factory()->for($projekt, 'project')->create([
+            'ticket_status_id' => $offen->id,
+        ]);
+
+        Livewire::actingAs($mitarbeiter)
+            ->test(ListTickets::class)
+            ->assertCanSeeTableRecords([$meins, $vomKollegen])
+            ->set('activeTab', 'meine')
+            ->assertCanSeeTableRecords([$meins])
+            ->assertCanNotSeeTableRecords([$vomKollegen]);
+    }
+
+    public function test_reiter_erledigt_holt_abgeschlossene_tickets_hervor(): void
+    {
+        // Vorher gab es dafür keinen Weg: der Schalter "Nur offene" war
+        // voreingestellt und musste erst im Filtermenü gefunden werden.
+        $admin = User::factory()->create([
+            'rolle' => Rolle::Admin,
+            'panel_zugang' => true,
+        ]);
+
+        $offen = TicketStatus::factory()->create();
+        $fertig = TicketStatus::factory()->abschluss()->create();
+
+        $laufend = Ticket::factory()->create(['ticket_status_id' => $offen->id]);
+        $erledigt = Ticket::factory()->create(['ticket_status_id' => $fertig->id]);
+
+        Livewire::actingAs($admin)
+            ->test(ListTickets::class)
+            ->set('activeTab', 'erledigt')
+            ->assertCanSeeTableRecords([$erledigt])
+            ->assertCanNotSeeTableRecords([$laufend]);
+    }
+
+    public function test_reiter_ueberfaellig_laesst_erledigtes_aussen_vor(): void
+    {
+        $admin = User::factory()->create([
+            'rolle' => Rolle::Admin,
+            'panel_zugang' => true,
+        ]);
+
+        $offen = TicketStatus::factory()->create();
+        $fertig = TicketStatus::factory()->abschluss()->create();
+
+        $ueberfaellig = Ticket::factory()->create([
+            'ticket_status_id' => $offen->id,
+            'faellig_am' => today()->subDays(2),
+        ]);
+        // Termin ebenfalls in der Vergangenheit, aber fertig — das ist nicht
+        // überfällig, sondern erledigt.
+        $spaetErledigt = Ticket::factory()->create([
+            'ticket_status_id' => $fertig->id,
+            'faellig_am' => today()->subDays(2),
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(ListTickets::class)
+            ->set('activeTab', 'ueberfaellig')
+            ->assertCanSeeTableRecords([$ueberfaellig])
+            ->assertCanNotSeeTableRecords([$spaetErledigt]);
     }
 
     public function test_navigationsbadge_zaehlt_nur_sichtbare_offene_tickets(): void
@@ -108,7 +191,7 @@ class TicketListeTest extends TestCase
 
         $this->assertSame(
             '2',
-            \App\Filament\Resources\Tickets\TicketResource::getNavigationBadge(),
+            TicketResource::getNavigationBadge(),
         );
     }
 }
