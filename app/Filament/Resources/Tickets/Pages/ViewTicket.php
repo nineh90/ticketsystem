@@ -34,6 +34,17 @@ class ViewTicket extends ViewRecord
     public function infolist(Schema $schema): Schema
     {
         return $schema->components([
+            // Ganz oben, wenn draußen jemand wartet. Das steht zwar auch als
+            // Herkunft weiter unten in den Eckdaten, aber dort ist es eine
+            // Angabe unter neun anderen — hier ist es das Erste, was man
+            // liest, und es ändert, wie dringend das Ticket ist.
+            Section::make('Vom Kunden gemeldet')
+                ->icon('heroicon-o-inbox-arrow-down')
+                ->description(fn () => $this->record->customer->name
+                    .' wartet auf eine Antwort. Kommentare erreichen den Kunden nur, wenn "Interne Notiz" ausgeschaltet ist.')
+                ->schema([])
+                ->visible(fn () => $this->record->istVomKunden()),
+
             Section::make()
                 ->columns(4)
                 ->schema([
@@ -41,6 +52,10 @@ class ViewTicket extends ViewRecord
                         ->label('Status')
                         ->badge()
                         ->color(fn () => Color::hex($this->record->status->farbe)),
+
+                    TextEntry::make('art')
+                        ->label('Art')
+                        ->badge(),
 
                     TextEntry::make('prioritaet')
                         ->label('Priorität')

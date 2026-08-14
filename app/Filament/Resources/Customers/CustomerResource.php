@@ -5,16 +5,17 @@ namespace App\Filament\Resources\Customers;
 use App\Filament\Resources\Customers\Pages\CreateCustomer;
 use App\Filament\Resources\Customers\Pages\EditCustomer;
 use App\Filament\Resources\Customers\Pages\ListCustomers;
+use App\Filament\Resources\Customers\RelationManagers\ProjectsRelationManager;
+use App\Filament\Resources\Customers\RelationManagers\ZugaengeRelationManager;
 use App\Filament\Resources\Customers\Schemas\CustomerForm;
 use App\Filament\Resources\Customers\Tables\CustomersTable;
 use App\Models\Customer;
-use App\Filament\Resources\Customers\RelationManagers\ProjectsRelationManager;
 use BackedEnum;
 use Filament\Resources\Resource;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class CustomerResource extends Resource
 {
@@ -57,6 +58,7 @@ class CustomerResource extends Resource
     {
         return [
             ProjectsRelationManager::class,
+            ZugaengeRelationManager::class,
         ];
     }
 

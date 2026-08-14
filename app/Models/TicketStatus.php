@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'slug', 'farbe', 'sortierung', 'ist_abschluss'])]
+#[Fillable(['name', 'slug', 'farbe', 'sortierung', 'ist_abschluss', 'wartet_auf_kunde'])]
 class TicketStatus extends Model
 {
     use HasFactory;
 
     protected $attributes = [
         'ist_abschluss' => false,
+        'wartet_auf_kunde' => false,
         'farbe' => '#9ca3af',
         'sortierung' => 0,
     ];
@@ -23,6 +24,7 @@ class TicketStatus extends Model
     {
         return [
             'ist_abschluss' => 'boolean',
+            'wartet_auf_kunde' => 'boolean',
         ];
     }
 

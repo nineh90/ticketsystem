@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'rolle', 'panel_zugang', 'aktiv'])]
+#[Fillable(['name', 'email', 'password', 'rolle', 'panel_zugang', 'aktiv', 'customer_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -46,15 +46,24 @@ class User extends Authenticatable implements FilamentUser
             'panel_zugang' => 'boolean',
             'aktiv' => 'boolean',
             'dashboard_gesehen_at' => 'datetime',
+            'letzte_anmeldung_at' => 'datetime',
         ];
     }
 
     /**
-     * Die Schranke vor dem Panel.
+     * Die Schranke vor den Panels.
      *
      * Ein gültiges Konto allein reicht ausdrücklich nicht — es muss
-     * freigegeben und aktiv sein. Kunden bekommen später ein eigenes Panel;
-     * ins interne kommen sie auch mit Freigabe nicht.
+     * freigegeben und aktiv sein. Darüber hinaus gehört jede Rolle in genau
+     * ein Panel: Kunden ins Kundenpanel, alle anderen ins interne. Die
+     * Trennung läuft in beide Richtungen, und das ist Absicht. Dass ein Kunde
+     * nicht ins interne Panel darf, ist offensichtlich; dass umgekehrt auch
+     * ein Mitarbeiter nichts im Kundenpanel zu suchen hat, ist es weniger —
+     * dort sähe er die Oberfläche eines Kunden, aber mit seinen eigenen
+     * Rechten, und jede Regel darin wäre ab da doppelt zu prüfen.
+     *
+     * Zum Ausprobieren meldet man sich mit dem Kundenzugang an; genau dafür
+     * gibt es ihn.
      */
     public function canAccessPanel(Panel $panel): bool
     {
@@ -62,12 +71,26 @@ class User extends Authenticatable implements FilamentUser
             return false;
         }
 
-        return $this->rolle !== Rolle::Kunde;
+        if ($panel->getId() === self::PANEL_KUNDE) {
+            // Ohne Kundenzuordnung wäre der Bereich leer und jede Abfrage
+            // darin unbestimmt — dann lieber gar nicht erst hinein.
+            return $this->istKunde() && $this->customer_id !== null;
+        }
+
+        return ! $this->istKunde();
     }
+
+    /** Die Kennung des Kundenpanels (siehe KundePanelProvider). */
+    public const PANEL_KUNDE = 'kunde';
 
     public function istAdmin(): bool
     {
         return $this->rolle === Rolle::Admin;
+    }
+
+    public function istKunde(): bool
+    {
+        return $this->rolle === Rolle::Kunde;
     }
 
     /** Projekte, die dieser Nutzer sehen darf. Für Admins ohne Bedeutung. */
@@ -76,7 +99,10 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsToMany(Project::class)->withTimestamps();
     }
 
-    /** Nur für die Rolle "kunde" gesetzt — in v1 bei allen leer. */
+    /**
+     * Der Kunde, zu dem dieser Zugang gehört. Nur bei der Rolle "kunde"
+     * gesetzt — er entscheidet im Kundenbereich über alles, was zu sehen ist.
+     */
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);

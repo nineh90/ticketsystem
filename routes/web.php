@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AbmeldenController;
 use App\Http\Controllers\AnhangController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +21,39 @@ use Illuminate\Support\Facades\Route;
  * "auth" ist Pflicht — ohne die Middleware wäre der Aufruf anonym möglich und
  * die Policy liefe ins Leere.
  */
+/*
+ * Abmelden aus einem der beiden Bereiche.
+ *
+ * Ausdrücklich AUSSERHALB der Panels: Filaments eigene Abmeldung liegt hinter
+ * deren Schranke, und wer die nicht besteht, kommt auch nicht zum Abmelden
+ * (siehe AbmeldenController). Ohne auth-Middleware, damit sie auch dann
+ * greift, wenn die Anmeldung schon halb weg ist — abmelden, wenn man nicht
+ * angemeldet ist, ist harmlos.
+ */
+Route::post('/abmelden/{bereich}', AbmeldenController::class)->name('abmelden');
+
 Route::middleware(['auth'])
     ->get('/anhang/{anhang}', AnhangController::class)
     ->name('anhang.zeigen');
+
+/*
+ * Dieselbe Auslieferung, dieselbe Prüfung — nur unter /kunde.
+ *
+ * Der Umweg über einen zweiten Pfad hat genau einen Grund: läuft die Sitzung
+ * ab, während der Kunde einen Anhang öffnet, entscheidet der Pfad, auf welche
+ * der beiden Anmeldungen er geleitet wird (siehe bootstrap/app.php). Ohne ihn
+ * landete er an der internen Anmeldung, die seine gültigen Zugangsdaten
+ * abweist — und er hielte seinen Zugang für kaputt.
+ *
+ * Sicherheitsrelevant ist der Pfad nicht: welche Datei jemand bekommt,
+ * entscheidet ausschließlich die AttachmentPolicy.
+ *
+ * "auth:kunde" und nicht bloß "auth": der Kundenbereich hat einen eigenen
+ * Guard (config/auth.php). Ohne die Angabe griffe der Standard-Guard, und die
+ * Policy prüfte gegen den intern angemeldeten Nutzer — was in dem Moment
+ * auffällt, in dem beide Anmeldungen nebeneinander bestehen, also genau dann,
+ * wenn man es am wenigsten erwartet.
+ */
+Route::middleware(['auth:kunde'])
+    ->get('/kunde/anhang/{anhang}', AnhangController::class)
+    ->name('kunde.anhang.zeigen');

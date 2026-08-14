@@ -14,28 +14,47 @@ use App\Models\User;
  */
 class TimeEntryPolicy
 {
+    /**
+     * Für Kunden gibt es hier nichts — in keiner Richtung.
+     *
+     * Erfasste Zeiten sind unsere Kalkulation. Der Kundenbereich zeigt sie
+     * nirgends; diese Zeilen sorgen dafür, dass das auch dann so bleibt,
+     * wenn dort einmal versehentlich eine Spalte oder ein Zähler landet.
+     */
     public function viewAny(User $user): bool
     {
-        return true;
+        return ! $user->istKunde();
     }
 
     public function view(User $user, TimeEntry $eintrag): bool
     {
+        if ($user->istKunde()) {
+            return false;
+        }
+
         return $user->istAdmin() || $user->is($eintrag->user);
     }
 
     public function create(User $user): bool
     {
-        return true;
+        return ! $user->istKunde();
     }
 
     public function update(User $user, TimeEntry $eintrag): bool
     {
+        if ($user->istKunde()) {
+            return false;
+        }
+
         return $user->istAdmin() || $user->is($eintrag->user);
     }
 
     public function delete(User $user, TimeEntry $eintrag): bool
     {
+        if ($user->istKunde()) {
+            return false;
+        }
+
         return $user->istAdmin() || $user->is($eintrag->user);
     }
 }

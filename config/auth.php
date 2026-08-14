@@ -42,6 +42,31 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        /*
+         * Eigener Guard für den Kundenbereich.
+         *
+         * Dieselbe Tabelle, dieselben Nutzer — der Unterschied ist allein,
+         * dass beide Guards ihre Anmeldung unter einem eigenen Schlüssel in
+         * der Sitzung ablegen. Damit kann dieselbe Person gleichzeitig intern
+         * und als Kundenzugang angemeldet sein.
+         *
+         * Das ist nicht bloß bequem. Mit nur einem Guard teilen sich die
+         * beiden Panels eine Anmeldung: wer intern angemeldet ist und /kunde
+         * aufruft, bekommt einen 403, und um den Kundenbereich anzusehen,
+         * müsste er sich jedes Mal intern abmelden. Das betrifft nicht nur
+         * das Ausprobieren — Nils-Digital ist im eigenen System als Kunde
+         * geführt und hat dort eigene Projekte.
+         *
+         * Filaments Authenticate-Middleware setzt den Guard des jeweiligen
+         * Panels per shouldUse() für die Anfrage. auth()->user() liefert
+         * innerhalb eines Panels deshalb immer die dort angemeldete Person,
+         * ohne dass eine einzige Aufrufstelle davon wissen muss.
+         */
+        'kunde' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
     ],
 
     /*

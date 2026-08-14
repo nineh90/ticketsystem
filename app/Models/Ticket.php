@@ -4,7 +4,10 @@ namespace App\Models;
 
 use App\Enums\Prioritaet;
 use App\Enums\Quelle;
+use App\Enums\TicketArt;
+use App\Observers\TicketObserver;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,9 +19,10 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 #[Fillable([
-    'project_id', 'titel', 'beschreibung', 'ticket_status_id', 'prioritaet',
+    'project_id', 'titel', 'beschreibung', 'art', 'ticket_status_id', 'prioritaet',
     'assigned_to', 'created_by', 'faellig_am', 'position', 'quelle', 'external_ref',
 ])]
+#[ObservedBy(TicketObserver::class)]
 class Ticket extends Model
 {
     use HasFactory, LogsActivity;
@@ -38,6 +42,7 @@ class Ticket extends Model
                 'titel',
                 'ticket_status_id',
                 'prioritaet',
+                'art',
                 'assigned_to',
                 'faellig_am',
             ])
@@ -48,6 +53,7 @@ class Ticket extends Model
 
     protected $attributes = [
         'prioritaet' => 'normal',
+        'art' => 'aufgabe',
         'quelle' => 'manuell',
         'position' => 0,
     ];
@@ -56,6 +62,7 @@ class Ticket extends Model
     {
         return [
             'prioritaet' => Prioritaet::class,
+            'art' => TicketArt::class,
             'quelle' => Quelle::class,
             'faellig_am' => 'date',
             'erledigt_at' => 'datetime',
@@ -214,6 +221,34 @@ class Ticket extends Model
         return $query->whereHas('status', fn (Builder $q) => $q->where('ist_abschluss', false));
     }
 
+    /** Was Kunden selbst gemeldet haben. */
+    public function scopeVomKunden(Builder $query): Builder
+    {
+        return $query->where('quelle', Quelle::Kunde);
+    }
+
+    /**
+     * Tickets, bei denen der Ball beim Kunden liegt.
+     *
+     * Im Kundenbereich die wichtigste Liste überhaupt: sie beantwortet die
+     * einzige Frage, auf die er handeln kann — "muss ich etwas tun?".
+     */
+    public function scopeWartetAufKunde(Builder $query): Builder
+    {
+        return $query->whereHas('status', fn (Builder $q) => $q->where('wartet_auf_kunde', true));
+    }
+
+    public function wartetAufKunde(): bool
+    {
+        return (bool) $this->status?->wartet_auf_kunde;
+    }
+
+    /** Wurde dieses Ticket von einem Kunden gemeldet? */
+    public function istVomKunden(): bool
+    {
+        return $this->quelle === Quelle::Kunde;
+    }
+
     /**
      * Auf das beschränken, was dieser Nutzer sehen darf.
      *
@@ -226,6 +261,25 @@ class Ticket extends Model
     {
         if ($nutzer->istAdmin()) {
             return $query;
+        }
+
+        // Der Kunde sieht alle Tickets seiner freigegebenen Projekte, nicht
+        // nur die selbst gemeldeten — das ist der Sinn der Sache: er soll
+        // sehen, woran gearbeitet wird, ohne zu fragen. Was er dabei NICHT
+        // sieht, hängt nicht an dieser Abfrage, sondern an den internen
+        // Kommentaren (Comment::scopeFuerKunden) und daran, dass es im
+        // Kundenpanel keine Zeitbuchungen gibt.
+        //
+        // Die Bedingung läuft über die Projektbeziehung und nicht über
+        // tickets.customer_id, weil sonst Tickets aus einem verborgenen
+        // Projekt durchkämen: sie tragen dieselbe customer_id.
+        if ($nutzer->istKunde()) {
+            return $query->whereHas(
+                'project',
+                fn (Builder $p) => $p
+                    ->where('customer_id', $nutzer->customer_id)
+                    ->where('kunden_sichtbar', true),
+            );
         }
 
         return $query->where(fn (Builder $q) => $q

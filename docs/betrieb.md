@@ -92,6 +92,41 @@ Jeder ändert Name und Passwort danach selbst unter *Profil* (oben rechts).
 Ausgeschiedene Mitarbeiter **deaktivieren statt löschen** — sonst verlieren
 ihre Tickets, Kommentare und Zeitbuchungen die Zuordnung.
 
+## Kundenzugänge
+
+*Kunden → der Kunde → Zugänge → Zugang anlegen.* Rolle und Kundenzuordnung
+setzt das Formular selbst; ein Startpasswort wird vorgeschlagen (drei Wörter
+und eine Zahl, damit man es am Telefon vorlesen kann).
+
+Weiterzugeben sind drei Dinge: die E-Mail-Adresse, das Startpasswort und die
+Adresse <https://intern.nils-digital.de/kunde>. Der Kunde ändert das Passwort
+selbst unter *Profil*. Ob er sich schon angemeldet hat, steht in der Spalte
+*Zuletzt angemeldet* — „noch nie" heißt in aller Regel, dass die Weitergabe
+nicht angekommen ist.
+
+Vergessenes Passwort: Knopf *Passwort neu setzen* an der Zeile. Ausgeschiedene
+Ansprechpartner **deaktivieren statt löschen** — sonst verlieren ihre Meldungen
+und Antworten die Zuordnung.
+
+Was der Kunde sieht, hängt an zwei Schaltern:
+
+- **Projekt → Kundenbereich → Für den Kunden sichtbar.** Aus: das Projekt
+  verschwindet aus seinem Bereich, samt aller Anliegen dazu.
+- **Kommentar → Interne Notiz.** Aus: der Kunde liest den Kommentar als
+  Antwort und wird darüber benachrichtigt.
+
+Zeitbuchungen, Budget, Priorität, Zuständigkeit und Termine sieht er nie.
+
+Screenshots kann der Kunde direkt beim Melden mitschicken und später am
+Anliegen unter *Dateien* nachreichen; intern erscheinen sie als gewöhnliche
+Anhänge am Ticket. Uploads aus abgebrochenen Formularen liegen bis zu einem
+Tag unter `storage/app/anhaenge/eingang` und werden beim nächsten Aufruf des
+Meldeformulars gelöscht — ohne Scheduler geht das nur so.
+
+Ein Stadium mit *Der Kunde ist am Zug* (unter Ticket-Stadien) benachrichtigt
+ihn beim Wechsel dorthin und stellt das Anliegen in seinem Bereich ganz oben
+unter „Sie sind am Zug". Voreingestellt ist das bei *Warten auf Kunde*.
+
 ## Was noch offen ist
 
 - **Mailversand.** `MAIL_MAILER` steht auf `log`. Deshalb ist auch
@@ -101,10 +136,13 @@ ihre Tickets, Kommentare und Zeitbuchungen die Zuordnung.
   `->passwordReset()` im `AdminPanelProvider` einkommentieren.
 - **n8n-Anbindung.** Die Schnittstelle steht und ist geprüft, es gibt nur noch
   keinen Workflow. Siehe `docs/n8n.md`.
-- **Anhänge an Tickets.** Datenmodell und `php.ini` sind darauf vorbereitet
-  (16 MB), die Oberfläche fehlt.
-- **Kundenbereich.** Vorbereitet über `comments.ist_intern` und
-  `users.customer_id`; wird ein zweites Filament-Panel.
+- **Kontaktdaten im Kundenbereich.** `config/kontakt.php` liest
+  `KONTAKT_TELEFON` aus der `.env` — solange die Variable fehlt, steht auf der
+  Kontaktseite keine Telefonnummer.
+- **Kein Queue-Worker.** `QUEUE_CONNECTION=database`, aber nichts arbeitet die
+  Warteschlange ab. Benachrichtigungen umgehen sie deshalb bewusst (siehe
+  README). Wer künftig etwas in die Warteschlange legt, muss entweder einen
+  Worker einrichten oder denselben Weg gehen.
 
 ## Beobachtung am Rande
 

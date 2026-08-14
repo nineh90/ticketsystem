@@ -30,7 +30,16 @@ return Application::configure(basePath: dirname(__DIR__))
         // filament.admin.auth.login. Ohne diese Zeile endet jeder
         // unangemeldete Aufruf einer eigenen Route (etwa eines Anhangs) in
         // einem 500er statt auf der Anmeldeseite.
-        $middleware->redirectGuestsTo(fn () => route('filament.admin.auth.login'));
+        //
+        // Seit es zwei Panels gibt, entscheidet der Pfad, auf welche der
+        // beiden Anmeldungen es geht. Das ist kein Schönheitsfehler: ein
+        // Kunde kommt an der internen Anmeldung nicht vorbei
+        // (User::canAccessPanel), er stünde dort also vor einem Formular,
+        // das seine richtigen Zugangsdaten abweist — und würde annehmen,
+        // sein Zugang sei kaputt.
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('kunde', 'kunde/*')
+            ? route('filament.kunde.auth.login')
+            : route('filament.admin.auth.login'));
 
         // Gilt für jede Web-Antwort, also auch für die Filament-Oberfläche.
         // Die Middleware fasst nur HTML an, Downloads und JSON bleiben unberührt.

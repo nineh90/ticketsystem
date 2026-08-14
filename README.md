@@ -44,11 +44,30 @@ das Laravel-übliche SQLite-in-memory: produktiv läuft Postgres, und Dinge wie
 `SELECT … FOR UPDATE` bei der Ticketnummern-Vergabe verhalten sich unter SQLite
 anders oder gar nicht.
 
+## Die zwei Bereiche
+
+| | Adresse | Wer |
+|---|---|---|
+| Intern | `/` | Administratoren und Mitarbeiter |
+| Kundenbereich | `/kunde` | Rolle `kunde`, je einem Kunden zugeordnet |
+
+Getrennte Guards (`web` und `kunde`, siehe `config/auth.php`): man kann in
+beiden **gleichzeitig** angemeldet sein. Ohne das müsste man sich zum Ansehen
+des Kundenbereichs jedes Mal intern abmelden.
+
+Was der Kundenbereich zeigt, steht ausschließlich unter `app/Filament/Kunde`.
+Alles andere existiert dort nicht — die Umkehrung zum internen Panel, wo jede
+Ressource einzeln wissen müsste, dass gerade ein Kunde zusieht.
+
+Kundenzugang anlegen: *Kunden → der Kunde → Zugänge*. Rolle und Zuordnung
+werden dabei gesetzt, ein Startpasswort wird vorgeschlagen.
+
 ## Zugang
 
 Ein Konto allein reicht nicht. `User::canAccessPanel()` verlangt zusätzlich
-`panel_zugang = true` und `aktiv = true`; die Rolle `kunde` kommt ins interne
-Panel grundsätzlich nicht hinein (sie bekommt später ein eigenes).
+`panel_zugang = true` und `aktiv = true`, und jede Rolle gehört in genau ein
+Panel: `kunde` ausschließlich in den Kundenbereich, alle anderen ausschließlich
+ins interne.
 
 Nutzer freischalten:
 
@@ -59,13 +78,22 @@ php artisan tinker --execute='
   ]);'
 ```
 
-## Zwei Dinge, die beim Ändern leicht kaputtgehen
+## Drei Dinge, die beim Ändern leicht kaputtgehen
 
 **Sicherheits-Header.** `SicherheitsHeader` steht in `bootstrap/app.php` *und*
 in der Middleware-Liste des `AdminPanelProvider`. Beides ist nötig: Filament
 baut seinen Stack selbst und durchläuft die `web`-Gruppe nicht. Fliegt der
 Eintrag im Panel raus, liefert die Oberfläche stillschweigend keine Header mehr
 aus — `PanelZugangTest` schlägt dann an.
+
+**Benachrichtigungen und die Warteschlange.** `Benachrichtigung::zustellen()`
+verschickt über `notifyNow()`, umgeht die Warteschlange also bewusst. Filaments
+`DatabaseNotification` ist ein `ShouldQueue`; bei `QUEUE_CONNECTION=database`
+und ohne Worker — und einen Worker gibt es hier nicht — landen die Meldungen
+sonst in der `jobs`-Tabelle und kommen nie an. In den Tests fällt das nicht
+auf, weil `phpunit.xml` die Warteschlange auf `sync` stellt; deshalb prüft
+`KundenbereichTest::test_benachrichtigung_kommt_auch_ohne_worker_an()` genau
+diesen Fall mit `database`.
 
 **CSP und Alpine.** Die Policy erlaubt `unsafe-eval`, weil Livewire und Alpine
 sonst wortlos aufhören zu arbeiten (Knöpfe reagieren einfach nicht). Das ist

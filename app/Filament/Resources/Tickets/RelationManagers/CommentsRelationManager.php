@@ -42,7 +42,12 @@ class CommentsRelationManager extends RelationManager
             Toggle::make('ist_intern')
                 ->label('Interne Notiz')
                 ->default(true)
-                ->helperText('Interne Notizen bleiben im Team. Wird der Kundenbereich später freigeschaltet, sehen Kunden nur Kommentare, bei denen dieser Schalter aus ist.'),
+                // Der Text ist wichtiger, als er aussieht: seit der
+                // Kundenbereich läuft, entscheidet dieser Schalter darüber,
+                // ob der Kunde den Kommentar liest UND eine Benachrichtigung
+                // darüber bekommt. Ein vergessener Schalter ist hier kein
+                // Schönheitsfehler.
+                ->helperText('An: bleibt im Team. Aus: der Kunde sieht den Kommentar in seinem Bereich als Antwort und wird darüber benachrichtigt.'),
         ]);
     }
 

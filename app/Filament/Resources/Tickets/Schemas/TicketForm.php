@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Tickets\Schemas;
 
 use App\Enums\Prioritaet;
+use App\Enums\TicketArt;
 use App\Models\Project;
 use App\Models\TicketStatus;
 use Filament\Forms\Components\DatePicker;
@@ -67,6 +68,13 @@ class TicketForm
                             ->default(fn () => TicketStatus::standard()?->id)
                             ->required()
                             ->preload(),
+
+                        Select::make('art')
+                            ->label('Art')
+                            ->options(TicketArt::class)
+                            ->default(TicketArt::Aufgabe->value)
+                            ->required()
+                            ->helperText('Was es ist. Meldet ein Kunde etwas, steht die Art schon drin.'),
 
                         Select::make('prioritaet')
                             ->label('Priorität')

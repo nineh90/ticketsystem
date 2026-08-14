@@ -83,10 +83,13 @@ class UserForm
                             ->relationship('customer', 'name')
                             ->searchable()
                             ->preload()
-                            // Nur für die Rolle "kunde" sinnvoll, die in v1
-                            // nicht vergeben wird.
+                            // Für Kundenzugänge Pflicht: ohne Kunde ist im
+                            // Kundenbereich nicht bestimmbar, was die Person
+                            // sehen darf — User::canAccessPanel lässt sie
+                            // dann gar nicht erst hinein.
                             ->visible(fn ($get) => self::rolle($get) === Rolle::Kunde)
-                            ->helperText('Nur für Kundenzugänge (kommt später).'),
+                            ->required(fn ($get) => self::rolle($get) === Rolle::Kunde)
+                            ->helperText('Bestimmt, welche Projekte und Anliegen dieser Zugang sieht. Bequemer anzulegen ist ein Kundenzugang unter Kunden → der Kunde → Zugänge.'),
 
                         Toggle::make('panel_zugang')
                             ->label('Zugang freigegeben')

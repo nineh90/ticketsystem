@@ -6,8 +6,9 @@ use App\Enums\ProjektStatus;
 use App\Models\Customer;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
@@ -80,6 +81,34 @@ class ProjectForm
                             ->rows(4)
                             ->columnSpanFull(),
                     ]),
+
+                Section::make('Kundenbereich')
+                    ->description('Was der Kunde unter /kunde zu diesem Projekt sieht. Zeitbuchungen, Budget und interne Beschreibung bleiben in jedem Fall drinnen.')
+                    ->columns(2)
+                    ->schema([
+                        Toggle::make('kunden_sichtbar')
+                            ->label('Für den Kunden sichtbar')
+                            ->default(true)
+                            ->helperText('Aus: das Projekt verschwindet aus seinem Bereich — samt aller Anliegen dazu, auch der selbst gemeldeten. Für Angebote, die noch nicht besprochen sind.')
+                            ->columnSpanFull(),
+
+                        TextInput::make('demo_url')
+                            ->label('Live-Fassung')
+                            ->url()
+                            ->maxLength(255)
+                            ->prefixIcon('heroicon-o-globe-alt')
+                            ->placeholder('https://…')
+                            ->helperText('Wo der aktuelle Stand läuft. Steht im Kundenbereich als Knopf "Live ansehen".')
+                            ->columnSpanFull(),
+
+                        Textarea::make('kunden_info')
+                            ->label('Stand für den Kunden')
+                            ->rows(4)
+                            ->maxLength(2000)
+                            ->helperText('Ein, zwei Sätze, woran gerade gearbeitet wird. Getrennt von der Beschreibung oben — die ist intern.')
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsed(),
 
                 Section::make('Team')
                     ->description('Mitarbeiter sehen ausschließlich Projekte, in denen sie hier stehen. Administratoren sehen ohnehin alles und müssen nicht eingetragen werden.')

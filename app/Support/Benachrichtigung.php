@@ -1,0 +1,162 @@
+<?php
+
+namespace App\Support;
+
+use App\Enums\Rolle;
+use App\Filament\Kunde\Resources\Anliegen\AnliegenResource;
+use App\Filament\Resources\Tickets\TicketResource;
+use App\Models\Ticket;
+use App\Models\User;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+
+/**
+ * Wer erfährt wovon.
+ *
+ * Alle Benachrichtigungen des Systems laufen durch diese Klasse, und zwar
+ * absichtlich: der Empfängerkreis ist die Stelle, an der aus einem
+ * Kundenbereich ein Datenleck wird. Stünde neben jedem Auslöser sein eigenes
+ * "und wen benachrichtigen wir jetzt", müsste jede dieser Stellen einzeln
+ * daran denken, dass ein Kundenzugang nur Dinge aus seinem eigenen Projekt
+ * erfahren darf — und in der Betreffzeile einer Benachrichtigung steht immer
+ * schon der halbe Inhalt.
+ *
+ * Zwei Richtungen gibt es:
+ *
+ *   nachInnen()  — an uns. Admins und die Zuständigen des Projekts.
+ *   nachAussen() — an den Kunden. Alle Zugänge seines Kunden.
+ */
+class Benachrichtigung
+{
+    /**
+     * An uns: Admins und alle, die für dieses Ticket zuständig sind.
+     *
+     * Admins sind immer dabei, weil sie ohnehin alles sehen und im Zweifel
+     * die Einzigen sind, die reagieren können — ein Kundenanliegen in einem
+     * Projekt ohne zugeordneten Mitarbeiter würde sonst niemanden erreichen.
+     */
+    public static function nachInnen(Ticket $ticket, Notification $meldung): void
+    {
+        self::zustellen(self::innenkreis($ticket), $meldung);
+    }
+
+    /**
+     * An den Kunden: alle Zugänge, die zu diesem Kunden gehören.
+     *
+     * Verborgene Projekte sind hier ausgenommen. Das ist der Fall, den man
+     * beim Umschalten von kunden_sichtbar leicht übersieht: das Projekt
+     * verschwindet zwar aus seiner Liste, eine Benachrichtigung darüber wäre
+     * aber trotzdem noch bei ihm gelandet — mit dem Projektnamen im Text.
+     */
+    public static function nachAussen(Ticket $ticket, Notification $meldung): void
+    {
+        self::zustellen(self::aussenkreis($ticket), $meldung);
+    }
+
+    /**
+     * Zustellen — und zwar sofort, nicht über die Warteschlange.
+     *
+     * Filaments sendToDatabase() ruft notify() auf, und die zugrunde liegende
+     * DatabaseNotification ist ein ShouldQueue. Bei QUEUE_CONNECTION=database
+     * heißt das: die Benachrichtigung landet in der jobs-Tabelle und wartet
+     * dort auf einen Worker. Einen solchen gibt es in diesem Projekt nicht —
+     * weder lokal noch im Container —, und deshalb kam vor dieser Zeile
+     * schlicht nie etwas an der Glocke an. Aufgefallen ist es erst beim
+     * Ausprobieren im Browser; in den Tests läuft die Warteschlange auf
+     * "sync" und alles sah richtig aus.
+     *
+     * notifyNow() umgeht die Warteschlange. Das ist hier auch sachlich
+     * richtig: eine Datenbank-Benachrichtigung ist ein einzelnes INSERT.
+     * Dafür einen zweiten Dauerprozess zu betreiben, der ausfallen und
+     * unbemerkt stehenbleiben kann, wäre mehr Betrieb als Nutzen.
+     *
+     * @param  Collection<int, User>  $empfaenger
+     */
+    private static function zustellen(Collection $empfaenger, Notification $meldung): void
+    {
+        foreach ($empfaenger as $nutzer) {
+            $nutzer->notifyNow($meldung->toDatabase());
+        }
+
+        // Filaments DatabaseNotificationsSent wird hier bewusst NICHT
+        // ausgelöst. Das Ereignis ist ein ShouldBroadcast und landet damit
+        // seinerseits als Job in der Warteschlange — dieselbe Falle noch
+        // einmal, nur eine Ebene tiefer, und bei BROADCAST_CONNECTION=log
+        // ohne jeden Nutzen. Die Glocke fragt ohnehin jede Minute nach
+        // (databaseNotificationsPolling in beiden Panel-Providern); eine
+        // offene Oberfläche hat die Meldung also spätestens nach 60 Sekunden.
+
+    }
+
+    /** @return Collection<int, User> */
+    public static function innenkreis(Ticket $ticket): Collection
+    {
+        return User::query()
+            ->where('aktiv', true)
+            ->where('rolle', '!=', Rolle::Kunde->value)
+            ->where(fn (Builder $q) => $q
+                ->where('rolle', Rolle::Admin->value)
+                // Nur wenn überhaupt jemand zuständig ist: ohne die Prüfung
+                // würde daraus "id is null" und die Bedingung liefe leer —
+                // harmlos, aber irreführend beim Lesen.
+                ->when(
+                    $ticket->assigned_to !== null,
+                    fn (Builder $z) => $z->orWhere('id', $ticket->assigned_to),
+                )
+                ->orWhereHas('projects', fn (Builder $p) => $p->whereKey($ticket->project_id))
+                ->orWhereHas('customers', fn (Builder $c) => $c->whereKey($ticket->customer_id)))
+            ->get();
+    }
+
+    /** @return Collection<int, User> */
+    public static function aussenkreis(Ticket $ticket): Collection
+    {
+        if (! $ticket->project?->kunden_sichtbar) {
+            return collect();
+        }
+
+        return User::query()
+            ->where('aktiv', true)
+            ->where('panel_zugang', true)
+            ->where('rolle', Rolle::Kunde->value)
+            ->where('customer_id', $ticket->customer_id)
+            ->get();
+    }
+
+    /**
+     * Der Knopf unter einer Benachrichtigung, der zum Ticket führt.
+     *
+     * Ohne ihn ist eine Benachrichtigung eine Mitteilung, mit ihm ein
+     * Arbeitsschritt: man liest "Fehler gemeldet" und ist einen Klick später
+     * dort, wo man etwas tun kann. markAsRead(), weil eine gelesene Meldung,
+     * die man wegklicken muss, nach dem dritten Mal ignoriert wird.
+     */
+    public static function knopf(string $beschriftung, string $url): Action
+    {
+        return Action::make('oeffnen')
+            ->label($beschriftung)
+            ->url($url)
+            ->markAsRead();
+    }
+
+    /**
+     * Die Adresse eines Tickets im internen Panel.
+     *
+     * Das Panel wird ausdrücklich angegeben. Ohne den Parameter nähme
+     * getUrl() das gerade aktive — und aktiv ist beim Auslösen einer
+     * Benachrichtigung immer das Panel dessen, der die Änderung gemacht hat.
+     * Meldet also ein Kunde etwas, entstünde für uns ein Link nach /kunde.
+     */
+    public static function urlIntern(Ticket $ticket): string
+    {
+        return TicketResource::getUrl('view', ['record' => $ticket], panel: 'admin');
+    }
+
+    /** Die Adresse desselben Tickets im Kundenbereich. */
+    public static function urlKunde(Ticket $ticket): string
+    {
+        return AnliegenResource::getUrl('view', ['record' => $ticket], panel: 'kunde');
+    }
+}

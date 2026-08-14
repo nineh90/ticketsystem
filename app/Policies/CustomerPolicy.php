@@ -14,15 +14,24 @@ use App\Models\User;
  */
 class CustomerPolicy
 {
+    /**
+     * Die Kundenverwaltung gibt es im Kundenbereich nicht — dort steht der
+     * eigene Name in der Kopfzeile, mehr braucht es nicht. Ein Kundenzugang,
+     * der die Kundenliste öffnen kann, sähe die Namen aller anderen.
+     */
     public function viewAny(User $user): bool
     {
-        return true;
+        return ! $user->istKunde();
     }
 
     public function view(User $user, Customer $customer): bool
     {
         if ($user->istAdmin()) {
             return true;
+        }
+
+        if ($user->istKunde()) {
+            return $customer->getKey() === $user->customer_id;
         }
 
         if ($customer->mitarbeiter()->whereKey($user->getKey())->exists()) {

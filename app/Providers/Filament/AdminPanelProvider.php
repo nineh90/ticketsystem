@@ -2,6 +2,15 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\AvatarProviders\InitialenAvatar;
+use App\Filament\Widgets\Geschehen;
+use App\Filament\Widgets\MeineTickets;
+use App\Filament\Widgets\MeinUeberblick;
+use App\Filament\Widgets\TeamUeberblick;
+use App\Filament\Widgets\TicketsVerteilung;
+use App\Filament\Widgets\VonKunden;
+use App\Http\Middleware\SicherheitsHeader;
+use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -9,14 +18,6 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
-use App\Filament\AvatarProviders\InitialenAvatar;
-use App\Filament\Widgets\Geschehen;
-use App\Filament\Widgets\MeineTickets;
-use App\Filament\Widgets\MeinUeberblick;
-use App\Filament\Widgets\TeamUeberblick;
-use App\Filament\Widgets\TicketsVerteilung;
-use App\Http\Middleware\SicherheitsHeader;
-use Filament\Enums\ThemeMode;
 use Filament\Support\Colors\Color;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -49,6 +50,12 @@ class AdminPanelProvider extends PanelProvider
             // setzt ein Admin ein vergessenes Passwort in der
             // Nutzerverwaltung neu.
             ->brandName('Nils-Digital')
+            // Die Glocke. Sie kam mit dem Kundenbereich: bis dahin entstand
+            // jede Änderung durch jemanden, der ohnehin gerade davorsaß.
+            // Ein Kundenanliegen entsteht dagegen, während niemand hinschaut,
+            // und darf nicht erst beim nächsten Blick in die Liste auffallen.
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('60s')
             // Logo UND Schriftzug: Filament zeigt sonst nur eines von beiden.
             ->brandLogo(fn () => view('filament.marke'))
             // Bewusst ein wurzelrelativer Pfad statt asset(): Provider
@@ -81,6 +88,9 @@ class AdminPanelProvider extends PanelProvider
             // die des Betriebs bzw. der eigenen Projekte, darunter die eigene
             // Arbeitsliste neben dem Geschehen, zuletzt die Verteilung.
             ->widgets([
+                // Ganz oben und nur dann da, wenn ein Kunde tatsächlich
+                // wartet — siehe VonKunden::canView().
+                VonKunden::class,
                 MeinUeberblick::class,
                 TeamUeberblick::class,
                 Geschehen::class,

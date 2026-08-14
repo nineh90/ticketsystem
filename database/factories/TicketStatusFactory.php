@@ -27,4 +27,10 @@ class TicketStatusFactory extends Factory
     {
         return $this->state(fn () => ['ist_abschluss' => true]);
     }
+
+    /** Ein Stadium, in dem der Ball beim Kunden liegt. */
+    public function wartetAufKunde(): static
+    {
+        return $this->state(fn () => ['wartet_auf_kunde' => true]);
+    }
 }

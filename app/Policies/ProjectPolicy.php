@@ -28,6 +28,15 @@ class ProjectPolicy
 
     public function view(User $user, Project $project): bool
     {
+        // Der Kunde sieht sein eigenes Projekt, und nur solange es
+        // freigegeben ist. Dieselbe Bedingung wie in
+        // Project::scopeSichtbarFuer — die beiden gehören zusammen.
+        if ($user->istKunde()) {
+            return $user->customer_id !== null
+                && $project->customer_id === $user->customer_id
+                && $project->kunden_sichtbar;
+        }
+
         return $user->istAdmin() || $this->istZugeordnet($user, $project);
     }
 

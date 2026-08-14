@@ -41,10 +41,18 @@ class Attachment extends Model
         return str_starts_with((string) $this->mime, 'image/');
     }
 
-    /** Adresse der geschützten Ausliefer-Route. */
+    /**
+     * Adresse der geschützten Ausliefer-Route.
+     *
+     * Für Kundenzugänge die Fassung unter /kunde — beide liefern dasselbe
+     * aus, aber nur beim passenden Pfad führt eine abgelaufene Sitzung auch
+     * zur richtigen Anmeldeseite (siehe routes/web.php).
+     */
     public function url(): string
     {
-        return route('anhang.zeigen', $this);
+        return auth()->user()?->istKunde()
+            ? route('kunde.anhang.zeigen', $this)
+            : route('anhang.zeigen', $this);
     }
 
     /** Größe als "1,4 MB" statt "1468006". */

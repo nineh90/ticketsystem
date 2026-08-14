@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Rolle;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -62,6 +63,23 @@ class Customer extends Model
         return $this->belongsToMany(User::class)->withTimestamps();
     }
 
+    /**
+     * Die Kundenzugänge zu diesem Kunden.
+     *
+     * Mehrere sind ausdrücklich vorgesehen: bei einem Verein sind das der
+     * Vorstand und die Person, die die Website tatsächlich betreut, und die
+     * sollen sich keinen Zugang teilen — sonst steht unter jedem Anliegen
+     * derselbe Name und man weiß nie, mit wem man gerade schreibt.
+     *
+     * Die Einschränkung auf die Rolle ist wichtig: users.customer_id sagt
+     * für sich genommen nur "gehört zu diesem Kunden", und ohne sie stünde
+     * ein versehentlich zugeordneter Mitarbeiter in dieser Liste.
+     */
+    public function zugaenge(): HasMany
+    {
+        return $this->hasMany(User::class)->where('rolle', Rolle::Kunde->value);
+    }
+
     public function scopeAktiv(Builder $query): Builder
     {
         return $query->where('aktiv', true);
@@ -78,6 +96,11 @@ class Customer extends Model
     {
         if ($nutzer->istAdmin()) {
             return $query;
+        }
+
+        // Ein Kundenzugang kennt genau einen Kunden: seinen eigenen.
+        if ($nutzer->istKunde()) {
+            return $query->whereKey($nutzer->customer_id);
         }
 
         // Zwei Wege: direkt dem Kunden zugeordnet, oder einem seiner

@@ -53,6 +53,11 @@ class TicketStatusForm
                     ->label('Schließt das Ticket ab')
                     ->helperText('Tickets in diesem Stadium gelten als erledigt und zählen nicht mehr als offen. Beim Wechsel hierher wird der Erledigt-Zeitpunkt gesetzt.')
                     ->columnSpanFull(),
+
+                Toggle::make('wartet_auf_kunde')
+                    ->label('Der Kunde ist am Zug')
+                    ->helperText('Beim Wechsel hierher wird der Kunde benachrichtigt, und das Ticket steht in seinem Bereich ganz oben unter "Sie sind am Zug". Für Stadien wie "Warten auf Kunde" oder "Freigabe ausstehend".')
+                    ->columnSpanFull(),
             ]);
     }
 }
