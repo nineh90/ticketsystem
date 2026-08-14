@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Auth\Anmeldung;
 use App\Filament\AvatarProviders\InitialenAvatar;
 use App\Filament\Widgets\Geschehen;
 use App\Filament\Widgets\MeineTickets;
@@ -10,6 +11,7 @@ use App\Filament\Widgets\TeamUeberblick;
 use App\Filament\Widgets\TicketsVerteilung;
 use App\Filament\Widgets\VonKunden;
 use App\Http\Middleware\SicherheitsHeader;
+use Filament\Actions\Action;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -38,7 +40,9 @@ class AdminPanelProvider extends PanelProvider
             // ein zweites Panel mit ->id('kunde')->path('kunde').
             ->path('')
             ->viteTheme('resources/css/filament/admin/theme.css')
-            ->login()
+            // Eigene Anmeldeseite: sie erkennt einen Kundenzugang und schickt
+            // ihn weiter, statt ihn wie ein falsches Passwort abzuweisen.
+            ->login(Anmeldung::class)
             // Eigene Profilseite: jeder ändert Name und Passwort selbst.
             // Ohne sie müsste ein Admin jedes Passwort vergeben — es ginge
             // also durch fremde Hände und wäre nie nur dem Nutzer bekannt.
@@ -75,6 +79,20 @@ class AdminPanelProvider extends PanelProvider
             // ui-avatars.com holt und dabei die Klarnamen der Mitarbeiter nach
             // außen gibt.
             ->defaultAvatarProvider(InitialenAvatar::class)
+            // Der Weg in den Kundenbereich, im Benutzermenü oben rechts.
+            // Ohne ihn ist /kunde eine Adresse, die man kennen muss — und
+            // genau daran ist die erste Anmeldung eines Kundenzugangs
+            // gescheitert. Dank getrennter Guards führt der Klick nicht aus
+            // der eigenen Sitzung heraus: man landet auf der Kundenanmeldung
+            // und bleibt intern angemeldet.
+            ->userMenuItems([
+                Action::make('kundenbereich')
+                    ->label('Kundenbereich ansehen')
+                    ->icon('heroicon-o-arrow-top-right-on-square')
+                    ->url(fn () => route('filament.kunde.auth.login'))
+                    ->openUrlInNewTab()
+                    ->visible(fn () => auth()->user()?->istAdmin() ?? false),
+            ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([

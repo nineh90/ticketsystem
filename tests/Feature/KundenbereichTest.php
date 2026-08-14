@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\Quelle;
 use App\Enums\Rolle;
 use App\Enums\TicketArt;
+use App\Filament\Auth\Anmeldung;
 use App\Filament\Kunde\Pages\Kontakt;
 use App\Filament\Kunde\Resources\Anliegen\AnliegenResource;
 use App\Filament\Kunde\Resources\Anliegen\Pages\CreateAnliegen;
@@ -143,6 +144,76 @@ class KundenbereichTest extends TestCase
     {
         // Aus der URL darf kein beliebiger Guard werden.
         $this->post(route('abmelden', 'web'))->assertNotFound();
+    }
+
+    public function test_kundenzugang_am_internen_formular_wird_weitergewiesen(): void
+    {
+        $kunde = $this->kunde();
+        $kunde->update(['password' => 'geheim-geheim']);
+
+        Filament::setCurrentPanel('admin');
+
+        // Richtiges Passwort, falscher Bereich. Bis hierher sah das aus wie
+        // ein Tippfehler — daran ist die erste Anmeldung gescheitert.
+        Livewire::test(Anmeldung::class)
+            ->fillForm([
+                'email' => $kunde->email,
+                'password' => 'geheim-geheim',
+            ])
+            ->call('authenticate')
+            ->assertHasFormErrors(['email']);
+
+        $this->assertFalse(auth('web')->check());
+
+        $fehler = Livewire::test(Anmeldung::class)
+            ->fillForm(['email' => $kunde->email, 'password' => 'geheim-geheim'])
+            ->call('authenticate')
+            ->errors()
+            ->get('data.email');
+
+        $this->assertStringContainsString('Kundenbereich', $fehler[0]);
+    }
+
+    public function test_falsches_passwort_verraet_weiterhin_nichts(): void
+    {
+        $kunde = $this->kunde();
+        $kunde->update(['password' => 'geheim-geheim']);
+
+        Filament::setCurrentPanel('admin');
+
+        // Der genauere Hinweis darf nur erscheinen, nachdem das Passwort
+        // geprüft und für richtig befunden wurde. Sonst wäre er eine Auskunft
+        // darüber, welche Adressen es gibt.
+        $fehler = Livewire::test(Anmeldung::class)
+            ->fillForm(['email' => $kunde->email, 'password' => 'falsch-falsch'])
+            ->call('authenticate')
+            ->errors()
+            ->get('data.email');
+
+        $this->assertStringNotContainsString('Kundenbereich', $fehler[0]);
+    }
+
+    public function test_gesperrter_zugang_wird_nirgendwohin_geschickt(): void
+    {
+        $gesperrt = User::factory()->create([
+            'rolle' => Rolle::Kunde,
+            'panel_zugang' => false,
+            'customer_id' => Customer::factory()->create()->getKey(),
+            'password' => 'geheim-geheim',
+        ]);
+
+        Filament::setCurrentPanel('admin');
+
+        // Ein nicht freigegebener Zugang gehört nirgendwohin. Ihn in den
+        // Kundenbereich zu schicken hieße, ihn dort dasselbe erleben zu
+        // lassen — nur eine Seite weiter.
+        $fehler = Livewire::test(Anmeldung::class)
+            ->fillForm(['email' => $gesperrt->email, 'password' => 'geheim-geheim'])
+            ->call('authenticate')
+            ->errors()
+            ->get('data.email');
+
+        $this->assertStringNotContainsString('Kundenbereich', $fehler[0]);
     }
 
     // --- Sichtbarkeit -------------------------------------------------

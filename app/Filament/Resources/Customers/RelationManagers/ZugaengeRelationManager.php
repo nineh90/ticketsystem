@@ -98,6 +98,22 @@ class ZugaengeRelationManager extends RelationManager
         ]);
     }
 
+    /**
+     * Die Adresse steht über der Liste, nicht nur in einer Benachrichtigung
+     * nach dem Anlegen.
+     *
+     * Beim ersten Kundenzugang wurden die Daten an der internen Anmeldung
+     * eingegeben und dort abgewiesen — der Hinweis, dass der Zugang eine
+     * Adresse weiter gilt, stand zu dem Zeitpunkt in einer Meldung, die längst
+     * weggeklickt war. Hier steht er dauerhaft, an der Stelle, an der man die
+     * Zugangsdaten heraussucht.
+     */
+    public function getTableDescription(): ?string
+    {
+        return 'Kundenzugänge melden sich unter '.route('filament.kunde.auth.login')
+            .' an — nicht am internen Anmeldeformular.';
+    }
+
     public function table(Table $table): Table
     {
         return $table

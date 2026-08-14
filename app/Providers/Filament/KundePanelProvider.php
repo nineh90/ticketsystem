@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Auth\Anmeldung;
 use App\Filament\AvatarProviders\InitialenAvatar;
 use App\Filament\Kunde\Pages\Uebersicht;
 use App\Filament\Kunde\Widgets\MeineProjekte;
@@ -56,7 +57,9 @@ class KundePanelProvider extends PanelProvider
             // nicht mehr wird. Der Ordnername sagt "admin", gemeint ist
             // "unser Aussehen".
             ->viteTheme('resources/css/filament/admin/theme.css')
-            ->login()
+            // Dieselbe Anmeldeseite wie innen — sie weist einen internen
+            // Zugang hier ebenso freundlich zurück wie umgekehrt.
+            ->login(Anmeldung::class)
             // Jeder Kunde ändert sein Startpasswort selbst. Das ist der Grund,
             // warum ein Admin überhaupt eines vergeben darf: es ist von Anfang
             // an als vorläufig gedacht.
