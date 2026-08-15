@@ -56,6 +56,29 @@ class Benachrichtigung
     }
 
     /**
+     * An die Zuständigen eines Kunden: Admins und die ihm zugeordneten
+     * Mitarbeiter.
+     *
+     * Ohne Bezug auf ein Ticket, weil es Dinge gibt, die keines haben — ein
+     * Kunde, der seine Rechnungsanschrift ändert, zum Beispiel. Genau dieser
+     * Fall ist der Grund für die Methode: eine stille Änderung an
+     * Stammdaten fällt erst auf, wenn die nächste Rechnung zurückkommt.
+     */
+    public static function anZustaendige(int $customerId, Notification $meldung): void
+    {
+        $empfaenger = User::query()
+            ->where('aktiv', true)
+            ->where('rolle', '!=', Rolle::Kunde->value)
+            ->where(fn (Builder $q) => $q
+                ->where('rolle', Rolle::Admin->value)
+                ->orWhereHas('customers', fn (Builder $c) => $c->whereKey($customerId))
+                ->orWhereHas('projects', fn (Builder $p) => $p->where('customer_id', $customerId)))
+            ->get();
+
+        self::zustellen($empfaenger, $meldung);
+    }
+
+    /**
      * Zustellen — und zwar sofort, nicht über die Warteschlange.
      *
      * Filaments sendToDatabase() ruft notify() auf, und die zugrunde liegende

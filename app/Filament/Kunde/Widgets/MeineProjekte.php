@@ -2,68 +2,60 @@
 
 namespace App\Filament\Kunde\Widgets;
 
-use App\Filament\Kunde\Resources\Projekte\ProjektResource;
 use App\Models\Project;
-use Filament\Actions\Action;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Table;
-use Filament\Widgets\TableWidget;
-use Illuminate\Database\Eloquent\Builder;
+use Filament\Widgets\Widget;
+use Illuminate\Support\Collection;
 
 /**
- * Die Projekte auf der Übersicht, mit dem Link auf die laufende Fassung
- * direkt daneben.
+ * Die Projekte des Kunden auf seiner Übersicht — als Karten.
  *
- * Der Link ist der Grund für dieses Widget. Er ist das, was ein Kunde
- * zwischendurch braucht — "wie sieht es gerade aus?" —, und dafür soll er
- * nicht erst einen Menüpunkt öffnen und eine Zeile anklicken müssen.
+ * Vorher war das eine Tabelle. Sie hat funktioniert und trotzdem das Falsche
+ * getan: eine Tabelle ist zum Vergleichen vieler gleichartiger Zeilen da. Ein
+ * Kunde hat zwei Projekte, und er vergleicht sie nicht, sondern sieht nach,
+ * wie weit seines ist. Dafür braucht jede Zeile Platz — für den Stand, den
+ * Fortschritt und den Knopf, um den es eigentlich geht: die Seite ansehen.
+ *
+ * Die Zahlen kommen aus einer einzigen Abfrage mit withCount statt aus einem
+ * count() je Karte. Bei zwei Projekten ist das gleichgültig, bei zwölf nicht,
+ * und ausgerechnet die Übersicht ist die Seite, die jeder zuerst öffnet.
  */
-class MeineProjekte extends TableWidget
+class MeineProjekte extends Widget
 {
+    protected string $view = 'filament.kunde.widgets.meine-projekte';
+
     protected static ?int $sort = 2;
 
     protected int|string|array $columnSpan = 'full';
 
-    public function table(Table $table): Table
+    /** @return Collection<int, Project> */
+    public function getProjekte(): Collection
     {
-        return $table
-            ->heading('Ihre Projekte')
-            ->query(fn (): Builder => Project::query()->sichtbarFuer(auth()->user()))
-            ->columns([
-                TextColumn::make('name')
-                    ->label('Projekt')
-                    ->weight('medium')
-                    ->description(fn (Project $record) => $record->kunden_info
-                        ? str($record->kunden_info)->squish()->limit(90)->toString()
-                        : null),
-
-                TextColumn::make('status')
-                    ->label('Stand')
-                    ->badge(),
-
-                TextColumn::make('offen')
-                    ->label('Offene Anliegen')
-                    ->state(fn (Project $record) => $record->tickets()->offen()->count())
-                    ->badge()
-                    ->color(fn ($state) => $state > 0 ? 'info' : 'gray'),
+        return Project::query()
+            ->sichtbarFuer(auth()->user())
+            ->withCount([
+                'tickets as offene_anliegen' => fn ($q) => $q->offen(),
+                'tickets as am_zug' => fn ($q) => $q->wartetAufKunde(),
+                'meilensteine as meilensteine_gesamt' => fn ($q) => $q->kundenSichtbar(),
+                'meilensteine as meilensteine_erledigt' => fn ($q) => $q->kundenSichtbar()->erledigt(),
             ])
-            ->defaultSort('name')
-            ->paginated(false)
-            ->recordActions([
-                Action::make('demo')
-                    ->label('Live ansehen')
-                    ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->url(fn (Project $record) => $record->demo_url)
-                    ->openUrlInNewTab()
-                    ->visible(fn (Project $record) => filled($record->demo_url)),
+            ->orderBy('name')
+            ->get();
+    }
 
-                Action::make('details')
-                    ->label('Details')
-                    ->color('gray')
-                    ->url(fn (Project $record) => ProjektResource::getUrl('view', ['record' => $record])),
-            ])
-            ->emptyStateIcon('heroicon-o-rectangle-group')
-            ->emptyStateHeading('Noch keine Projekte freigegeben')
-            ->emptyStateDescription('Sobald wir eines für Sie freischalten, steht es hier.');
+    /**
+     * Der Fortschritt aus den mitgeladenen Zählern.
+     *
+     * Bewusst nicht Project::fortschritt(): die Methode fragt zweimal nach,
+     * und hier stehen die Zahlen schon da. Beide rechnen dasselbe — was
+     * doppelt gepflegt werden müsste, ist die Regel "ohne Meilensteine gibt
+     * es keinen Balken", und die steht deshalb in beiden ausdrücklich.
+     */
+    public function fortschritt(Project $projekt): ?int
+    {
+        if (($projekt->meilensteine_gesamt ?? 0) === 0) {
+            return null;
+        }
+
+        return (int) round($projekt->meilensteine_erledigt / $projekt->meilensteine_gesamt * 100);
     }
 }

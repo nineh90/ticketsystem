@@ -48,9 +48,30 @@ class CustomersTable
                     ->badge()
                     ->color(fn (int $state) => $state > 0 ? 'warning' : 'gray'),
 
-                TextColumn::make('ansprechpartner')
+                TextColumn::make('betreuung')
+                    ->label('Betreuung')
+                    ->badge()
+                    ->sortable(),
+
+                // Der Hauptkontakt statt der früheren Spalte
+                // "ansprechpartner" — die steht noch in der Datenbank, ist
+                // aber seit dem Umstieg auf die Kontakte-Tabelle nicht mehr
+                // die Wahrheit.
+                TextColumn::make('hauptkontakt')
                     ->label('Ansprechpartner')
-                    ->searchable()
+                    ->state(fn ($record) => $record->hauptkontakt()?->name)
+                    ->placeholder('keiner hinterlegt')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('vertrag_bis')
+                    ->label('Vertrag bis')
+                    ->date('d.m.Y')
+                    ->placeholder('unbefristet')
+                    // Was in den nächsten zwei Monaten ausläuft, soll beim
+                    // Überfliegen auffallen — danach zu fragen kommt niemand
+                    // von selbst.
+                    ->color(fn ($record) => $record->vertrag_bis?->isBefore(now()->addMonths(2)) ? 'warning' : null)
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('mitarbeiter_count')

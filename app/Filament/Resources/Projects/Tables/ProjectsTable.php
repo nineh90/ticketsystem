@@ -36,6 +36,27 @@ class ProjectsTable
                     ->badge()
                     ->sortable(),
 
+                TextColumn::make('phase')
+                    ->label('Stand (Kunde)')
+                    ->badge()
+                    ->sortable(),
+
+                // Woran man auf einen Blick sieht, wo noch eine Adresse
+                // fehlt — und wo es bewusst keine gibt. Ohne die Spalte
+                // müsste man elf Projekte einzeln aufmachen, um die eine zu
+                // finden, bei der der Kunde vor einer Seite ohne Knopf steht.
+                TextColumn::make('adressen')
+                    ->label('Vorschau / Live')
+                    ->state(fn ($record) => match (true) {
+                        filled($record->live_url) && filled($record->demo_url) => 'beide',
+                        filled($record->live_url) => 'nur live',
+                        filled($record->demo_url) => 'nur Vorschau',
+                        default => '—',
+                    })
+                    ->badge()
+                    ->color(fn (string $state) => $state === '—' ? 'gray' : 'success')
+                    ->tooltip(fn ($record) => $record->aktuelleAdresse() ?? 'Keine Adresse hinterlegt'),
+
                 TextColumn::make('offene_tickets')
                     ->label('Offen')
                     ->alignEnd()

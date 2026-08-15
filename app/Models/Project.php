@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProjektPhase;
 use App\Enums\ProjektStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -13,8 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'customer_id', 'name', 'slug', 'beschreibung',
-    'status', 'farbe', 'budget_stunden',
-    'demo_url', 'kunden_info', 'kunden_sichtbar',
+    'status', 'phase', 'farbe', 'budget_stunden',
+    'demo_url', 'live_url', 'kunden_info', 'kunden_sichtbar',
 ])]
 class Project extends Model
 {
@@ -22,6 +23,7 @@ class Project extends Model
 
     protected $attributes = [
         'status' => 'aktiv',
+        'phase' => 'umsetzung',
         'kunden_sichtbar' => true,
     ];
 
@@ -29,6 +31,7 @@ class Project extends Model
     {
         return [
             'status' => ProjektStatus::class,
+            'phase' => ProjektPhase::class,
             'budget_stunden' => 'decimal:2',
             'kunden_sichtbar' => 'boolean',
         ];
@@ -48,6 +51,100 @@ class Project extends Model
     public function mitarbeiter(): BelongsToMany
     {
         return $this->belongsToMany(User::class)->withTimestamps();
+    }
+
+    public function meilensteine(): HasMany
+    {
+        return $this->hasMany(Meilenstein::class);
+    }
+
+    /** Zugangsdaten, die zu genau diesem Projekt gehören. */
+    public function zugangsdaten(): HasMany
+    {
+        return $this->hasMany(Zugangsdaten::class);
+    }
+
+    /**
+     * Der Fortschritt in Prozent, gerechnet statt getippt.
+     *
+     * Nur über die kundensichtbaren Meilensteine: was der Kunde nicht sieht,
+     * darf seinen Balken nicht bewegen — sonst springt er von 40 auf 60,
+     * ohne dass sich für ihn sichtbar etwas getan hätte.
+     *
+     * Ohne Meilensteine gibt es null und keine 0. Der Unterschied ist der
+     * zwischen "noch nichts geschafft" und "wird hier nicht nachgehalten",
+     * und nur beim zweiten darf gar kein Balken erscheinen.
+     */
+    public function fortschritt(): ?int
+    {
+        $gesamt = $this->meilensteine()->kundenSichtbar()->count();
+
+        if ($gesamt === 0) {
+            return null;
+        }
+
+        $erledigt = $this->meilensteine()->kundenSichtbar()->erledigt()->count();
+
+        return (int) round($erledigt / $gesamt * 100);
+    }
+
+    /**
+     * Die Adresse, die für den Kunden gerade die richtige ist.
+     *
+     * Ab "live" die eigene Adresse, davor die Vorschau — und wenn die
+     * passende fehlt, die andere. Ein Kunde soll nicht vor einer Seite ohne
+     * Link stehen, nur weil das Projekt eine Phase weiter ist als die Pflege
+     * seiner Felder.
+     */
+    public function aktuelleAdresse(): ?string
+    {
+        return $this->phase->istVeroeffentlicht()
+            ? ($this->live_url ?: $this->demo_url)
+            : ($this->demo_url ?: $this->live_url);
+    }
+
+    /**
+     * Die Vorschau-Adresse, die sich für ein Projekt mit diesem Kürzel
+     * anbietet — der Wert hinter dem Knopf neben dem Feld "Vorschau".
+     *
+     * Ein Muster aus config/demo.php, für alle dasselbe, weil die Vorschauen
+     * auf unserem Server liegen. Bewusst kein gepflegtes Feld mehr: das gab
+     * es einen Abend lang am Kunden und wurde prompt für die Adresse selbst
+     * gehalten — was ein Feld namens "Demo-Adresse" auch verdient hat.
+     *
+     * Statisch, weil der Vorschlag schon beim Anlegen gebraucht wird, wenn
+     * es das Projekt noch gar nicht gibt.
+     */
+    public static function vorschauVorschlag(?string $slug): ?string
+    {
+        $muster = trim((string) config('demo.muster'));
+
+        if (blank($muster) || blank($slug)) {
+            return null;
+        }
+
+        $adresse = str_replace('{projekt}', $slug, $muster);
+
+        if (! preg_match('#^https?://#', $adresse)) {
+            $adresse = 'https://'.$adresse;
+        }
+
+        return rtrim($adresse, '/');
+    }
+
+    /**
+     * Führt der Knopf auf die echte Adresse oder auf eine Vorschau?
+     *
+     * Die Frage hängt an der Adresse, die aktuelleAdresse() tatsächlich
+     * liefert — nicht an der Phase. Der Unterschied wird bei einem Projekt
+     * sichtbar, das direkt auf der eigenen Domain des Kunden entsteht: dort
+     * gibt es gar keine Vorschau, die Phase steht auf "Umsetzung", und der
+     * Knopf zeigt trotzdem auf die richtige Seite. Nach der Phase gefragt,
+     * hieße er dann "Vorschau ansehen" und meinte die Live-Seite.
+     */
+    public function zeigtLiveAdresse(): bool
+    {
+        return filled($this->live_url) && $this->aktuelleAdresse() === $this->live_url;
     }
 
     /** Bisher auf dieses Projekt gebuchte Stunden. */

@@ -5,16 +5,18 @@ namespace App\Filament\Resources\Projects;
 use App\Filament\Resources\Projects\Pages\CreateProject;
 use App\Filament\Resources\Projects\Pages\EditProject;
 use App\Filament\Resources\Projects\Pages\ListProjects;
+use App\Filament\Resources\Projects\RelationManagers\MeilensteineRelationManager;
+use App\Filament\Resources\Projects\RelationManagers\TicketsRelationManager;
+use App\Filament\Resources\Projects\RelationManagers\ZugangsdatenRelationManager;
 use App\Filament\Resources\Projects\Schemas\ProjectForm;
 use App\Filament\Resources\Projects\Tables\ProjectsTable;
 use App\Models\Project;
-use App\Filament\Resources\Projects\RelationManagers\TicketsRelationManager;
 use BackedEnum;
 use Filament\Resources\Resource;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProjectResource extends Resource
 {
@@ -55,6 +57,11 @@ class ProjectResource extends Resource
     {
         return [
             TicketsRelationManager::class,
+            // Der Zeitstrahl, den der Kunde sieht, und die Zugänge zu diesem
+            // Projekt. Beide waren eine Zeit lang gebaut, aber hier nicht
+            // eingetragen — und damit über die Oberfläche unerreichbar.
+            MeilensteineRelationManager::class,
+            ZugangsdatenRelationManager::class,
         ];
     }
 

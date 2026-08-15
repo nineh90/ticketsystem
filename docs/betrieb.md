@@ -99,14 +99,97 @@ setzt das Formular selbst; ein Startpasswort wird vorgeschlagen (drei Wörter
 und eine Zahl, damit man es am Telefon vorlesen kann).
 
 Weiterzugeben sind drei Dinge: die E-Mail-Adresse, das Startpasswort und die
-Adresse <https://intern.nils-digital.de/kunde>. Der Kunde ändert das Passwort
-selbst unter *Profil*. Ob er sich schon angemeldet hat, steht in der Spalte
-*Zuletzt angemeldet* — „noch nie" heißt in aller Regel, dass die Weitergabe
-nicht angekommen ist.
+Adresse <https://intern.nils-digital.de/kunde>. Ob er sich schon angemeldet
+hat, steht in der Spalte *Zuletzt angemeldet* — „noch nie" heißt in aller
+Regel, dass die Weitergabe nicht angekommen ist.
 
 Vergessenes Passwort: Knopf *Passwort neu setzen* an der Zeile. Ausgeschiedene
 Ansprechpartner **deaktivieren statt löschen** — sonst verlieren ihre Meldungen
 und Antworten die Zuordnung.
+
+**Zugeteilte Passwörter müssen gewechselt werden.** Setzt jemand anderes als
+der Kontoinhaber ein Passwort, bekommt das Konto `passwort_wechseln = true`
+und landet beim nächsten Aufruf auf seinem Profil, bis es ein eigenes hat.
+Das gilt bei jedem zugeteilten Passwort, nicht nur beim ersten — auch das
+fünfte ist durch einen Chatverlauf gegangen. Die Regel steht in
+`User::booted()` und greift damit für jede Stelle, die Passwörter setzt; die
+Umleitung macht `PasswortWechseln` (in beiden Panels registriert). In der
+Spalte *Startpasswort* der Zugangsliste sieht man, wer noch eines nutzt.
+
+Wechselt der Kunde sein Passwort, muss er es zweimal eingeben und zusätzlich
+das alte bestätigen. Danach landet er auf seiner Übersicht, nicht wieder im
+Formular.
+
+### Die Kundenakte
+
+Am Kunden hängen inzwischen mehr als Name und Farbe:
+
+- **Betreuung** — Stand der Beziehung, Vertragsart, Laufzeit, Kündigungsfrist.
+  Rein intern, der Kunde sieht davon nichts.
+- **Technik** — Website, Hoster und die **Demo-Adresse**. Sie wird genommen,
+  wie sie dasteht: `kein-einzelfall.nils-digital.de` ergibt genau das, es
+  wird nichts davorgehängt. Hat ein Kunde mehrere Projekte mit je eigener
+  Adresse, schreibt man `{projekt}` an die Stelle, an der das Projektkürzel
+  stehen soll — `{projekt}.nils-digital.de` oder auch
+  `https://nils-digital.de/demo/{projekt}`. Im Projektformular setzt der
+  Knopf neben *Vorschau* das Ergebnis ein; eingesetzt, nicht automatisch
+  übernommen, denn eine Adresse, unter der nichts läuft, wäre dem Kunden
+  gegenüber ein toter Knopf.
+
+  Der erste Anlauf hat hier eine „Basis" erwartet und das Projektkürzel
+  davorgehängt — aus `kein-einzelfall.nils-digital.de` wurde damit
+  `kein-einzelfall.kein-einzelfall.nils-digital.de`. Eine Regel, die
+  stillschweigend etwas in eine Adresse einfügt, ist immer für die Hälfte
+  der Fälle falsch.
+- **Rechnungsdaten** — Anschrift, USt-IdNr., abweichende Rechnungsadresse.
+- **Kontakte** — die Menschen beim Kunden, unabhängig davon, ob sie einen
+  Zugang haben. Der Buchhalter braucht keinen, seine Mailadresse aber schon.
+  Ein Zugang kann auf einen Kontakt zeigen (Feld *Ist welcher Kontakt?*).
+- **Zugangsdaten** — der Tresor, siehe unten.
+
+Der Kunde pflegt Anschrift, Rechnungsadresse, USt-IdNr., Website und seine
+Telefonnummer unter *Mein Konto* selbst; wir bekommen darüber eine
+Benachrichtigung. Firmenname, Kürzel, Betreuung und Vertrag kann er nicht
+ändern — am Namen hängen die Ticketnummern.
+
+Die alten Spalten `customers.ansprechpartner/email/telefon` stehen weiterhin
+in der Datenbank und wurden beim Umstieg in die Kontakte **kopiert**, nicht
+verschoben. Sie sind nur aus dem Formular verschwunden.
+
+### Zugangsdaten-Tresor
+
+*Kunden → der Kunde → Zugangsdaten*, oder am Projekt derselbe Reiter für
+dessen eigene Zugänge. Passwörter liegen mit Laravels `encrypted`-Cast
+verschlüsselt, also über den `APP_KEY`. **Ein Wechsel des APP_KEY macht alle
+Einträge unlesbar** — das ist der Preis dafür, dass in den nächtlichen
+Datenbankabzügen keine Klartext-Passwörter stehen.
+
+Je Eintrag entscheidet ein Schalter *Der Kunde darf das sehen*. Vorgabe ist
+**aus**: ein vergessener Schalter führt dazu, dass der Kunde etwas nicht
+sieht, nie umgekehrt. Freigegebene Einträge stehen bei ihm unter
+*Zugangsdaten* (allgemeine) bzw. auf der Projektseite (projektbezogene), mit
+Kopierknopf und Aufdecken auf Klick.
+
+Zugänge zu einem Projekt, das auf *nicht kundensichtbar* steht, bleiben auch
+dann verborgen, wenn sie selbst freigegeben sind.
+
+### Projektphase und Meilensteine
+
+Am Projekt gibt es jetzt zwei Zustände nebeneinander:
+
+- **Status (intern)** — aktiv/pausiert/abgeschlossen, unsere Ablage.
+- **Phase** — Konzept → Umsetzung → Abnahme → Live → Betreuung. Das ist, was
+  der Kunde als „Stand" liest, samt einem erklärenden Satz darunter.
+
+Dazu **zwei Adressen**: `demo_url` (Vorschau) und `live_url` (die echte).
+Welche der Knopf beim Kunden öffnet, entscheidet die Phase — ab *Live* die
+eigene Adresse, davor die Vorschau; fehlt die passende, nimmt er die andere.
+
+**Meilensteine** (Reiter am Projekt) ergeben beim Kunden einen Zeitstrahl.
+Der Fortschritt in Prozent wird daraus gerechnet — erledigte durch alle
+kundensichtbaren —, nicht getippt. Ohne Meilensteine erscheint gar kein
+Balken. Abhaken geht über den Knopf *Abhaken* an der Zeile, die Reihenfolge
+per Ziehen.
 
 Was der Kunde sieht, hängt an zwei Schaltern:
 
@@ -139,6 +222,12 @@ unter „Sie sind am Zug". Voreingestellt ist das bei *Warten auf Kunde*.
 - **Kontaktdaten im Kundenbereich.** `config/kontakt.php` liest
   `KONTAKT_TELEFON` aus der `.env` — solange die Variable fehlt, steht auf der
   Kontaktseite keine Telefonnummer.
+- **Dokumente am Kunden.** Angebote, Rechnungen und Verträge sollen später
+  hochladbar sein. Das Muster steht schon: eine Tabelle `dokumente` mit
+  `customer_id`, optionalem `project_id` und einem Schalter `kunden_sichtbar`
+  je Datei — dieselbe Anlage wie beim Zugangsdaten-Tresor, ausgeliefert über
+  eine geschützte Route wie die Ticket-Anhänge (`AnhangController`), nicht
+  aus `public/`.
 - **Kein Queue-Worker.** `QUEUE_CONNECTION=database`, aber nichts arbeitet die
   Warteschlange ab. Benachrichtigungen umgehen sie deshalb bewusst (siehe
   README). Wer künftig etwas in die Warteschlange legt, muss entweder einen

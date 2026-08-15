@@ -5,8 +5,10 @@ namespace App\Filament\Resources\Customers;
 use App\Filament\Resources\Customers\Pages\CreateCustomer;
 use App\Filament\Resources\Customers\Pages\EditCustomer;
 use App\Filament\Resources\Customers\Pages\ListCustomers;
+use App\Filament\Resources\Customers\RelationManagers\KontakteRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\ProjectsRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\ZugaengeRelationManager;
+use App\Filament\Resources\Customers\RelationManagers\ZugangsdatenRelationManager;
 use App\Filament\Resources\Customers\Schemas\CustomerForm;
 use App\Filament\Resources\Customers\Tables\CustomersTable;
 use App\Models\Customer;
@@ -58,6 +60,11 @@ class CustomerResource extends Resource
     {
         return [
             ProjectsRelationManager::class,
+            // Reihenfolge nach Alltag: erst wer beteiligt ist, dann womit man
+            // reinkommt, zuletzt die Anmeldekonten — die legt man einmal an
+            // und sieht sie danach selten wieder.
+            KontakteRelationManager::class,
+            ZugangsdatenRelationManager::class,
             ZugaengeRelationManager::class,
         ];
     }

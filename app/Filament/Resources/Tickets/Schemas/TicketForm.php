@@ -84,7 +84,7 @@ class TicketForm
 
                         Select::make('assigned_to')
                             ->label('Zuständig')
-                            ->relationship('zustaendig', 'name', fn ($query) => $query->where('aktiv', true)->orderBy('name'))
+                            ->relationship('zustaendig', 'name', fn ($query) => $query->intern()->orderBy('name'))
                             ->searchable()
                             ->preload()
                             ->placeholder('Niemand'),

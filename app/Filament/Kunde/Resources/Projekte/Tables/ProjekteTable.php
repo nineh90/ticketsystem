@@ -22,7 +22,10 @@ class ProjekteTable
                         ? str($record->kunden_info)->squish()->limit(90)->toString()
                         : null),
 
-                TextColumn::make('status')
+                // Die Phase, nicht der interne Status: "pausiert" ist unsere
+                // Ablage und für den Kunden keine Auskunft darüber, wie weit
+                // seine Seite ist.
+                TextColumn::make('phase')
                     ->label('Stand')
                     ->badge(),
 
@@ -45,13 +48,17 @@ class ProjekteTable
             ])
             ->defaultSort('name')
             ->recordActions([
-                Action::make('demo')
-                    ->label('Live ansehen')
-                    ->icon('heroicon-o-arrow-top-right-on-square')
+                Action::make('ansehen')
+                    ->label(fn (Project $record) => $record->zeigtLiveAdresse()
+                        ? 'Seite ansehen'
+                        : 'Vorschau ansehen')
+                    ->icon(fn (Project $record) => $record->zeigtLiveAdresse()
+                        ? 'heroicon-o-globe-alt'
+                        : 'heroicon-o-eye')
                     ->color('primary')
-                    ->url(fn (Project $record) => $record->demo_url)
+                    ->url(fn (Project $record) => $record->aktuelleAdresse())
                     ->openUrlInNewTab()
-                    ->visible(fn (Project $record) => filled($record->demo_url)),
+                    ->visible(fn (Project $record) => filled($record->aktuelleAdresse())),
 
                 ViewAction::make()->label('Details'),
             ])

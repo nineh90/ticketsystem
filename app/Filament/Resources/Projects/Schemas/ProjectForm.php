@@ -2,8 +2,11 @@
 
 namespace App\Filament\Resources\Projects\Schemas;
 
+use App\Enums\ProjektPhase;
 use App\Enums\ProjektStatus;
 use App\Models\Customer;
+use App\Models\Project;
+use Filament\Actions\Action;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -15,6 +18,18 @@ use Illuminate\Support\Str;
 
 class ProjectForm
 {
+    /**
+     * Der Vorschlag für die Vorschau-Adresse, gebaut aus dem Muster in
+     * config/demo.php und dem Kürzel des Projekts.
+     *
+     * null, solange kein Kürzel dasteht oder kein Muster gesetzt ist — dann
+     * verschwindet der Knopf, statt eine halbe Adresse anzubieten.
+     */
+    protected static function demoVorschlag($get): ?string
+    {
+        return Project::vorschauVorschlag($get('slug'));
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -40,10 +55,11 @@ class ProjectForm
                             ),
 
                         Select::make('status')
-                            ->label('Status')
+                            ->label('Status (intern)')
                             ->options(ProjektStatus::class)
                             ->default(ProjektStatus::Aktiv->value)
-                            ->required(),
+                            ->required()
+                            ->helperText('Ob wir gerade daran arbeiten. Sieht nur das Team.'),
 
                         TextInput::make('name')
                             ->label('Name')
@@ -60,6 +76,7 @@ class ProjectForm
                             ->label('Kürzel für URLs')
                             ->required()
                             ->maxLength(255)
+                            ->live(onBlur: true)
                             // Nur innerhalb desselben Kunden eindeutig — zwei
                             // Kunden dürfen beide ein Projekt "website" haben.
                             ->unique(
@@ -92,20 +109,68 @@ class ProjectForm
                             ->helperText('Aus: das Projekt verschwindet aus seinem Bereich — samt aller Anliegen dazu, auch der selbst gemeldeten. Für Angebote, die noch nicht besprochen sind.')
                             ->columnSpanFull(),
 
+                        // Die Phase ist das Feld, das der Kunde am häufigsten
+                        // ansieht — deshalb steht es hier oben und nicht
+                        // neben dem internen Status. Sie zu pflegen ist die
+                        // kleinste Möglichkeit, eine Nachfrage zu ersparen.
+                        Select::make('phase')
+                            ->label('Stand für den Kunden')
+                            ->options(ProjektPhase::class)
+                            ->default(ProjektPhase::Umsetzung->value)
+                            ->required()
+                            ->live()
+                            // $state ist beim Anlegen ein String, beim
+                            // Bearbeiten aber schon das Enum — das Model
+                            // castet die Spalte. ProjektPhase::from() warf
+                            // im zweiten Fall einen TypeError und legte die
+                            // ganze Bearbeiten-Seite lahm.
+                            ->helperText(function ($state): ?string {
+                                $phase = $state instanceof ProjektPhase
+                                    ? $state
+                                    : ProjektPhase::tryFrom((string) $state);
+
+                                return $phase === null
+                                    ? null
+                                    : 'Der Kunde liest: „'.$phase->getDescription().'"';
+                            })
+                            ->columnSpanFull(),
+
                         TextInput::make('demo_url')
-                            ->label('Live-Fassung')
+                            ->label('Vorschau')
+                            ->url()
+                            ->maxLength(255)
+                            ->prefixIcon('heroicon-o-eye')
+                            ->placeholder(fn ($get) => static::demoVorschlag($get) ?? 'https://…')
+                            ->helperText(fn ($get) => static::demoVorschlag($get) === null
+                                ? 'Wo der Zwischenstand liegt. Leer lassen, wenn es keine Vorschau gibt.'
+                                : 'Wo der Zwischenstand liegt — genau diese Adresse sieht der Kunde. Der Knopf rechts schlägt unsere Standardadresse vor. Leer lassen, wenn es keine Vorschau gibt.')
+                            // Der Vorschlag wird eingesetzt, nicht automatisch
+                            // übernommen. Eine still gefüllte Adresse, unter
+                            // der nichts läuft, stünde dem Kunden als Knopf
+                            // "Vorschau ansehen" gegenüber — und der führt
+                            // dann ins Leere.
+                            ->suffixAction(
+                                Action::make('ausDemoDomain')
+                                    ->label('Vorschlagen')
+                                    ->icon('heroicon-m-sparkles')
+                                    ->tooltip('Adresse aus unserem Demo-Muster einsetzen')
+                                    ->visible(fn ($get) => static::demoVorschlag($get) !== null)
+                                    ->action(fn ($set, $get) => $set('demo_url', static::demoVorschlag($get))),
+                            ),
+
+                        TextInput::make('live_url')
+                            ->label('Live-Adresse')
                             ->url()
                             ->maxLength(255)
                             ->prefixIcon('heroicon-o-globe-alt')
                             ->placeholder('https://…')
-                            ->helperText('Wo der aktuelle Stand läuft. Steht im Kundenbereich als Knopf "Live ansehen".')
-                            ->columnSpanFull(),
+                            ->helperText('Die echte Adresse, sobald es sie gibt. Ab Phase „Live" der Hauptknopf.'),
 
                         Textarea::make('kunden_info')
-                            ->label('Stand für den Kunden')
+                            ->label('Woran wir gerade arbeiten')
                             ->rows(4)
                             ->maxLength(2000)
-                            ->helperText('Ein, zwei Sätze, woran gerade gearbeitet wird. Getrennt von der Beschreibung oben — die ist intern.')
+                            ->helperText('Ein, zwei Sätze im Klartext. Getrennt von der Beschreibung oben — die ist intern.')
                             ->columnSpanFull(),
                     ])
                     ->collapsed(),
@@ -118,7 +183,7 @@ class ProjectForm
                             ->relationship(
                                 'mitarbeiter',
                                 'name',
-                                fn ($query) => $query->where('aktiv', true)->orderBy('name'),
+                                fn ($query) => $query->intern()->orderBy('name'),
                             )
                             ->multiple()
                             ->searchable()

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Betreuung;
 use App\Enums\Rolle;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -13,6 +14,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'name', 'slug', 'kuerzel', 'farbe', 'ansprechpartner',
     'email', 'telefon', 'notizen', 'aktiv',
+    // Stammdaten der Kundenakte.
+    'strasse', 'plz', 'ort', 'land', 'ust_id', 'rechnung_email',
+    'kunde_seit', 'betreuung', 'website', 'hoster',
+    'vertragsart', 'vertrag_bis', 'kuendigungsfrist_tage',
 ])]
 class Customer extends Model
 {
@@ -22,12 +27,17 @@ class Customer extends Model
         'aktiv' => true,
         'farbe' => '#00bcd4',
         'ticket_zaehler' => 0,
+        'land' => 'DE',
+        'betreuung' => 'aktiv',
     ];
 
     protected function casts(): array
     {
         return [
             'aktiv' => 'boolean',
+            'betreuung' => Betreuung::class,
+            'kunde_seit' => 'date',
+            'vertrag_bis' => 'date',
         ];
     }
 
@@ -78,6 +88,47 @@ class Customer extends Model
     public function zugaenge(): HasMany
     {
         return $this->hasMany(User::class)->where('rolle', Rolle::Kunde->value);
+    }
+
+    /**
+     * Die Ansprechpartner beim Kunden.
+     *
+     * Nicht zu verwechseln mit zugaenge(): das sind Anmeldekonten, das hier
+     * sind Menschen. Die meisten haben kein Konto und brauchen auch keins.
+     */
+    public function kontakte(): HasMany
+    {
+        return $this->hasMany(Kontakt::class);
+    }
+
+    /** Der Kontakt, der gemeint ist, wenn nur einer gemeint sein kann. */
+    public function hauptkontakt(): ?Kontakt
+    {
+        return $this->kontakte()->aktiv()->inReihenfolge()->first();
+    }
+
+    /**
+     * Der Zugangsdaten-Tresor dieses Kunden — auch die Einträge, die an
+     * einem seiner Projekte hängen.
+     *
+     * Ungefiltert. Wer sie ausgibt, muss sichtbarFuer davorsetzen; im
+     * Kundenbereich passiert das an genau einer Stelle (MeinKonto bzw.
+     * ViewProjekt), und beide gehen über den Scope.
+     */
+    public function zugangsdaten(): HasMany
+    {
+        return $this->hasMany(Zugangsdaten::class);
+    }
+
+    /** Die Anschrift in einer Zeile, oder null wenn keine hinterlegt ist. */
+    public function anschrift(): ?string
+    {
+        $zeilen = array_filter([
+            $this->strasse,
+            trim($this->plz.' '.$this->ort),
+        ]);
+
+        return $zeilen === [] ? null : implode(', ', $zeilen);
     }
 
     public function scopeAktiv(Builder $query): Builder

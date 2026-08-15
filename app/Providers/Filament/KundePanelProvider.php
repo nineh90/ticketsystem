@@ -4,9 +4,11 @@ namespace App\Providers\Filament;
 
 use App\Filament\Auth\Anmeldung;
 use App\Filament\AvatarProviders\InitialenAvatar;
+use App\Filament\Kunde\Pages\Profil;
 use App\Filament\Kunde\Pages\Uebersicht;
 use App\Filament\Kunde\Widgets\MeineProjekte;
 use App\Filament\Kunde\Widgets\StandDerDinge;
+use App\Http\Middleware\PasswortWechseln;
 use App\Http\Middleware\SicherheitsHeader;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
@@ -60,10 +62,14 @@ class KundePanelProvider extends PanelProvider
             // Dieselbe Anmeldeseite wie innen — sie weist einen internen
             // Zugang hier ebenso freundlich zurück wie umgekehrt.
             ->login(Anmeldung::class)
-            // Jeder Kunde ändert sein Startpasswort selbst. Das ist der Grund,
-            // warum ein Admin überhaupt eines vergeben darf: es ist von Anfang
-            // an als vorläufig gedacht.
-            ->profile(isSimple: false)
+            // Eigene Profilseite: sie heißt "Mein Konto", lässt den Kunden die
+            // Daten seines Unternehmens pflegen und zeigt beim erzwungenen
+            // Wechsel nur das Passwortfeld. Begründung in der Klasse.
+            //
+            // Dass jeder Kunde sein Startpasswort selbst ändert, ist überhaupt
+            // der Grund, warum ein Admin eines vergeben darf: es ist von
+            // Anfang an als vorläufig gedacht — siehe PasswortWechseln.
+            ->profile(Profil::class, isSimple: false)
             // ->passwordReset() bleibt aus, solange MAIL_MAILER auf "log"
             // steht — genau wie im internen Panel. Vergisst ein Kunde sein
             // Passwort, setzt es ein Admin unter Kunden → Zugänge neu.
@@ -85,7 +91,8 @@ class KundePanelProvider extends PanelProvider
             // eine Antwort auf sein Anliegen, ein Statuswechsel. Ohne sie
             // müsste er von sich aus nachsehen, ob sich etwas getan hat.
             ->databaseNotifications()
-            ->databaseNotificationsPolling('60s')
+            // Derselbe Takt wie innen, aus config/benachrichtigungen.php.
+            ->databaseNotificationsPolling(config('benachrichtigungen.glocke_takt'))
             ->discoverResources(in: app_path('Filament/Kunde/Resources'), for: 'App\Filament\Kunde\Resources')
             ->discoverPages(in: app_path('Filament/Kunde/Pages'), for: 'App\Filament\Kunde\Pages')
             ->pages([
@@ -117,6 +124,9 @@ class KundePanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                // Nach der Anmeldung, nicht davor: erst muss feststehen, wer
+                // da ist, bevor man ihn zu seinem Profil schicken kann.
+                PasswortWechseln::class,
             ]);
     }
 }

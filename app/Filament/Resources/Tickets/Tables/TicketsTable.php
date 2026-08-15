@@ -122,7 +122,7 @@ class TicketsTable
 
                 SelectFilter::make('assigned_to')
                     ->label('Zuständig')
-                    ->relationship('zustaendig', 'name')
+                    ->relationship('zustaendig', 'name', fn ($query) => $query->intern()->orderBy('name'))
                     ->searchable()
                     ->preload(),
 

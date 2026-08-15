@@ -4,11 +4,14 @@ namespace App\Filament\Kunde\Resources\Projekte\Pages;
 
 use App\Filament\Kunde\Resources\Anliegen\AnliegenResource;
 use App\Filament\Kunde\Resources\Projekte\ProjektResource;
+use App\Models\Zugangsdaten;
 use Filament\Actions\Action;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Collection;
 
 class ViewProjekt extends ViewRecord
 {
@@ -19,19 +22,29 @@ class ViewProjekt extends ViewRecord
         return $this->record->name;
     }
 
+    public function getSubheading(): ?string
+    {
+        return $this->record->phase->getDescription();
+    }
+
     protected function getHeaderActions(): array
     {
+        $adresse = $this->record->aktuelleAdresse();
+        $istLive = $this->record->zeigtLiveAdresse();
+
         return [
-            // Der Knopf, um den es dem Kunden meistens geht: die laufende
-            // Fassung ansehen. Er steht oben rechts und nicht irgendwo im
-            // Fließtext — und nur, wenn tatsächlich eine Adresse hinterlegt
-            // ist, statt als toter Knopf.
-            Action::make('demo')
-                ->label('Live ansehen')
-                ->icon('heroicon-o-arrow-top-right-on-square')
-                ->url(fn () => $this->record->demo_url)
+            // Der Knopf, um den es dem Kunden meistens geht. Welche der
+            // beiden Adressen dahinterliegt, entscheidet die Phase: vor der
+            // Veröffentlichung die Vorschau, danach die eigene Adresse.
+            // Beschriftung und Symbol richten sich nach der Adresse, die
+            // dabei herauskommt — sonst steht "Vorschau ansehen" auf einem
+            // Knopf, der auf die fertige Seite führt.
+            Action::make('ansehen')
+                ->label($istLive ? 'Seite ansehen' : 'Vorschau ansehen')
+                ->icon($istLive ? 'heroicon-o-globe-alt' : 'heroicon-o-eye')
+                ->url($adresse)
                 ->openUrlInNewTab()
-                ->visible(fn () => filled($this->record->demo_url)),
+                ->visible(filled($adresse)),
 
             Action::make('melden')
                 ->label('Etwas melden')
@@ -51,7 +64,7 @@ class ViewProjekt extends ViewRecord
             Section::make()
                 ->columns(4)
                 ->schema([
-                    TextEntry::make('status')
+                    TextEntry::make('phase')
                         ->label('Stand')
                         ->badge(),
 
@@ -76,7 +89,7 @@ class ViewProjekt extends ViewRecord
                     // löst aber verlässlich eine aus.
                 ]),
 
-            Section::make('Zum Stand')
+            Section::make('Woran wir gerade arbeiten')
                 ->schema([
                     TextEntry::make('kunden_info')
                         ->hiddenLabel()
@@ -84,17 +97,70 @@ class ViewProjekt extends ViewRecord
                 ])
                 ->visible(fn () => filled($this->record->kunden_info)),
 
-            Section::make('Live-Fassung')
-                ->description('Hier läuft der aktuelle Stand. Was Sie dort sehen, ist der Stand von jetzt — nicht der letzte Abgabestand.')
+            Section::make('Der Weg dorthin')
+                ->description('Die Schritte bis zur fertigen Fassung.')
                 ->schema([
-                    TextEntry::make('demo_url')
-                        ->hiddenLabel()
-                        ->url(fn () => $this->record->demo_url)
+                    View::make('filament.kunde.meilensteine')
+                        ->viewData(fn () => [
+                            'meilensteine' => $this->record->meilensteine()
+                                ->kundenSichtbar()
+                                ->inReihenfolge()
+                                ->get(),
+                            'anteil' => $this->record->fortschritt(),
+                        ]),
+                ])
+                ->visible(fn () => $this->record->meilensteine()->kundenSichtbar()->exists()),
+
+            Section::make('Ihre Zugangsdaten')
+                ->description('Damit kommen Sie selbst hinein. Das Passwort wird erst auf Klick sichtbar.')
+                ->icon('heroicon-o-key')
+                ->schema([
+                    View::make('filament.kunde.zugangsdaten')
+                        ->viewData(fn () => [
+                            'eintraege' => $this->zugangsdaten(),
+                        ]),
+                ])
+                ->visible(fn () => $this->zugangsdaten()->isNotEmpty()),
+
+            Section::make('Adressen')
+                ->columns(2)
+                ->schema([
+                    TextEntry::make('live_url')
+                        ->label('Ihre Seite')
+                        ->url(fn () => $this->record->live_url)
                         ->openUrlInNewTab()
                         ->icon('heroicon-o-globe-alt')
-                        ->color('primary'),
+                        ->color('primary')
+                        ->visible(fn () => filled($this->record->live_url)),
+
+                    TextEntry::make('demo_url')
+                        ->label('Vorschau')
+                        ->helperText('Hier läuft der aktuelle Zwischenstand — nicht der letzte Abgabestand.')
+                        ->url(fn () => $this->record->demo_url)
+                        ->openUrlInNewTab()
+                        ->icon('heroicon-o-eye')
+                        ->color('primary')
+                        ->visible(fn () => filled($this->record->demo_url)),
                 ])
-                ->visible(fn () => filled($this->record->demo_url)),
+                ->visible(fn () => filled($this->record->live_url) || filled($this->record->demo_url)),
         ]);
+    }
+
+    /**
+     * Die Zugangsdaten zu diesem Projekt.
+     *
+     * Über sichtbarFuer, obwohl hier ohnehin nur das eigene Projekt in Frage
+     * kommt: der Scope ist die einzige Stelle, an der "kunden_sichtbar"
+     * geprüft wird, und ohne ihn stünden hier auch unsere Serverzugänge.
+     *
+     * @return Collection<int, Zugangsdaten>
+     */
+    protected function zugangsdaten()
+    {
+        return Zugangsdaten::query()
+            ->sichtbarFuer(auth()->user())
+            ->where('project_id', $this->record->getKey())
+            ->inReihenfolge()
+            ->get();
     }
 }

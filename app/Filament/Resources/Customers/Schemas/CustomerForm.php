@@ -2,15 +2,26 @@
 
 namespace App\Filament\Resources\Customers\Schemas;
 
+use App\Enums\Betreuung;
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
 
+/**
+ * Die Kundenakte.
+ *
+ * Die früheren Einzelfelder ansprechpartner/email/telefon stehen hier
+ * bewusst nicht mehr: Ansprechpartner sind jetzt eigene Datensätze im Reiter
+ * "Kontakte", weil es fast nie bei einem bleibt. Die alten Spalten sind
+ * weiterhin in der Datenbank und unverändert — sie wurden beim Umstieg in
+ * die Kontakte kopiert, nicht verschoben. Wer sie braucht, findet sie dort.
+ */
 class CustomerForm
 {
     public static function configure(Schema $schema): Schema
@@ -62,51 +73,122 @@ class CustomerForm
                             ->helperText('Für die farbige Markierung in Listen.'),
                     ]),
 
-                Section::make('Kontakt')
+                Section::make('Betreuung')
+                    ->description('Wo dieser Kunde in der Beziehung steht — und was mit uns vereinbart ist.')
+                    ->columns(3)
+                    ->schema([
+                        Select::make('betreuung')
+                            ->label('Stand')
+                            ->options(Betreuung::class)
+                            ->default(Betreuung::Aktiv->value)
+                            ->required()
+                            ->helperText('Rein intern. Der Kunde sieht das nirgends.'),
+
+                        DatePicker::make('kunde_seit')
+                            ->label('Kunde seit')
+                            ->native(false)
+                            ->displayFormat('d.m.Y')
+                            ->maxDate(now()),
+
+                        TextInput::make('vertragsart')
+                            ->label('Vertrag')
+                            ->maxLength(255)
+                            ->datalist(['Einmaliges Projekt', 'Wartung', 'Betreuungspaket', 'Auf Zuruf'])
+                            ->helperText('Freitext — die Liste ist nur ein Vorschlag.'),
+
+                        DatePicker::make('vertrag_bis')
+                            ->label('Läuft bis')
+                            ->native(false)
+                            ->displayFormat('d.m.Y')
+                            ->helperText('Leer = unbefristet.'),
+
+                        TextInput::make('kuendigungsfrist_tage')
+                            ->label('Kündigungsfrist (Tage)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(999)
+                            ->suffix('Tage'),
+
+                        Toggle::make('aktiv')
+                            ->label('In Auswahllisten anbieten')
+                            ->default(true)
+                            ->helperText('Aus: der Kunde verschwindet aus Auswahllisten, seine Tickets und Zeiten bleiben.'),
+                    ]),
+
+                Section::make('Technik')
+                    ->description('Wo das läuft. Die Adressen der einzelnen Projekte stehen am Projekt.')
                     ->columns(2)
                     ->collapsed()
                     ->schema([
-                        TextInput::make('ansprechpartner')
-                            ->label('Ansprechpartner')
-                            ->maxLength(255),
+                        TextInput::make('website')
+                            ->label('Website')
+                            ->url()
+                            ->maxLength(255)
+                            ->prefixIcon('heroicon-o-globe-alt')
+                            ->placeholder('https://…'),
 
-                        TextInput::make('email')
-                            ->label('E-Mail')
-                            ->email()
-                            ->maxLength(255),
-
-                        TextInput::make('telefon')
-                            ->label('Telefon')
-                            ->tel()
-                            ->maxLength(255),
+                        TextInput::make('hoster')
+                            ->label('Hoster')
+                            ->maxLength(255)
+                            ->datalist(['Strato', 'Hetzner', 'IONOS', 'All-Inkl', 'Eigener VPS'])
+                            ->helperText('Bei wem man anruft, wenn der Server nicht antwortet.'),
 
                         Textarea::make('notizen')
-                            ->label('Notizen')
+                            ->label('Interne Notizen')
                             ->rows(4)
+                            ->columnSpanFull()
+                            ->helperText('Sieht nur das Team. Zugangsdaten gehören in den Reiter "Zugangsdaten", nicht hierhin — dort sind sie verschlüsselt.'),
+                    ]),
+
+                Section::make('Rechnungsdaten')
+                    ->columns(2)
+                    ->collapsed()
+                    ->schema([
+                        TextInput::make('rechnung_email')
+                            ->label('Rechnung an')
+                            ->email()
+                            ->maxLength(255)
+                            ->helperText('Geht oft an die Buchhaltung und nicht an den Ansprechpartner.'),
+
+                        TextInput::make('ust_id')
+                            ->label('USt-IdNr.')
+                            ->maxLength(20)
+                            ->placeholder('DE123456789'),
+
+                        TextInput::make('strasse')
+                            ->label('Straße und Hausnummer')
+                            ->maxLength(255)
                             ->columnSpanFull(),
+
+                        TextInput::make('plz')
+                            ->label('PLZ')
+                            ->maxLength(10),
+
+                        TextInput::make('ort')
+                            ->label('Ort')
+                            ->maxLength(255),
+
+                        TextInput::make('land')
+                            ->label('Land')
+                            ->maxLength(2)
+                            ->default('DE')
+                            ->helperText('Zwei Buchstaben: DE, AT, CH.'),
                     ]),
 
                 Section::make('Zuständige Mitarbeiter')
                     ->description('Wer hier steht, sieht alle Projekte und Tickets dieses Kunden — auch künftige. Administratoren müssen nicht eingetragen werden.')
+                    ->collapsed()
                     ->schema([
                         Select::make('mitarbeiter')
                             ->label('Mitarbeiter')
                             ->relationship(
                                 'mitarbeiter',
                                 'name',
-                                fn ($query) => $query->where('aktiv', true)->orderBy('name'),
+                                fn ($query) => $query->intern()->orderBy('name'),
                             )
                             ->multiple()
                             ->searchable()
                             ->preload(),
-                    ]),
-
-                Section::make('Status')
-                    ->schema([
-                        Toggle::make('aktiv')
-                            ->label('Aktiv')
-                            ->default(true)
-                            ->helperText('Inaktive Kunden verschwinden aus Auswahllisten, ihre Tickets und Zeiten bleiben erhalten.'),
                     ]),
             ]);
     }

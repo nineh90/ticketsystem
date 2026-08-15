@@ -8,6 +8,7 @@ use App\Support\Startpasswort;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -84,7 +85,28 @@ class ZugaengeRelationManager extends RelationManager
                 // Ein brauchbarer Vorschlag steht schon drin. Sonst wird es
                 // erfahrungsgemäß "kunde2026" — und das für jeden Kunden.
                 ->default(fn (string $operation) => $operation === 'create' ? Startpasswort::erzeugen() : null)
-                ->helperText('Notieren und weitergeben, bevor Sie speichern — danach ist es nicht mehr lesbar. Der Kunde ändert es selbst unter "Profil".'),
+                ->helperText('Notieren und weitergeben, bevor Sie speichern — danach ist es nicht mehr lesbar. Der Kunde wird beim nächsten Anmelden aufgefordert, ein eigenes zu vergeben.'),
+
+            // Verknüpfung zur Person im Reiter "Kontakte". Optional: ein
+            // Zugang funktioniert auch ohne. Wo sie gesetzt ist, steht die
+            // Person einmal im System statt zweimal — mit zwei Telefonnummern,
+            // von denen eine veraltet.
+            Select::make('kontakt_id')
+                ->label('Ist welcher Kontakt?')
+                ->options(fn () => $this->getOwnerRecord()->kontakte()->aktiv()->inReihenfolge()->pluck('name', 'id'))
+                ->searchable()
+                ->placeholder('Nicht zugeordnet')
+                ->helperText('Nur Kontakte dieses Kunden. Anlegen im Reiter "Kontakte".'),
+
+            // Beim ersten Zugang eines Kunden voreingestellt an: dort gibt es
+            // niemanden, dem man etwas wegnähme, und irgendwer muss die
+            // Anschrift pflegen können. Ab dem zweiten aus — der Vorstand
+            // bestimmt über die Rechnungsanschrift, nicht die Person, die
+            // die Website betreut.
+            Toggle::make('stammdaten_pflegen')
+                ->label('Darf Firmendaten pflegen')
+                ->default(fn () => $this->getOwnerRecord()->zugaenge()->doesntExist())
+                ->helperText('Anschrift, Rechnungsadresse, USt-IdNr. Sehen können alle Zugänge diese Angaben, ändern nur die mit diesem Haken. Jede Änderung meldet uns das System.'),
 
             Toggle::make('panel_zugang')
                 ->label('Zugang freigegeben')
@@ -130,6 +152,21 @@ class ZugaengeRelationManager extends RelationManager
                 IconColumn::make('aktiv')
                     ->label('Aktiv')
                     ->boolean(),
+
+                // Zeigt, dass gerade ein von uns vergebenes Passwort in
+                // Gebrauch ist. Verschwindet von selbst, sobald der Kunde
+                // sein eigenes gesetzt hat — insofern auch die Antwort auf
+                // "ist das Startpasswort angekommen?".
+                IconColumn::make('passwort_wechseln')
+                    ->label('Startpasswort')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-exclamation-circle')
+                    ->falseIcon('heroicon-o-check-circle')
+                    ->trueColor('warning')
+                    ->falseColor('gray')
+                    ->tooltip(fn (User $record) => $record->passwort_wechseln
+                        ? 'Nutzt noch das zugeteilte Passwort und wird beim Anmelden zum Wechsel geführt'
+                        : 'Hat ein eigenes Passwort'),
 
                 TextColumn::make('letzte_anmeldung_at')
                     ->label('Zuletzt angemeldet')
@@ -192,7 +229,8 @@ class ZugaengeRelationManager extends RelationManager
 
                         Notification::make()
                             ->title('Passwort gesetzt')
-                            ->body('Geben Sie es '.$record->name.' weiter.')
+                            ->body('Geben Sie es '.$record->name.' weiter. Beim nächsten Anmelden wird '
+                                .str($record->name)->before(' ').' aufgefordert, ein eigenes zu vergeben.')
                             ->success()
                             ->send();
                     }),

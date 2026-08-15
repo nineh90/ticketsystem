@@ -60,7 +60,16 @@ Alles andere existiert dort nicht — die Umkehrung zum internen Panel, wo jede
 Ressource einzeln wissen müsste, dass gerade ein Kunde zusieht.
 
 Kundenzugang anlegen: *Kunden → der Kunde → Zugänge*. Rolle und Zuordnung
-werden dabei gesetzt, ein Startpasswort wird vorgeschlagen.
+werden dabei gesetzt, ein Startpasswort wird vorgeschlagen. Wer ein Passwort
+zugeteilt bekommt, muss es beim nächsten Anmelden wechseln — die Regel steht
+in `User::booted()`, die Umleitung macht `PasswortWechseln`.
+
+Der Kunde ist die **Akte**: Stammdaten, Vertrag, Hoster und Demo-Adresse,
+mehrere Ansprechpartner (`kontakte`), ein verschlüsselter Zugangsdaten-Tresor
+(`zugangsdaten`) und je Projekt Phase, zwei Adressen und Meilensteine. Was
+davon beim Kunden ankommt, entscheiden Schalter je Datensatz — Vorgabe beim
+Tresor ist *nicht sichtbar*. Ausführlich in
+[`docs/betrieb.md`](docs/betrieb.md#die-kundenakte).
 
 ## Zugang
 

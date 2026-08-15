@@ -10,6 +10,7 @@ use App\Filament\Widgets\MeinUeberblick;
 use App\Filament\Widgets\TeamUeberblick;
 use App\Filament\Widgets\TicketsVerteilung;
 use App\Filament\Widgets\VonKunden;
+use App\Http\Middleware\PasswortWechseln;
 use App\Http\Middleware\SicherheitsHeader;
 use Filament\Actions\Action;
 use Filament\Enums\ThemeMode;
@@ -59,7 +60,9 @@ class AdminPanelProvider extends PanelProvider
             // Ein Kundenanliegen entsteht dagegen, während niemand hinschaut,
             // und darf nicht erst beim nächsten Blick in die Liste auffallen.
             ->databaseNotifications()
-            ->databaseNotificationsPolling('60s')
+            // Takt aus config/benachrichtigungen.php — beide Panels teilen
+            // ihn, damit sie nicht auseinanderlaufen.
+            ->databaseNotificationsPolling(config('benachrichtigungen.glocke_takt'))
             // Logo UND Schriftzug: Filament zeigt sonst nur eines von beiden.
             ->brandLogo(fn () => view('filament.marke'))
             // Bewusst ein wurzelrelativer Pfad statt asset(): Provider
@@ -133,6 +136,11 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                // Gilt auch hier: ein Mitarbeiter, dem ein Administrator ein
+                // Passwort gesetzt hat, wechselt es beim ersten Anmelden.
+                // Dieselbe Begründung wie im Kundenpanel — nur der Weg, auf
+                // dem das Passwort ankommt, ist derselbe.
+                PasswortWechseln::class,
             ]);
     }
 }

@@ -8,6 +8,7 @@ use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'rolle', 'panel_zugang', 'aktiv', 'customer_id'])]
+#[Fillable(['name', 'email', 'password', 'rolle', 'panel_zugang', 'aktiv', 'customer_id', 'kontakt_id', 'stammdaten_pflegen'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -45,9 +46,45 @@ class User extends Authenticatable implements FilamentUser
             'rolle' => Rolle::class,
             'panel_zugang' => 'boolean',
             'aktiv' => 'boolean',
+            'passwort_wechseln' => 'boolean',
+            'stammdaten_pflegen' => 'boolean',
             'dashboard_gesehen_at' => 'datetime',
             'letzte_anmeldung_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Wer ein Passwort geschenkt bekommt, muss es wechseln.
+     *
+     * Die Regel steht hier und nicht in den drei Formularen, die Passwörter
+     * setzen. Das ist der Punkt: es gibt heute drei Stellen (Zugang anlegen,
+     * Zugang bearbeiten, "Passwort neu setzen") und morgen eine vierte, und
+     * die vierte ist die, die es vergisst. Am Model kommt keine daran vorbei.
+     *
+     * Die Unterscheidung ist "wer tippt": ändert jemand sein eigenes
+     * Passwort, ist das Kennzeichen erledigt. Ändert es ein anderer, gilt es
+     * wieder — auch beim fünften Mal, denn auch das fünfte Startpasswort ist
+     * durch einen Chatverlauf gegangen.
+     *
+     * Ohne angemeldeten Nutzer passiert nichts: Seeder, Factories, Konsole
+     * und Tests setzen Passwörter, ohne dass ein Mensch etwas geschenkt
+     * bekommen hätte.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (User $nutzer) {
+            if (! $nutzer->isDirty('password')) {
+                return;
+            }
+
+            $handelnder = auth()->id();
+
+            if ($handelnder === null) {
+                return;
+            }
+
+            $nutzer->passwort_wechseln = $handelnder !== $nutzer->getKey();
+        });
     }
 
     /**
@@ -93,6 +130,30 @@ class User extends Authenticatable implements FilamentUser
         return $this->rolle === Rolle::Kunde;
     }
 
+    /**
+     * Unser Team: alle, die kein Kundenzugang sind.
+     *
+     * Für jede Auswahlliste, in der jemand aus dem Haus gemeint ist —
+     * Zuständigkeit eines Tickets, Team eines Projekts, Betreuer eines
+     * Kunden. Ohne diesen Scope standen dort auch die Kundenzugänge, und
+     * zwar mit dem Namen der Kundin: man konnte ein Ticket an die Person
+     * zuweisen, die es gemeldet hat.
+     *
+     * Als Scope und nicht fünfmal als "where" abgeschrieben. Genau das war
+     * der Fehler: fünf Auswahllisten, fünfmal nur nach "aktiv" gefiltert,
+     * und keiner der fünf Stellen sieht man an, dass sie eine sechste
+     * Bedingung braucht.
+     *
+     * Inaktive sind ausgenommen. Wer ausgeschieden ist, soll nichts Neues
+     * mehr bekommen — seine bestehenden Zuordnungen bleiben bestehen.
+     */
+    public function scopeIntern(Builder $query): Builder
+    {
+        return $query
+            ->where('aktiv', true)
+            ->where('rolle', '!=', Rolle::Kunde->value);
+    }
+
     /** Projekte, die dieser Nutzer sehen darf. Für Admins ohne Bedeutung. */
     public function projects(): BelongsToMany
     {
@@ -106,6 +167,15 @@ class User extends Authenticatable implements FilamentUser
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /**
+     * Die Person hinter diesem Kundenzugang, sofern sie als Ansprechpartner
+     * hinterlegt ist. Optional — ein Zugang funktioniert auch ohne.
+     */
+    public function kontakt(): BelongsTo
+    {
+        return $this->belongsTo(Kontakt::class);
     }
 
     /**

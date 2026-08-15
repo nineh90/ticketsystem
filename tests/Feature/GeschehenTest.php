@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Quelle;
 use App\Enums\Rolle;
 use App\Filament\Widgets\Geschehen;
 use App\Filament\Widgets\TeamUeberblick;
 use App\Models\Attachment;
 use App\Models\Comment;
+use App\Models\Customer;
 use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\TicketStatus;
@@ -86,6 +88,66 @@ class GeschehenTest extends TestCase
         $this->assertContains(Ereignis::KOMMENTAR, $typen);
         $this->assertContains(Ereignis::ZEIT, $typen);
         $this->assertContains(Ereignis::ANHANG, $typen);
+    }
+
+    /**
+     * Was ein Kunde tut, steht auch im Geschehen.
+     *
+     * Der Test ist entstanden, weil im Betrieb keine einzige Kundenaktion im
+     * Strom stand — und man ihm nicht ansehen konnte, ob die Leitung fehlt
+     * oder schlicht noch niemand etwas gemeldet hat. Es war das Zweite.
+     * Damit die Frage nicht wiederkommt, steht die Antwort hier.
+     */
+    public function test_strom_zeigt_auch_was_ein_kunde_tut(): void
+    {
+        $admin = $this->admin();
+
+        $customer = Customer::factory()->create();
+        $projekt = Project::factory()->create(['customer_id' => $customer->id]);
+
+        $kunde = User::factory()->create([
+            'rolle' => Rolle::Kunde,
+            'panel_zugang' => true,
+            'customer_id' => $customer->id,
+            'name' => 'Kundin',
+        ]);
+
+        // Genau die drei Dinge, die ein Kunde in seinem Bereich tun kann:
+        // ein Anliegen melden, antworten, einen Screenshot anhängen.
+        $ticket = Ticket::factory()->create([
+            'customer_id' => $customer->id,
+            'project_id' => $projekt->id,
+            'created_by' => $kunde->id,
+            'quelle' => Quelle::Kunde,
+        ]);
+
+        Comment::factory()->create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $kunde->id,
+            'body' => 'Antwort aus dem Kundenbereich',
+            'ist_intern' => false,
+        ]);
+
+        $ticket->attachments()->create([
+            'user_id' => $kunde->id,
+            'pfad' => 'anhaenge/1/screenshot.png',
+            'dateiname' => 'screenshot.png',
+            'mime' => 'image/png',
+            'groesse' => 100,
+        ]);
+
+        $strom = Ereignisstrom::fuer($admin, 50);
+
+        $vomKunden = $strom->filter(fn (Ereignis $e) => $e->nutzer?->is($kunde));
+
+        $this->assertContains(Ereignis::KOMMENTAR, $vomKunden->pluck('typ'));
+        $this->assertContains(Ereignis::ANHANG, $vomKunden->pluck('typ'));
+        $this->assertContains('Antwort aus dem Kundenbereich', $strom->pluck('zitat')->filter());
+
+        // Das Anliegen selbst taucht ebenfalls auf — protokolliert wird es
+        // vom activitylog, dessen Urheber bei einer Meldung aus dem
+        // Kundenbereich der Kundenzugang ist.
+        $this->assertContains(Ereignis::ANGELEGT, $strom->pluck('typ'));
     }
 
     public function test_strom_zeigt_was_vor_seiner_einfuehrung_geschah(): void
