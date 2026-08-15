@@ -175,6 +175,23 @@ class KundenakteTest extends TestCase
             ->assertDontSee('internes-passwort');
     }
 
+    public function test_mein_konto_steht_sichtbar_in_der_navigation(): void
+    {
+        // Filament hängt die Profilseite nur ins Benutzermenü hinter die
+        // Initialen. Für den Kunden ist das kein Weg: er kommt selten her,
+        // und nach dem erzwungenen Passwortwechsel stünde er ohne sichtbaren
+        // Zugang zu seinen eigenen Daten da.
+        $kunde = $this->kunde();
+
+        $this->actingAs($kunde, 'kunde');
+        Filament::setCurrentPanel('kunde');
+
+        $punkte = collect(Filament::getPanel('kunde')->getNavigationItems())
+            ->map(fn ($punkt) => $punkt->getLabel());
+
+        $this->assertContains('Mein Konto', $punkte);
+    }
+
     // --- Die Glocke ------------------------------------------------------
 
     public function test_beide_panels_fragen_im_selben_takt_nach(): void

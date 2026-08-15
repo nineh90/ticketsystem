@@ -11,13 +11,16 @@ use App\Filament\Kunde\Widgets\StandDerDinge;
 use App\Http\Middleware\PasswortWechseln;
 use App\Http\Middleware\SicherheitsHeader;
 use Filament\Enums\ThemeMode;
+use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -82,9 +85,9 @@ class KundePanelProvider extends PanelProvider
             ->defaultThemeMode(ThemeMode::Dark)
             ->defaultAvatarProvider(InitialenAvatar::class)
             // Waagerechte Navigation statt Seitenleiste. Der Kundenbereich hat
-            // vier Punkte; eine Seitenleiste dafür sieht aus wie ein Werkzeug,
-            // in dem man sich zurechtfinden muss, und das ist genau der
-            // Eindruck, den er nicht machen soll.
+            // eine Handvoll Punkte; eine Seitenleiste dafür sieht aus wie ein
+            // Werkzeug, in dem man sich zurechtfinden muss, und das ist genau
+            // der Eindruck, den er nicht machen soll.
             ->topNavigation()
             ->maxContentWidth('7xl')
             // Die Glocke: hier landet, was wir dem Kunden mitzuteilen haben —
@@ -97,6 +100,24 @@ class KundePanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Kunde/Pages'), for: 'App\Filament\Kunde\Pages')
             ->pages([
                 Uebersicht::class,
+            ])
+            // "Mein Konto" als sichtbarer Punkt und nicht nur im
+            // Benutzermenü.
+            //
+            // Filament hängt die Profilseite ausschließlich hinter die
+            // Initialen oben rechts. Für eine Verwaltungsoberfläche ist das
+            // richtig — dort sucht man Einstellungen genau dort. Hier nicht:
+            // der Kunde kommt zwei- bis dreimal im Jahr her, hat gerade sein
+            // Passwort gewechselt und steht dann auf der Übersicht, ohne
+            // sichtbaren Weg zu seinen eigenen Daten. Ein Ausklappmenü, das
+            // man aufmachen muss, um zu erfahren, dass es etwas enthält, ist
+            // für ihn kein Weg.
+            ->navigationItems([
+                NavigationItem::make('Mein Konto')
+                    ->icon(Heroicon::OutlinedUserCircle)
+                    ->url(fn (): string => Filament::getProfileUrl() ?? '#')
+                    ->isActiveWhen(fn (): bool => request()->routeIs('filament.kunde.auth.profile'))
+                    ->sort(40),
             ])
             ->widgets([
                 StandDerDinge::class,
