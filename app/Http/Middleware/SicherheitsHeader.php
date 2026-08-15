@@ -96,6 +96,25 @@ class SicherheitsHeader
             // blob: wird für Vorschaubilder in Filament-Uploads gebraucht.
             "img-src 'self' data: blob:",
 
+            // FilePond — das Upload-Feld hinter jedem Bild- und Dateifeld in
+            // Filament — startet für Vorschau und Zuschnitt einen Web Worker
+            // aus einer blob:-URL (siehe "new Worker" in
+            // vendor/filament/forms/dist/components/file-upload.js).
+            //
+            // Ohne eigene Regel fällt worker-src auf child-src und weiter auf
+            // script-src zurück, und dort steht blob: nicht. Der Browser
+            // blockt den Worker still, der Upload bricht ab — und im
+            // Server-Log steht kein Wort, weil die Datei nie losgeschickt
+            // wird. Genau dieses Bild hatten wir: ein Upload, der "einfach
+            // nicht geht", ohne jede Fehlermeldung.
+            //
+            // child-src steht daneben für Browser, die worker-src noch nicht
+            // kennen; connect-src, weil FilePond die blob:-URL zum Erzeugen
+            // der Vorschau auch selbst wieder liest.
+            "worker-src 'self' blob:",
+            "child-src 'self' blob:",
+            "connect-src 'self' blob:",
+
             // Keine Formulare an Fremdziele.
             "form-action 'self'",
 

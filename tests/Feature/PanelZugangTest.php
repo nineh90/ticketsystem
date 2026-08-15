@@ -86,4 +86,29 @@ class PanelZugangTest extends TestCase
             $antwort->headers->get('Content-Security-Policy'),
         );
     }
+
+    /**
+     * Die Regeln, ohne die das Hochladen von Dateien im Browser abbricht.
+     *
+     * FilePond — das Upload-Feld hinter jedem Bild- und Dateifeld in
+     * Filament — startet einen Web Worker aus einer blob:-URL. Fehlt
+     * worker-src, fällt der Browser auf script-src zurück, findet dort kein
+     * blob: und blockt still. Der Upload geht dann "einfach nicht", und im
+     * Server-Log steht nichts, weil die Datei nie losgeschickt wird.
+     *
+     * Genau so ist es passiert, und deshalb steht es hier: eine
+     * CSP-Verschärfung ist billig geschrieben und teuer zu finden.
+     */
+    public function test_csp_erlaubt_die_upload_worker(): void
+    {
+        $csp = $this->get('/login')->headers->get('Content-Security-Policy');
+
+        foreach (['worker-src', 'child-src', 'connect-src'] as $regel) {
+            $this->assertStringContainsString(
+                $regel." 'self' blob:",
+                $csp,
+                'Ohne '.$regel.' mit blob: bricht jeder Datei-Upload im Browser ab.',
+            );
+        }
+    }
 }
