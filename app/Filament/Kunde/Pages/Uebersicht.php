@@ -30,14 +30,17 @@ class Uebersicht extends Dashboard
         return 'Übersicht';
     }
 
+    /**
+     * Bewusst leer: Begrüßung und Firmenname stehen im Willkommen-Widget,
+     * dort zusammen mit dem Logo des Kunden. Zweimal "Guten Tag" auf
+     * derselben Seite liest sich wie ein Fehler.
+     *
+     * Der Knopf "Etwas melden" bleibt trotzdem stehen — Filament rendert die
+     * Kopfzeile, sobald es Aktionen gibt, auch ohne Überschrift.
+     */
     public function getHeading(): string
     {
-        return 'Guten Tag, '.str(auth()->user()->name)->before(' ')->toString();
-    }
-
-    public function getSubheading(): ?string
-    {
-        return auth()->user()->customer?->name;
+        return '';
     }
 
     protected function getHeaderActions(): array

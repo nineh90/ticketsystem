@@ -8,6 +8,7 @@ use App\Filament\AvatarProviders\InitialenAvatar;
 use App\Filament\Kunde\Pages\Profil;
 use App\Filament\Kunde\Pages\Uebersicht;
 use App\Filament\Kunde\Pages\Zugaenge;
+use App\Filament\Kunde\Widgets\Willkommen;
 use App\Filament\Resources\Customers\CustomerResource;
 use App\Filament\Resources\Customers\Pages\EditCustomer;
 use App\Filament\Resources\Customers\RelationManagers\KontakteRelationManager;
@@ -203,6 +204,42 @@ class KundenakteTest extends TestCase
         $avatar = (new InitialenAvatar)->get($kunde);
 
         $this->assertStringContainsString('kunden-logos/verein.png', $avatar);
+    }
+
+    public function test_das_logo_steht_auch_im_kundendashboard(): void
+    {
+        // Als Avatar allein wäre es ein Kreis von zwei Zentimetern im
+        // Benutzermenü — also an der Stelle, an der niemand hinsieht.
+        $customer = Customer::factory()->create([
+            'name' => 'KE!N EINZELFALL e.V.',
+            'logo' => 'kunden-logos/verein.png',
+        ]);
+
+        $kunde = $this->kunde($customer);
+        $kunde->forceFill(['name' => 'Tatjana Belmar'])->save();
+
+        $this->actingAs($kunde, 'kunde');
+        Filament::setCurrentPanel('kunde');
+
+        Livewire::test(Willkommen::class)
+            ->assertOk()
+            ->assertSee('kunden-logos/verein.png', escape: false)
+            ->assertSee('Guten Tag, Tatjana')
+            ->assertSee('KE!N EINZELFALL e.V.');
+    }
+
+    public function test_ohne_logo_bleibt_die_begruessung_stehen(): void
+    {
+        // Kein Platzhalterbild: die Zeile trägt sich auch ohne Logo.
+        $customer = Customer::factory()->create(['name' => 'Sarah Schweikert', 'logo' => null]);
+        $kunde = $this->kunde($customer);
+
+        $this->actingAs($kunde, 'kunde');
+        Filament::setCurrentPanel('kunde');
+
+        Livewire::test(Willkommen::class)
+            ->assertOk()
+            ->assertSee('Sarah Schweikert');
     }
 
     public function test_ohne_logo_bleiben_es_die_initialen(): void

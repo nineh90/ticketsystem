@@ -8,6 +8,7 @@ use App\Filament\Kunde\Pages\Profil;
 use App\Filament\Kunde\Pages\Uebersicht;
 use App\Filament\Kunde\Widgets\MeineProjekte;
 use App\Filament\Kunde\Widgets\StandDerDinge;
+use App\Filament\Kunde\Widgets\Willkommen;
 use App\Http\Middleware\PasswortWechseln;
 use App\Http\Middleware\SicherheitsHeader;
 use Filament\Enums\ThemeMode;
@@ -120,6 +121,8 @@ class KundePanelProvider extends PanelProvider
                     ->sort(40),
             ])
             ->widgets([
+                // Ganz oben: Logo, Begrüßung, Firmenname.
+                Willkommen::class,
                 StandDerDinge::class,
                 MeineProjekte::class,
             ])
