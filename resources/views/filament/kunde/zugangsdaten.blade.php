@@ -105,7 +105,17 @@
                             </div>
                         @endif
 
-                        @if (filled($eintrag->passwort))
+                        {{-- Kann vorkommen, wenn der Schlüssel gewechselt
+                             wurde oder man auf einer Kopie der Datenbank
+                             arbeitet. Früher starb hier die ganze Seite. --}}
+                        @if ($eintrag->passwortUnlesbar())
+                            <div>
+                                <dt class="text-xs text-gray-500 dark:text-gray-400">Passwort</dt>
+                                <dd class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                    Lässt sich gerade nicht anzeigen — bitte melden Sie sich kurz bei uns.
+                                </dd>
+                            </div>
+                        @elseif (filled($eintrag->passwort))
                             <div>
                                 <dt class="text-xs text-gray-500 dark:text-gray-400">Passwort</dt>
                                 <dd class="mt-0.5 flex items-center gap-2">

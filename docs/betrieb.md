@@ -174,6 +174,12 @@ verschlüsselt, also über den `APP_KEY`. **Ein Wechsel des APP_KEY macht alle
 Einträge unlesbar** — das ist der Preis dafür, dass in den nächtlichen
 Datenbankabzügen keine Klartext-Passwörter stehen.
 
+**Auf einer Kopie der Datenbank sind die Passwörter nicht lesbar.** Die
+Entwicklungsumgebung hat einen eigenen APP_KEY; nach `db:holen` stehen alle
+Tresoreinträge als *nicht lesbar* da. Das ist erwartet und kein Fehler — und
+seit einem Absturz auf genau diesem Weg reißt es auch keine Seite mehr mit:
+unlesbar ergibt `null`, nicht eine Ausnahme (`Zugangsdaten::passwort`).
+
 Je Eintrag entscheidet ein Schalter *Der Kunde darf das sehen*. Vorgabe ist
 **aus**: ein vergessener Schalter führt dazu, dass der Kunde etwas nicht
 sieht, nie umgekehrt. Freigegebene Einträge stehen bei ihm unter

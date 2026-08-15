@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Crypt;
 
 /**
  * Ein Eintrag im Zugangsdaten-Tresor.
@@ -41,9 +44,54 @@ class Zugangsdaten extends Model
     protected function casts(): array
     {
         return [
-            'passwort' => 'encrypted',
             'kunden_sichtbar' => 'boolean',
         ];
+    }
+
+    /**
+     * Das Passwort, verschlüsselt abgelegt — und beim Lesen fehlertolerant.
+     *
+     * Der eingebaute "encrypted"-Cast wirft eine DecryptException, sobald der
+     * Geheimtext nicht zum APP_KEY passt. Eine Ausnahme beim Lesen eines
+     * Feldes reißt aber die ganze Seite mit: aus einem unlesbaren Passwort
+     * wird ein Projekt, das sich nicht mehr öffnen lässt.
+     *
+     * Genau das ist passiert. Die Entwicklungsumgebung arbeitet auf einer
+     * Kopie der Live-Datenbank, hat aber einen eigenen APP_KEY — dort sind
+     * sämtliche Tresoreinträge Kauderwelsch. Der Fall tritt auch live ein,
+     * falls der Schlüssel je gewechselt wird.
+     *
+     * Deshalb: nicht lesbar heißt null, nicht Absturz. Ob ein Eintrag
+     * unlesbar oder schlicht leer ist, beantwortet passwortUnlesbar().
+     */
+    protected function passwort(): Attribute
+    {
+        return Attribute::make(
+            get: function (?string $wert): ?string {
+                if ($wert === null) {
+                    return null;
+                }
+
+                try {
+                    return Crypt::decryptString($wert);
+                } catch (DecryptException) {
+                    return null;
+                }
+            },
+            set: fn (?string $wert): ?string => $wert === null ? null : Crypt::encryptString($wert),
+        );
+    }
+
+    /**
+     * Steht ein Geheimtext da, der sich nicht entschlüsseln lässt?
+     *
+     * Der Unterschied zu "kein Passwort hinterlegt" ist der, auf den es
+     * ankommt: das eine ist ein Eintrag ohne Anmeldedaten, das andere ein
+     * Hinweis darauf, dass der Schlüssel nicht mehr passt.
+     */
+    public function passwortUnlesbar(): bool
+    {
+        return filled($this->getRawOriginal('passwort')) && $this->passwort === null;
     }
 
     public function customer(): BelongsTo
@@ -105,6 +153,6 @@ class Zugangsdaten extends Model
      */
     public function hatAnmeldedaten(): bool
     {
-        return filled($this->benutzername) || filled($this->passwort);
+        return filled($this->benutzername) || filled($this->passwort) || $this->passwortUnlesbar();
     }
 }

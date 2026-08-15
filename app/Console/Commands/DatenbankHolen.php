@@ -91,6 +91,10 @@ class DatenbankHolen extends Command
         $this->newLine();
         $this->info('✓ Lokale Datenbank entspricht jetzt dem Live-Stand.');
         $this->comment('  Die Passwörter der Live-Konten gelten damit auch lokal.');
+        $this->newLine();
+        $this->warn('  Nicht mitgekommen sind die Zugangsdaten aus dem Tresor: sie sind');
+        $this->warn('  mit dem APP_KEY des Servers verschlüsselt und hier nicht lesbar.');
+        $this->warn('  Sie stehen als "nicht lesbar" da — das ist erwartet, kein Fehler.');
 
         return self::SUCCESS;
     }

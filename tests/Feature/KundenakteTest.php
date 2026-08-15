@@ -8,6 +8,7 @@ use App\Filament\AvatarProviders\InitialenAvatar;
 use App\Filament\Kunde\Pages\Profil;
 use App\Filament\Kunde\Pages\Uebersicht;
 use App\Filament\Kunde\Pages\Zugaenge;
+use App\Filament\Kunde\Resources\Projekte\Pages\ViewProjekt;
 use App\Filament\Kunde\Widgets\Willkommen;
 use App\Filament\Resources\Customers\CustomerResource;
 use App\Filament\Resources\Customers\Pages\EditCustomer;
@@ -24,6 +25,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Models\Zugangsdaten;
 use Filament\Facades\Filament;
+use Illuminate\Encryption\Encrypter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
@@ -136,6 +138,63 @@ class KundenakteTest extends TestCase
         $this->assertNotSame('Muschel-Laterne-47', $roh);
         $this->assertStringNotContainsString('Muschel', (string) $roh);
         $this->assertSame('Muschel-Laterne-47', $eintrag->fresh()->passwort);
+    }
+
+    public function test_ein_unlesbares_passwort_reisst_die_seite_nicht_mit(): void
+    {
+        // Genau der Fall aus der Entwicklung: die lokale Datenbank ist eine
+        // Kopie der Live-Daten, der APP_KEY ist ein anderer. Vorher starb
+        // dabei die ganze Projektseite mit "The MAC is invalid" — ein
+        // Projekt, das sich nicht mehr öffnen ließ, wegen eines Feldes.
+        $customer = Customer::factory()->create();
+        $kunde = $this->kunde($customer);
+
+        $projekt = Project::factory()->create(['customer_id' => $customer->getKey()]);
+
+        $eintrag = Zugangsdaten::create([
+            'customer_id' => $customer->getKey(),
+            'project_id' => $projekt->getKey(),
+            'bezeichnung' => 'WordPress',
+            'benutzername' => 'redaktion',
+            'passwort' => 'mit-dem-alten-schluessel',
+            'kunden_sichtbar' => true,
+        ]);
+
+        // Geheimtext von einem fremden Schlüssel unterschieben.
+        $fremd = new Encrypter(random_bytes(32), config('app.cipher'));
+        \DB::table('zugangsdaten')
+            ->where('id', $eintrag->getKey())
+            ->update(['passwort' => $fremd->encryptString('unlesbar')]);
+
+        $frisch = $eintrag->fresh();
+
+        $this->assertNull($frisch->passwort, 'Unlesbar muss null ergeben, nicht eine Ausnahme.');
+        $this->assertTrue($frisch->passwortUnlesbar());
+
+        // Und beide Seiten, auf denen er steht, gehen weiterhin auf.
+        $this->actingAs($kunde, 'kunde');
+        Filament::setCurrentPanel('kunde');
+
+        Livewire::test(Zugaenge::class)
+            ->assertOk()
+            ->assertSee('WordPress');
+
+        // Die Projektseite war die, die es zerlegt hat: der Tresor steht dort
+        // in einem eigenen Abschnitt, und das Projekt ließ sich deswegen gar
+        // nicht mehr öffnen.
+        Livewire::test(ViewProjekt::class, ['record' => $projekt->getKey()])
+            ->assertOk();
+    }
+
+    public function test_leeres_passwort_ist_nicht_dasselbe_wie_unlesbar(): void
+    {
+        $eintrag = Zugangsdaten::create([
+            'customer_id' => Customer::factory()->create()->getKey(),
+            'bezeichnung' => 'Zugang liegt beim Kunden',
+        ]);
+
+        $this->assertNull($eintrag->passwort);
+        $this->assertFalse($eintrag->passwortUnlesbar());
     }
 
     public function test_neuer_eintrag_ist_ohne_zutun_nicht_kundensichtbar(): void

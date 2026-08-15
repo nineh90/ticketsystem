@@ -65,13 +65,21 @@ class ZugangsdatenRelationManager extends RelationManager
                 // Der Wert wird nie angezeigt, nur kopiert. copyableState
                 // liefert das entschlüsselte Passwort an die Zwischenablage,
                 // während in der Spalte Punkte stehen.
+                // Unlesbar heißt: der Geheimtext passt nicht zum APP_KEY
+                // — etwa auf einer Kopie der Datenbank. Das muss man sehen
+                // können, sonst sucht man den Fehler beim Passwort selbst.
                 TextColumn::make('passwort')
                     ->label('Passwort')
-                    ->formatStateUsing(fn () => '••••••••')
-                    ->copyable()
+                    ->state(fn (Zugangsdaten $record) => $record->passwortUnlesbar()
+                        ? 'nicht lesbar'
+                        : ($record->passwort === null ? null : '••••••••'))
+                    ->color(fn (Zugangsdaten $record) => $record->passwortUnlesbar() ? 'danger' : null)
+                    ->copyable(fn (Zugangsdaten $record) => ! $record->passwortUnlesbar())
                     ->copyableState(fn (Zugangsdaten $record) => $record->passwort)
                     ->copyMessage('Passwort kopiert')
-                    ->tooltip('Klicken kopiert das Passwort')
+                    ->tooltip(fn (Zugangsdaten $record) => $record->passwortUnlesbar()
+                        ? 'Verschlüsselt mit einem anderen APP_KEY — hier nicht zu entschlüsseln'
+                        : 'Klicken kopiert das Passwort')
                     ->placeholder('—'),
 
                 TextColumn::make('url')
