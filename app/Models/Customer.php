@@ -10,9 +10,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
-    'name', 'slug', 'kuerzel', 'farbe', 'ansprechpartner',
+    'name', 'slug', 'kuerzel', 'farbe', 'logo', 'ansprechpartner',
     'email', 'telefon', 'notizen', 'aktiv',
     // Stammdaten der Kundenakte.
     'strasse', 'plz', 'ort', 'land', 'ust_id', 'rechnung_email',
@@ -118,6 +119,18 @@ class Customer extends Model
     public function zugangsdaten(): HasMany
     {
         return $this->hasMany(Zugangsdaten::class);
+    }
+
+    /**
+     * Die Adresse des Logos, oder null wenn keins hinterlegt ist.
+     *
+     * Über die "public"-Platte, also /storage/... auf derselben Domain. Das
+     * ist Absicht: die CSP begrenzt img-src auf 'self', ein Logo von einer
+     * fremden Adresse käme gar nicht erst an.
+     */
+    public function logoUrl(): ?string
+    {
+        return blank($this->logo) ? null : Storage::disk('public')->url($this->logo);
     }
 
     /** Die Anschrift in einer Zeile, oder null wenn keine hinterlegt ist. */

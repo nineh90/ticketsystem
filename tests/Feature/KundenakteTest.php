@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ProjektPhase;
 use App\Enums\Rolle;
+use App\Filament\AvatarProviders\InitialenAvatar;
 use App\Filament\Kunde\Pages\Profil;
 use App\Filament\Kunde\Pages\Uebersicht;
 use App\Filament\Kunde\Pages\Zugaenge;
@@ -190,6 +191,39 @@ class KundenakteTest extends TestCase
             ->map(fn ($punkt) => $punkt->getLabel());
 
         $this->assertContains('Mein Konto', $punkte);
+    }
+
+    // --- Logo als Avatar --------------------------------------------------
+
+    public function test_kundenzugang_traegt_das_logo_seines_kunden(): void
+    {
+        $customer = Customer::factory()->create(['logo' => 'kunden-logos/verein.png']);
+        $kunde = $this->kunde($customer);
+
+        $avatar = (new InitialenAvatar)->get($kunde);
+
+        $this->assertStringContainsString('kunden-logos/verein.png', $avatar);
+    }
+
+    public function test_ohne_logo_bleiben_es_die_initialen(): void
+    {
+        // Ein leerer Kreis wäre schlechter als ein Kürzel.
+        $kunde = $this->kunde(Customer::factory()->create(['logo' => null]));
+
+        $this->assertStringStartsWith('data:image/svg+xml', (new InitialenAvatar)->get($kunde));
+    }
+
+    public function test_mitarbeiter_behalten_ihre_initialen(): void
+    {
+        // Das Logo trägt die Aussage "hier schreibt jemand von dort". Ein
+        // Mitarbeiter gehört zu keinem Kunden — er darf keins bekommen, auch
+        // nicht versehentlich über eine customer_id.
+        $mitarbeiter = User::factory()->create([
+            'rolle' => Rolle::Mitarbeiter,
+            'customer_id' => Customer::factory()->create(['logo' => 'kunden-logos/verein.png'])->getKey(),
+        ]);
+
+        $this->assertStringStartsWith('data:image/svg+xml', (new InitialenAvatar)->get($mitarbeiter));
     }
 
     // --- Die Glocke ------------------------------------------------------

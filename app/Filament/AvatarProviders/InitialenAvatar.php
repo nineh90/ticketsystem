@@ -2,6 +2,7 @@
 
 namespace App\Filament\AvatarProviders;
 
+use App\Models\User;
 use Filament\AvatarProviders\Contracts\AvatarProvider;
 use Filament\Facades\Filament;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -18,16 +19,53 @@ use Illuminate\Support\Str;
  * an. Beides erledigt sich mit einem SVG als data:-URI.
  *
  * Kein Netzwerk, kein Cache-Problem, funktioniert unter der CSP.
+ *
+ * Kundenzugänge bekommen statt der Initialen das Logo ihres Kunden, sofern
+ * eines hinterlegt ist. Damit sieht man in einer Ticketliste am Bild, aus
+ * welchem Haus jemand schreibt, statt zwei Buchstaben zu entziffern.
  */
 class InitialenAvatar implements AvatarProvider
 {
-    public function get(Model | Authenticatable $record): string
+    /**
+     * Gelesene Kundenlogos, für die Dauer einer Anfrage gemerkt.
+     *
+     * Der Avatar wird je Zeile einmal geholt; eine Ticketliste mit zwanzig
+     * Kommentaren derselben Kundin fragte sonst zwanzigmal nach demselben
+     * Logo. Der Merker lebt nur innerhalb der Anfrage — ein Logo, das gerade
+     * getauscht wird, ist beim nächsten Aufruf da.
+     *
+     * @var array<int, string|null>
+     */
+    private static array $logos = [];
+
+    public function get(Model|Authenticatable $record): string
     {
+        if ($logo = $this->kundenlogo($record)) {
+            return $logo;
+        }
+
         $name = trim((string) Filament::getNameForDefaultAvatar($record));
 
         $svg = $this->svg($this->initialen($name), $this->farbe($name));
 
         return 'data:image/svg+xml;base64,'.base64_encode($svg);
+    }
+
+    /**
+     * Das Logo des Kunden, zu dem dieser Zugang gehört.
+     *
+     * Nur für Kundenzugänge. Ein Mitarbeiter behält seine Initialen — er
+     * gehört zu keinem Kunden, und das Logo soll genau die Aussage tragen
+     * "hier schreibt jemand von dort". Steht kein Logo bereit, fällt es auf
+     * die Initialen zurück; ein leerer Kreis wäre schlechter als ein Kürzel.
+     */
+    private function kundenlogo(Model|Authenticatable $record): ?string
+    {
+        if (! $record instanceof User || ! $record->istKunde() || $record->customer_id === null) {
+            return null;
+        }
+
+        return self::$logos[$record->customer_id] ??= $record->customer?->logoUrl();
     }
 
     /** Erste Buchstaben von Vor- und Nachname, maximal zwei. */

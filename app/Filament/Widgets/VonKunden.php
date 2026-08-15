@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Models\Ticket;
 use Filament\Support\Colors\Color;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
@@ -74,6 +75,15 @@ class VonKunden extends TableWidget
             // gerade ein neues hereingekommen ist.
             ->defaultSort('created_at', 'asc')
             ->columns([
+                // Das Logo als erste Spalte: auf dem Dashboard erkennt man
+                // damit auf einen Blick, von welchem Kunden etwas liegt,
+                // bevor man eine Zeile gelesen hat.
+                ImageColumn::make('customer.logo')
+                    ->label('')
+                    ->disk('public')
+                    ->circular()
+                    ->visibility('public'),
+
                 TextColumn::make('kennung')
                     ->label('Nr.')
                     ->state(fn (Ticket $record) => $record->kennung())

@@ -142,6 +142,16 @@ Am Kunden hängen inzwischen mehr als Name und Farbe:
   stillschweigend etwas in eine Adresse einfügt, ist immer für die Hälfte
   der Fälle falsch.
 - **Rechnungsdaten** — Anschrift, USt-IdNr., abweichende Rechnungsadresse.
+- **Logo** — erscheint als Avatar neben jedem Beitrag dieses Kunden und in
+  den Listen; ohne Logo bleiben es die Initialen. Mitarbeiter bekommen nie
+  eins: das Bild trägt die Aussage „hier schreibt jemand von dort".
+
+  Anders als Ticket-Anhänge liegt es auf der **öffentlichen** Platte
+  (`storage/app/public`, ausgeliefert unter `/storage/…`) — es erscheint
+  vielfach je Seite, und über eine geschützte Route wäre jedes dieser
+  Bilder eine eigene PHP-Anfrage. Die Dateinamen vergibt Filament zufällig.
+  Das Verzeichnis liegt im Volume `ticketsystem-storage` und übersteht
+  Deploys; den Symlink legt `deploy/entrypoint.sh` bei jedem Start neu an.
 - **Kontakte** — die Menschen beim Kunden, unabhängig davon, ob sie einen
   Zugang haben. Der Buchhalter braucht keinen, seine Mailadresse aber schon.
   Ein Zugang kann auf einen Kontakt zeigen (Feld *Ist welcher Kontakt?*).

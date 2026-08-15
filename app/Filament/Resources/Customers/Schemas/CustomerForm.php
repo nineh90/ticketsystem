@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Customers\Schemas;
 use App\Enums\Betreuung;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -71,6 +72,20 @@ class CustomerForm
                             ->label('Farbe')
                             ->default('#00bcd4')
                             ->helperText('Für die farbige Markierung in Listen.'),
+
+                        // Auf der öffentlichen Platte, weil das Logo als
+                        // Avatar vielfach je Seite erscheint — Begründung in
+                        // der Migration.
+                        FileUpload::make('logo')
+                            ->label('Logo')
+                            ->image()
+                            ->avatar()
+                            ->disk('public')
+                            ->directory('kunden-logos')
+                            ->visibility('public')
+                            ->maxSize(2048)
+                            ->columnSpanFull()
+                            ->helperText('Erscheint als Bild neben jedem Beitrag dieses Kunden und in den Listen. Quadratisch ist am schönsten; ohne Logo bleiben es die Initialen.'),
                     ]),
 
                 Section::make('Betreuung')
