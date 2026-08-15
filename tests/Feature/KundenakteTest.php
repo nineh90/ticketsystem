@@ -25,7 +25,9 @@ use App\Models\User;
 use App\Models\Zugangsdaten;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -192,6 +194,33 @@ class KundenakteTest extends TestCase
             ->map(fn ($punkt) => $punkt->getLabel());
 
         $this->assertContains('Mein Konto', $punkte);
+    }
+
+    public function test_ein_hochgeladenes_logo_landet_beim_speichern_in_der_akte(): void
+    {
+        // Der Weg vom Formular in die Datenbank, einmal ganz durchgespielt.
+        // Anlass war ein Logo, das nach dem Hochladen nirgends auftauchte —
+        // es lag noch in Livewires Zwischenablage, weil das Formular nicht
+        // gespeichert worden war. Dieser Test hält fest, dass es nicht am
+        // Speicherweg lag und dort auch künftig nicht liegt.
+        Storage::fake('public');
+
+        $admin = User::factory()->create(['rolle' => Rolle::Admin, 'panel_zugang' => true]);
+        $this->actingAs($admin, 'web');
+        Filament::setCurrentPanel('admin');
+
+        $customer = Customer::factory()->create(['logo' => null]);
+
+        Livewire::test(EditCustomer::class, ['record' => $customer->getKey()])
+            ->fillForm(['logo' => [UploadedFile::fake()->image('logo.png', 300, 300)]])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $customer->refresh();
+
+        $this->assertNotNull($customer->logo);
+        $this->assertStringStartsWith('kunden-logos/', $customer->logo);
+        Storage::disk('public')->assertExists($customer->logo);
     }
 
     // --- Logo als Avatar --------------------------------------------------
