@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Models\Ticket;
 use App\Models\TimeEntry;
 use App\Models\User;
+use App\Support\Dauer;
 use App\Support\Raster;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -116,15 +117,10 @@ class TeamUeberblick extends StatsOverviewWidget
                 ->descriptionIcon('heroicon-m-moon')
                 ->color($ruhend > 0 ? 'warning' : 'gray'),
 
-            Stat::make('Zeit heute', $this->alsStunden((int) $minutenHeute))
+            Stat::make('Zeit heute', Dauer::alsStunden((int) $minutenHeute))
                 ->description('von allen Beteiligten erfasst')
                 ->descriptionIcon('heroicon-m-clock')
                 ->color('info'),
         ];
-    }
-
-    private function alsStunden(int $minuten): string
-    {
-        return intdiv($minuten, 60).':'.str_pad((string) ($minuten % 60), 2, '0', STR_PAD_LEFT).' h';
     }
 }

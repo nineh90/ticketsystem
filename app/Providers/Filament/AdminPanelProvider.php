@@ -10,6 +10,7 @@ use App\Filament\Widgets\MeinUeberblick;
 use App\Filament\Widgets\TeamUeberblick;
 use App\Filament\Widgets\TicketsVerteilung;
 use App\Filament\Widgets\VonKunden;
+use App\Filament\Widgets\WerArbeitetGerade;
 use App\Http\Middleware\PasswortWechseln;
 use App\Http\Middleware\SicherheitsHeader;
 use Filament\Actions\Action;
@@ -112,6 +113,8 @@ class AdminPanelProvider extends PanelProvider
                 // Ganz oben und nur dann da, wenn ein Kunde tatsächlich
                 // wartet — siehe VonKunden::canView().
                 VonKunden::class,
+                // Ebenfalls nur da, wenn wirklich eine Uhr läuft.
+                WerArbeitetGerade::class,
                 MeinUeberblick::class,
                 TeamUeberblick::class,
                 Geschehen::class,

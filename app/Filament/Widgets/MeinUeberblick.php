@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\Ticket;
 use App\Models\TimeEntry;
+use App\Support\Dauer;
 use App\Support\Raster;
 use App\Support\Sichtbarkeit;
 use Filament\Widgets\StatsOverviewWidget;
@@ -91,7 +92,7 @@ class MeinUeberblick extends StatsOverviewWidget
                 ->descriptionIcon('heroicon-m-calendar-days')
                 ->color($dieseWoche > 0 ? 'warning' : 'gray'),
 
-            Stat::make('Meine Zeit diese Woche', $this->alsStunden((int) $minutenDieseWoche))
+            Stat::make('Meine Zeit diese Woche', Dauer::alsStunden((int) $minutenDieseWoche))
                 ->description('seit Montag erfasst')
                 ->descriptionIcon('heroicon-m-clock')
                 ->color('primary'),
@@ -101,10 +102,5 @@ class MeinUeberblick extends StatsOverviewWidget
             // man nicht handeln kann, ist auf einem Dashboard nur Beiwerk.
             // Für den Administrator steht sie nebenan unter "Im Betrieb".
         ];
-    }
-
-    private function alsStunden(int $minuten): string
-    {
-        return intdiv($minuten, 60).':'.str_pad((string) ($minuten % 60), 2, '0', STR_PAD_LEFT).' h';
     }
 }

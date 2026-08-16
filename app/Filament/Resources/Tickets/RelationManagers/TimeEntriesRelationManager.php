@@ -2,7 +2,10 @@
 
 namespace App\Filament\Resources\Tickets\RelationManagers;
 
+use App\Filament\Concerns\StopptLaufendeZeiten;
 use App\Models\TimeEntry;
+use App\Support\Dauer;
+use App\Support\LaufendeZeiten;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -19,6 +22,8 @@ use Filament\Tables\Table;
 
 class TimeEntriesRelationManager extends RelationManager
 {
+    use StopptLaufendeZeiten;
+
     protected static string $relationship = 'timeEntries';
 
     protected static ?string $title = 'Zeiten';
@@ -85,6 +90,20 @@ class TimeEntriesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            // Über der Tabelle: alle Uhren, die gerade laufen — auch die an
+            // anderen Tickets. Wer hier steht, hat mit Zeit zu tun, und genau
+            // hier soll auffallen, dass nebenan noch etwas mitläuft. Ohne das
+            // sieht man die eigene laufende Uhr nur an dem einen Ticket, an
+            // dem man sie gestartet hat.
+            ->header(function () {
+                $zeiten = LaufendeZeiten::fuer();
+
+                if ($zeiten->isEmpty()) {
+                    return null;
+                }
+
+                return view('filament.zeiten-kopf', ['zeiten' => $zeiten]);
+            })
             ->columns([
                 TextColumn::make('user.name')
                     ->label('Wer'),
@@ -99,7 +118,7 @@ class TimeEntriesRelationManager extends RelationManager
                     ->alignEnd()
                     ->state(fn (TimeEntry $record) => $record->laeuft()
                         ? 'läuft …'
-                        : self::alsStunden($record->minuten))
+                        : Dauer::alsStunden($record->minuten))
                     ->badge()
                     ->color(fn (TimeEntry $record) => $record->laeuft() ? 'warning' : 'gray'),
 
@@ -118,11 +137,40 @@ class TimeEntriesRelationManager extends RelationManager
                     ->label('Zeit starten')
                     ->icon('heroicon-o-play')
                     ->color('primary')
-                    // Nur anbieten, wenn gerade nichts läuft. Zwei parallel
-                    // laufende Uhren derselben Person wären nicht auflösbar —
-                    // niemand arbeitet an zwei Tickets gleichzeitig.
-                    ->visible(fn () => auth()->user()->laufendeZeit() === null)
+                    // Ausgeblendet nur dann, wenn die eigene Uhr schon an
+                    // genau diesem Ticket läuft — da wäre "starten" ein Knopf
+                    // ohne Wirkung. Läuft sie woanders, bleibt der Knopf da
+                    // und fragt nach (siehe unten). Vorher verschwand er
+                    // wortlos, und wer wechseln wollte, suchte den Fehler bei
+                    // sich statt beim Timer, der noch am alten Ticket hing.
+                    ->visible(fn () => $this->laufendeZeit()?->ticket_id !== $this->getOwnerRecord()->getKey())
+                    // Zwei parallel laufende Uhren derselben Person wären
+                    // nicht auflösbar — niemand arbeitet an zwei Tickets
+                    // gleichzeitig. Statt das zu verbieten, wird die alte
+                    // Uhr auf Nachfrage sauber beendet.
+                    ->requiresConfirmation(fn () => $this->laufendeZeit() !== null)
+                    ->modalHeading('Es läuft schon eine Uhr')
+                    ->modalDescription(function (): ?string {
+                        $laufend = $this->laufendeZeit();
+
+                        if ($laufend === null) {
+                            return null;
+                        }
+
+                        return 'An '.$laufend->ticket?->kennung().' — '.$laufend->ticket?->titel
+                            .' läuft deine Uhr seit '.$laufend->gestartet_am->format('H:i').' Uhr, '
+                            .'inzwischen '.Dauer::alsStunden($laufend->bisherigeMinuten()).'. '
+                            .'Diese Buchung wird beendet und hier eine neue gestartet.';
+                    })
+                    ->modalSubmitActionLabel('Beenden und hier starten')
+                    ->modalIcon('heroicon-o-clock')
                     ->action(function () {
+                        // Erst die alte beenden, dann die neue starten: in der
+                        // Gegenreihenfolge liefen für einen Augenblick zwei
+                        // Uhren, und laufendeZeit() hätte die falsche erwischt.
+                        $vorher = $this->laufendeZeit();
+                        $vorher?->stoppen();
+
                         TimeEntry::create([
                             'ticket_id' => $this->getOwnerRecord()->getKey(),
                             'user_id' => auth()->id(),
@@ -131,6 +179,10 @@ class TimeEntriesRelationManager extends RelationManager
 
                         Notification::make()
                             ->title('Zeiterfassung läuft')
+                            ->body($vorher === null
+                                ? null
+                                : $vorher->ticket?->kennung().' beendet mit '
+                                    .Dauer::alsStunden($vorher->minuten).'.')
                             ->success()
                             ->send();
                     }),
@@ -139,9 +191,9 @@ class TimeEntriesRelationManager extends RelationManager
                     ->label('Zeit stoppen')
                     ->icon('heroicon-o-stop')
                     ->color('warning')
-                    ->visible(fn () => auth()->user()->laufendeZeit() !== null)
+                    ->visible(fn () => $this->laufendeZeit() !== null)
                     ->action(function () {
-                        $laufend = auth()->user()->laufendeZeit();
+                        $laufend = $this->laufendeZeit();
 
                         if ($laufend === null) {
                             return;
@@ -150,7 +202,7 @@ class TimeEntriesRelationManager extends RelationManager
                         $laufend->stoppen();
 
                         Notification::make()
-                            ->title('Zeit erfasst: '.self::alsStunden($laufend->minuten))
+                            ->title('Zeit erfasst: '.Dauer::alsStunden($laufend->minuten))
                             // Hinweis, falls die laufende Uhr an einem anderen
                             // Ticket hing — sonst wundert man sich, warum hier
                             // nichts erscheint.
@@ -179,9 +231,16 @@ class TimeEntriesRelationManager extends RelationManager
             ->emptyStateDescription('Starte die Uhr oder trage eine Zeit von Hand nach.');
     }
 
-    /** 135 Minuten werden als "2:15 h" lesbarer als als "135". */
-    private static function alsStunden(int $minuten): string
+    /**
+     * Die eigene laufende Buchung, egal an welchem Ticket.
+     *
+     * Bewusst ohne Merker: die Aktionen fragen mehrfach je Aufbau, und nach
+     * einem Start oder Stopp zeichnet Livewire in derselben Anfrage neu. Ein
+     * gemerkter Wert wäre dann der von vorhin, und der Knopf zeigte den
+     * Zustand von vor dem Klick.
+     */
+    protected function laufendeZeit(): ?TimeEntry
     {
-        return intdiv($minuten, 60).':'.str_pad((string) ($minuten % 60), 2, '0', STR_PAD_LEFT).' h';
+        return auth()->user()?->laufendeZeit();
     }
 }
