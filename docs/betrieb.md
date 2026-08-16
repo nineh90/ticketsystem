@@ -204,8 +204,26 @@ eigene Adresse, davor die Vorschau; fehlt die passende, nimmt er die andere.
 **Meilensteine** (Reiter am Projekt) ergeben beim Kunden einen Zeitstrahl.
 Der Fortschritt in Prozent wird daraus gerechnet — erledigte durch alle
 kundensichtbaren —, nicht getippt. Ohne Meilensteine erscheint gar kein
-Balken. Abhaken geht über den Knopf *Abhaken* an der Zeile, die Reihenfolge
-per Ziehen.
+Balken. Abhaken geht über den Knopf *Abhaken* an der Zeile.
+
+Die **Reihenfolge** ändert man über *Reihenfolge ändern* im Kopf der Liste:
+der Knopf schaltet das Ziehen an, danach *Reihenfolge fertig*. Neue Punkte
+hängen sich von selbst hinten an.
+
+*Aus Vorlage* legt den üblichen Satz Punkte auf einen Schlag an — die
+Vorlagen (Website, App, Betreuung) stehen in `config/meilensteine.php` und
+werden dort geändert. Die Website-Vorlage ist der Zeitstrahl aus dem
+KE!N-EINZELFALL-Projekt, Texte inklusive. Angehängt wird immer hinten;
+nichts wird ersetzt oder gelöscht. Was schon dasteht, ist in der Auswahl
+abgehakt und mit *steht schon da* markiert, auch wenn es etwas anders heißt
+(„Angebot" gilt als „Erstellung eines Angebots").
+
+**Die Vorlage ist nur eine Starthilfe.** Ab dem Anlegen gehört jeder
+Meilenstein dem Projekt allein: Titel, Text, Termin, Haken, Sichtbarkeit und
+Reihenfolge lassen sich bei jedem Kunden einzeln und jederzeit ändern,
+Punkte kommen dazu oder fallen weg. Eine später geänderte Vorlage schreibt
+laufende Projekte nicht um — und was bei einem Kunden geändert wird, bewegt
+bei keinem anderen etwas.
 
 Was der Kunde sieht, hängt an zwei Schaltern:
 

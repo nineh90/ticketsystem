@@ -24,6 +24,8 @@ use App\Models\Meilenstein;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\Zugangsdaten;
+use App\Support\MeilensteinVorlagen;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,6 +46,11 @@ use Tests\TestCase;
 class KundenakteTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function admin(): User
+    {
+        return User::factory()->create(['rolle' => Rolle::Admin, 'panel_zugang' => true]);
+    }
 
     private function kunde(?Customer $customer = null): User
     {
@@ -492,6 +499,234 @@ class KundenakteTest extends TestCase
         // als "noch nichts geschafft", und nur beim ersten darf gar kein
         // Balken erscheinen.
         $this->assertNull(Project::factory()->create()->fortschritt());
+    }
+
+    // --- Reihenfolge ---------------------------------------------------
+
+    public function test_neue_meilensteine_haengen_sich_hinten_an(): void
+    {
+        // Der Fehler dahinter: bekommt jeder neue Punkt die 0 aus der
+        // Spaltenvorgabe, sortiert die Liste nach einem Feld, in dem überall
+        // dasselbe steht — und die Reihenfolge wird dem Zufall überlassen.
+        $projekt = Project::factory()->create();
+
+        $eins = Meilenstein::create(['project_id' => $projekt->getKey(), 'titel' => 'Erstgespräch']);
+        $zwei = Meilenstein::create(['project_id' => $projekt->getKey(), 'titel' => 'Angebot']);
+        $drei = Meilenstein::create(['project_id' => $projekt->getKey(), 'titel' => 'Livegang']);
+
+        $this->assertSame([1, 2, 3], [$eins->sortierung, $zwei->sortierung, $drei->sortierung]);
+    }
+
+    public function test_die_zaehlung_laeuft_je_projekt(): void
+    {
+        // Sonst wandert der erste Meilenstein eines neuen Projekts ans Ende
+        // einer Zählung, die einem anderen Kunden gehört.
+        $eins = Project::factory()->create();
+        $zwei = Project::factory()->create();
+
+        Meilenstein::create(['project_id' => $eins->getKey(), 'titel' => 'A']);
+        Meilenstein::create(['project_id' => $eins->getKey(), 'titel' => 'B']);
+
+        $erster = Meilenstein::create(['project_id' => $zwei->getKey(), 'titel' => 'C']);
+
+        $this->assertSame(1, $erster->sortierung);
+    }
+
+    public function test_eine_gesetzte_sortierung_bleibt_stehen(): void
+    {
+        $projekt = Project::factory()->create();
+
+        $meilenstein = Meilenstein::create([
+            'project_id' => $projekt->getKey(),
+            'titel' => 'Von Hand einsortiert',
+            'sortierung' => 7,
+        ]);
+
+        $this->assertSame(7, $meilenstein->sortierung);
+    }
+
+    // --- Vorlagen ------------------------------------------------------
+
+    public function test_vorlage_legt_die_punkte_in_ihrer_reihenfolge_an(): void
+    {
+        $projekt = Project::factory()->create();
+
+        Livewire::actingAs($this->admin())
+            ->test(MeilensteineRelationManager::class, [
+                'ownerRecord' => $projekt,
+                'pageClass' => EditProject::class,
+            ])
+            // ->table(): "Aus Vorlage" ist eine Kopfaktion der TABELLE, keine
+            // Aktion der Komponente — ohne den Kontext findet der Test sie
+            // nicht, genau wie im Browser.
+            ->callAction(TestAction::make('ausVorlage')->table(), data: [
+                'vorlage' => 'website',
+                'punkte' => ['Erstgespräch', 'Planung', 'Webseite ist Live'],
+            ])
+            ->assertHasNoActionErrors();
+
+        $this->assertSame(
+            ['Erstgespräch', 'Planung', 'Webseite ist Live'],
+            $projekt->meilensteine()->inReihenfolge()->pluck('titel')->all(),
+        );
+    }
+
+    public function test_vorlage_haengt_an_bestehende_an_statt_sie_zu_ersetzen(): void
+    {
+        // Der Fall, für den der Knopf taugen muss: ein Projekt, an dem schon
+        // von Hand gearbeitet wurde. Was dasteht, bleibt vorn.
+        $projekt = Project::factory()->create();
+
+        Meilenstein::create(['project_id' => $projekt->getKey(), 'titel' => 'Kickoff vor Ort']);
+
+        Livewire::actingAs($this->admin())
+            ->test(MeilensteineRelationManager::class, [
+                'ownerRecord' => $projekt,
+                'pageClass' => EditProject::class,
+            ])
+            ->callAction(TestAction::make('ausVorlage')->table(), data: [
+                'vorlage' => 'website',
+                'punkte' => ['Webseite ist Live'],
+            ])
+            ->assertHasNoActionErrors();
+
+        $this->assertSame(
+            ['Kickoff vor Ort', 'Webseite ist Live'],
+            $projekt->meilensteine()->inReihenfolge()->pluck('titel')->all(),
+        );
+    }
+
+    public function test_vorlage_erkennt_bereits_angelegte_punkte(): void
+    {
+        // Titel, die von Hand entstanden sind, treffen die der Vorlage selten
+        // Wort für Wort — der erste Punkt trägt den Kundennamen, ein anderer
+        // ist knapper getippt. Sie müssen trotzdem als "steht schon da"
+        // durchgehen, sonst schlägt der Knopf einem Kunden ein zweites
+        // Angebot in den Zeitstrahl.
+        $projekt = Project::factory()->create();
+
+        foreach (['Erstgespräch KE!N EINZELFALL e.V.', 'Angebot', 'Design Vorschlag'] as $titel) {
+            Meilenstein::create(['project_id' => $projekt->getKey(), 'titel' => $titel]);
+        }
+
+        foreach (['Erstgespräch', 'Erstellung eines Angebots', 'Unser Design Vorschlag'] as $ausDerVorlage) {
+            $this->assertTrue(
+                MeilensteinVorlagen::stehtSchonDa($projekt, $ausDerVorlage),
+                "'{$ausDerVorlage}' hätte als vorhanden erkannt werden müssen.",
+            );
+        }
+
+        // Was fehlt, bleibt vorgeschlagen.
+        $this->assertFalse(MeilensteinVorlagen::stehtSchonDa($projekt, 'Webseite ist Live'));
+    }
+
+    public function test_aus_der_vorlage_angelegte_punkte_bleiben_frei_aenderbar(): void
+    {
+        // Der Punkt, an dem eine Vorlage kippen könnte: sie ist eine Hilfe
+        // beim Anlegen und darf danach nichts mehr zu sagen haben. Jeder
+        // Kunde bekommt seinen eigenen Zeitstrahl — umbenannt, umsortiert,
+        // mit eigenen Terminen und einzeln verborgen. Nichts davon hängt
+        // hinterher noch an config/meilensteine.php.
+        $projekt = Project::factory()->create();
+
+        Livewire::actingAs($this->admin())
+            ->test(MeilensteineRelationManager::class, [
+                'ownerRecord' => $projekt,
+                'pageClass' => EditProject::class,
+            ])
+            ->callAction(TestAction::make('ausVorlage')->table(), data: [
+                'vorlage' => 'website',
+                'punkte' => ['Erstgespräch', 'Planung', 'Webseite ist Live'],
+            ])
+            ->assertHasNoActionErrors();
+
+        $meilensteine = $projekt->meilensteine()->inReihenfolge()->get();
+
+        // Alles am einzelnen Punkt lässt sich nachträglich ändern.
+        $meilensteine[1]->update([
+            'titel' => 'Planung mit dem Vorstand',
+            'beschreibung' => 'Eigener Text, nicht der aus der Vorlage.',
+            'faellig_am' => '2026-09-01',
+            'kunden_sichtbar' => false,
+        ]);
+
+        // Und die Reihenfolge lässt sich umstellen — hier von Hand, im
+        // Browser durch Ziehen.
+        $meilensteine[2]->update(['sortierung' => 1]);
+        $meilensteine[0]->update(['sortierung' => 3]);
+
+        $this->assertSame(
+            ['Webseite ist Live', 'Planung mit dem Vorstand', 'Erstgespräch'],
+            $projekt->meilensteine()->inReihenfolge()->pluck('titel')->all(),
+        );
+
+        $geaendert = $meilensteine[1]->fresh();
+
+        $this->assertSame('Eigener Text, nicht der aus der Vorlage.', $geaendert->beschreibung);
+        $this->assertFalse($geaendert->kunden_sichtbar);
+        $this->assertSame('01.09.2026', $geaendert->faellig_am->format('d.m.Y'));
+
+        // Ein einzelner Punkt lässt sich auch wieder entfernen, ohne dass die
+        // Vorlage ihn nachschiebt.
+        $geaendert->delete();
+
+        $this->assertSame(2, $projekt->meilensteine()->count());
+    }
+
+    public function test_zwei_kunden_bekommen_unabhaengige_zeitstrahlen(): void
+    {
+        // Dieselbe Vorlage, zwei Projekte — was beim einen geändert wird,
+        // darf beim anderen nichts bewegen.
+        $eins = Project::factory()->create();
+        $zwei = Project::factory()->create();
+
+        foreach ([$eins, $zwei] as $projekt) {
+            Livewire::actingAs($this->admin())
+                ->test(MeilensteineRelationManager::class, [
+                    'ownerRecord' => $projekt,
+                    'pageClass' => EditProject::class,
+                ])
+                ->callAction(TestAction::make('ausVorlage')->table(), data: [
+                    'vorlage' => 'website',
+                    'punkte' => ['Erstgespräch', 'Planung'],
+                ])
+                ->assertHasNoActionErrors();
+        }
+
+        $eins->meilensteine()->where('titel', 'Planung')->update([
+            'titel' => 'Planung mit dem Vorstand',
+            'erledigt_at' => now(),
+        ]);
+
+        $this->assertSame(
+            ['Erstgespräch', 'Planung mit dem Vorstand'],
+            $eins->meilensteine()->inReihenfolge()->pluck('titel')->all(),
+        );
+
+        $this->assertSame(
+            ['Erstgespräch', 'Planung'],
+            $zwei->meilensteine()->inReihenfolge()->pluck('titel')->all(),
+        );
+
+        $this->assertSame(50, $eins->fortschritt());
+        $this->assertSame(0, $zwei->fortschritt());
+    }
+
+    public function test_jede_vorlage_hat_punkte_mit_titel(): void
+    {
+        // Eine Vorlage, die als Auswahl erscheint und dann nichts anlegt, ist
+        // ein Knopf ohne Wirkung — der Tippfehler in der Konfiguration fällt
+        // sonst erst beim Kunden auf.
+        $this->assertNotEmpty(MeilensteinVorlagen::auswahl());
+
+        foreach (array_keys(MeilensteinVorlagen::auswahl()) as $schluessel) {
+            $this->assertNotEmpty(
+                MeilensteinVorlagen::punkte($schluessel),
+                "Vorlage '{$schluessel}' hat keine brauchbaren Punkte.",
+            );
+        }
+
+        $this->assertArrayHasKey(MeilensteinVorlagen::vorgabe(), MeilensteinVorlagen::auswahl());
     }
 
     // --- Die beiden Adressen -------------------------------------------

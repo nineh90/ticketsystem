@@ -3,15 +3,22 @@
 namespace App\Filament\Resources\Projects\RelationManagers;
 
 use App\Models\Meilenstein;
+use App\Models\Project;
+use App\Support\MeilensteinVorlagen;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -110,8 +117,21 @@ class MeilensteineRelationManager extends RelationManager
                     ->boolean(),
             ])
             ->reorderable('sortierung')
-            ->defaultSort('sortierung')
+            // Zweites Kriterium, sonst ist die Reihenfolge bei Gleichstand
+            // dem Zufall überlassen: Postgres gibt Zeilen mit demselben Wert
+            // in beliebiger Folge zurück, und die Liste sieht bei jedem Laden
+            // anders aus. Betrifft alles, was vor der ersten Sortierung von
+            // Hand angelegt wurde.
+            ->defaultSort(fn ($query) => $query->orderBy('sortierung')->orderBy('id'))
+            // Der Auslöser ist von Haus aus ein Knopf mit bloßem Pfeil-Symbol
+            // und wird schlicht übersehen — man sucht die Sortierung dann in
+            // einem Feld im Formular, das es nicht gibt.
+            ->reorderRecordsTriggerAction(fn (Action $action, bool $isReordering) => $action
+                ->button()
+                ->label($isReordering ? 'Reihenfolge fertig' : 'Reihenfolge ändern')
+                ->color($isReordering ? 'primary' : 'gray'))
             ->headerActions([
+                $this->vorlageAnwenden(),
                 CreateAction::make()->label('Meilenstein anlegen'),
             ])
             ->recordActions([
@@ -132,6 +152,102 @@ class MeilensteineRelationManager extends RelationManager
             ->toolbarActions([])
             ->emptyStateIcon('heroicon-o-flag')
             ->emptyStateHeading('Noch keine Meilensteine')
-            ->emptyStateDescription('Drei bis sechs Punkte genügen. Sie beantworten die Frage „wie weit seid ihr?", bevor sie gestellt wird.');
+            ->emptyStateDescription('Drei bis sechs Punkte genügen. Sie beantworten die Frage „wie weit seid ihr?", bevor sie gestellt wird.')
+            ->emptyStateActions([
+                $this->vorlageAnwenden()->button()->color('primary'),
+                CreateAction::make()->label('Einzeln anlegen')->button()->color('gray'),
+            ]);
+    }
+
+    /**
+     * Den üblichen Satz Meilensteine anhängen, statt ihn abzutippen.
+     *
+     * Bewusst ein Knopf und kein Automatismus beim Anlegen eines Projekts.
+     * Ein Zeitstrahl, der ungefragt sieben Punkte hat, wird nicht gepflegt,
+     * sondern weggeklickt — und beim Kunden steht dann eine Erzählung, die
+     * mit seinem Projekt nichts zu tun hat.
+     *
+     * Angehängt wird ans Ende und in der Reihenfolge der Vorlage, damit der
+     * Knopf auch bei einem Projekt taugt, an dem schon gearbeitet wurde: die
+     * drei Punkte von Hand bleiben vorn, der Rest kommt dahinter.
+     */
+    protected function vorlageAnwenden(): Action
+    {
+        return Action::make('ausVorlage')
+            ->label('Aus Vorlage')
+            ->icon('heroicon-o-clipboard-document-list')
+            ->color('gray')
+            ->modalHeading('Meilensteine aus einer Vorlage anlegen')
+            ->modalDescription('Ausgewählte Punkte werden hinten angehängt. Nichts wird ersetzt oder gelöscht — was schon dasteht, bleibt.')
+            ->modalSubmitActionLabel('Anlegen')
+            ->schema([
+                Select::make('vorlage')
+                    ->label('Vorlage')
+                    ->options(MeilensteinVorlagen::auswahl())
+                    ->default(MeilensteinVorlagen::vorgabe())
+                    ->selectablePlaceholder(false)
+                    ->required()
+                    ->live()
+                    // Beim Wechsel die Auswahl neu vorschlagen — sonst stehen
+                    // dort noch die Titel der vorigen Vorlage, die es in der
+                    // neuen gar nicht gibt.
+                    ->afterStateUpdated(fn (Set $set, ?string $state) => $set('punkte', $this->nochNichtVorhanden($state))),
+
+                CheckboxList::make('punkte')
+                    ->label('Diese Punkte anlegen')
+                    ->options(fn (Get $get): array => MeilensteinVorlagen::punkte($get('vorlage'))
+                        ->mapWithKeys(fn (array $punkt): array => [
+                            $punkt['titel'] => $punkt['titel'].(
+                                MeilensteinVorlagen::stehtSchonDa($this->projekt(), $punkt['titel'])
+                                    ? '  ·  steht schon da'
+                                    : ''
+                            ),
+                        ])
+                        ->all())
+                    ->descriptions(fn (Get $get): array => MeilensteinVorlagen::punkte($get('vorlage'))
+                        ->mapWithKeys(fn (array $punkt): array => [$punkt['titel'] => $punkt['beschreibung'] ?? ''])
+                        ->all())
+                    ->default(fn (Get $get): array => $this->nochNichtVorhanden($get('vorlage')))
+                    ->bulkToggleable()
+                    ->required()
+                    ->helperText('Vorausgewählt ist, was hier noch fehlt. Alles lässt sich danach umbenennen, ergänzen und ziehen.'),
+            ])
+            ->action(function (array $data): void {
+                $punkte = MeilensteinVorlagen::punkte($data['vorlage'] ?? null)
+                    ->filter(fn (array $punkt): bool => in_array($punkt['titel'], $data['punkte'] ?? [], strict: true));
+
+                foreach ($punkte as $punkt) {
+                    $this->projekt()->meilensteine()->create([
+                        'titel' => $punkt['titel'],
+                        'beschreibung' => $punkt['beschreibung'],
+                    ]);
+                }
+
+                Notification::make()
+                    ->success()
+                    ->title($punkte->count() === 1 ? 'Ein Meilenstein angelegt' : $punkte->count().' Meilensteine angelegt')
+                    ->body('Termine und Erledigt-Haken trägst du jetzt ein, die Reihenfolge lässt sich ziehen.')
+                    ->send();
+            });
+    }
+
+    /**
+     * Die Titel der Vorlage, die bei diesem Projekt noch fehlen — der
+     * Vorschlag, mit dem die Auswahl aufgeht.
+     *
+     * @return list<string>
+     */
+    protected function nochNichtVorhanden(?string $vorlage): array
+    {
+        return MeilensteinVorlagen::punkte($vorlage)
+            ->reject(fn (array $punkt): bool => MeilensteinVorlagen::stehtSchonDa($this->projekt(), $punkt['titel']))
+            ->pluck('titel')
+            ->all();
+    }
+
+    protected function projekt(): Project
+    {
+        /** @var Project */
+        return $this->getOwnerRecord();
     }
 }

@@ -21,8 +21,34 @@ class Meilenstein extends Model
 
     protected $attributes = [
         'kunden_sichtbar' => true,
-        'sortierung' => 0,
     ];
+
+    /**
+     * Ein neuer Meilenstein hängt sich hinten an.
+     *
+     * Ohne das bekommt jeder neue Punkt denselben Wert — die Spalte hat eine
+     * 0 als Vorgabe — und damit haben alle denselben. Die Liste sortiert dann
+     * nach einem Feld, in dem überall dasselbe steht, und Postgres gibt die
+     * Zeilen in der Reihenfolge zurück, die ihm gerade passt. Das sieht aus
+     * wie "die Sortierung funktioniert nicht", ist aber ein Gleichstand:
+     * ziehen ordnet sauber, nur legt jeder neue Punkt sich wieder daneben.
+     *
+     * Deshalb hier und nicht im Formular: über den Zeitstrahl legen auch der
+     * Vorlagen-Knopf und künftige Stellen Meilensteine an, und jede davon
+     * müsste sonst daran denken.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $meilenstein): void {
+            if ($meilenstein->sortierung !== null) {
+                return;
+            }
+
+            $meilenstein->sortierung = 1 + (int) static::query()
+                ->where('project_id', $meilenstein->project_id)
+                ->max('sortierung');
+        });
+    }
 
     protected function casts(): array
     {
