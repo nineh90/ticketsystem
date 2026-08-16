@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Tickets\Schemas;
 
 use App\Enums\Prioritaet;
 use App\Enums\TicketArt;
+use App\Filament\Formulare\Anhangfeld;
 use App\Models\Project;
 use App\Models\TicketStatus;
 use Filament\Forms\Components\DatePicker;
@@ -31,6 +32,22 @@ class TicketForm
                             ->label('Beschreibung')
                             ->rows(8)
                             ->columnSpanFull(),
+
+                        // Gleich beim Anlegen und nicht erst am fertigen
+                        // Ticket. Beides geht, aber der Screenshot liegt in
+                        // genau diesem Moment auf dem Bildschirm — eine Seite
+                        // später ist er vergessen.
+                        //
+                        // Nur beim Anlegen: am bestehenden Ticket macht das
+                        // der Reiter "Anhänge", der auch löschen und öffnen
+                        // kann. Zwei Wege zum selben Ziel auf einer Seite
+                        // wären eine Erklärung mehr, nicht eine weniger.
+                        // visibleOn('create') sorgt außerdem dafür, dass
+                        // "dateien" beim Bearbeiten gar nicht erst in den
+                        // Formulardaten auftaucht — es ist keine Spalte.
+                        Anhangfeld::machen()
+                            ->visibleOn('create')
+                            ->helperText('Bilder (PNG, JPG, GIF, WebP) und PDF, je bis 16 MB. Später gibt es dafür den Reiter „Anhänge".'),
                     ]),
 
                 Section::make('Zuordnung')

@@ -3,14 +3,17 @@
 namespace Tests\Feature;
 
 use App\Enums\Rolle;
+use App\Filament\Formulare\Anhangfeld;
+use App\Filament\Resources\Tickets\Pages\CreateTicket;
+use App\Filament\Resources\Tickets\Pages\EditTicket;
 use App\Filament\Resources\Tickets\Pages\ViewTicket;
 use App\Filament\Resources\Tickets\RelationManagers\AnhaengeRelationManager;
 use App\Models\Attachment;
-use Filament\Actions\Testing\TestAction;
 use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\TicketStatus;
 use App\Models\User;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -269,6 +272,121 @@ class AnhaengeTest extends TestCase
         // Aus einem Upload werden drei Datensätze — dafür übernimmt using()
         // das Anlegen selbst.
         $this->assertSame(3, $ticket->fresh()->attachments()->count());
+    }
+
+    public function test_dateien_kommen_schon_beim_anlegen_mit(): void
+    {
+        // Der Grund für das Feld im Anlegeformular: der Screenshot liegt in
+        // genau diesem Moment auf dem Bildschirm. Vorher ging das erst am
+        // fertigen Ticket, also eine Seite später.
+        Storage::fake(Attachment::PLATTE);
+
+        $admin = User::factory()->create([
+            'rolle' => Rolle::Admin,
+            'panel_zugang' => true,
+        ]);
+        $projekt = Project::factory()->create();
+        $status = TicketStatus::factory()->create();
+
+        Livewire::actingAs($admin)
+            ->test(CreateTicket::class)
+            ->fillForm([
+                'titel' => 'Kontaktformular schickt nichts ab',
+                'project_id' => $projekt->getKey(),
+                'ticket_status_id' => $status->getKey(),
+                'dateien' => [UploadedFile::fake()->image('fehlermeldung.png')],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $ticket = Ticket::query()->latest('id')->first();
+        $anhang = $ticket->attachments()->first();
+
+        $this->assertNotNull($anhang, 'Es wurde kein Anhang angelegt.');
+        $this->assertSame('fehlermeldung.png', $anhang->dateiname);
+        $this->assertSame($admin->getKey(), $anhang->user_id);
+
+        // Aus dem Zwischenlager in den Ordner des Tickets verschoben —
+        // dieselbe Ablage wie bei später hochgeladenen Anhängen, denn
+        // ausgeliefert werden beide über dieselbe Route.
+        $this->assertStringStartsWith('anhaenge/'.$ticket->getKey().'/', $anhang->pfad);
+        Storage::disk(Attachment::PLATTE)->assertExists($anhang->pfad);
+        Storage::disk(Attachment::PLATTE)->assertDirectoryEmpty(Anhangfeld::ZWISCHENLAGER);
+    }
+
+    public function test_anlegen_ohne_dateien_bleibt_moeglich(): void
+    {
+        // "dateien" ist keine Spalte am Ticket. Bliebe das Feld in den Daten
+        // stehen, scheiterte jedes Anlegen an einer unbekannten Spalte.
+        Storage::fake(Attachment::PLATTE);
+
+        $admin = User::factory()->create([
+            'rolle' => Rolle::Admin,
+            'panel_zugang' => true,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(CreateTicket::class)
+            ->fillForm([
+                'titel' => 'Ganz ohne Bild',
+                'project_id' => Project::factory()->create()->getKey(),
+                'ticket_status_id' => TicketStatus::factory()->create()->getKey(),
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $ticket = Ticket::query()->latest('id')->first();
+
+        $this->assertSame('Ganz ohne Bild', $ticket->titel);
+        $this->assertSame(0, $ticket->attachments()->count());
+    }
+
+    public function test_bearbeiten_kennt_das_dateifeld_nicht(): void
+    {
+        // Am bestehenden Ticket macht das der Reiter "Anhänge". Wäre das Feld
+        // auch beim Bearbeiten da, landete "dateien" in den Formulardaten —
+        // und das Speichern liefe in dieselbe unbekannte Spalte.
+        Storage::fake(Attachment::PLATTE);
+
+        $admin = User::factory()->create([
+            'rolle' => Rolle::Admin,
+            'panel_zugang' => true,
+        ]);
+        $ticket = Ticket::factory()->create(['titel' => 'Vorher']);
+
+        Livewire::actingAs($admin)
+            ->test(EditTicket::class, ['record' => $ticket->getKey()])
+            ->assertFormFieldHidden('dateien')
+            ->fillForm(['titel' => 'Nachher'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('Nachher', $ticket->fresh()->titel);
+    }
+
+    public function test_liegengebliebene_uploads_werden_beim_anlegen_weggeraeumt(): void
+    {
+        Storage::fake(Attachment::PLATTE);
+
+        $admin = User::factory()->create([
+            'rolle' => Rolle::Admin,
+            'panel_zugang' => true,
+        ]);
+
+        $platte = Storage::disk(Attachment::PLATTE);
+        $alt = Anhangfeld::ZWISCHENLAGER.'/alt__vergessen.png';
+        $neu = Anhangfeld::ZWISCHENLAGER.'/neu__gerade-erst.png';
+
+        $platte->put($alt, 'x');
+        $platte->put($neu, 'x');
+        touch($platte->path($alt), now()->subDays(2)->getTimestamp());
+
+        Livewire::actingAs($admin)->test(CreateTicket::class);
+
+        // Die alte ist weg, die von gerade eben bleibt — sonst risse man
+        // jemandem den Upload weg, der nebenan noch am Formular sitzt.
+        $platte->assertMissing($alt);
+        $platte->assertExists($neu);
     }
 
     public function test_groesse_wird_lesbar_dargestellt(): void

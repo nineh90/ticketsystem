@@ -4,18 +4,18 @@ namespace App\Filament\Kunde\Resources\Anliegen\Pages;
 
 use App\Enums\Quelle;
 use App\Enums\TicketArt;
+use App\Filament\Concerns\NimmtDateienEntgegen;
 use App\Filament\Kunde\Resources\Anliegen\AnliegenResource;
-use App\Models\Attachment;
 use App\Models\Project;
 use App\Models\TicketStatus;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class CreateAnliegen extends CreateRecord
 {
+    use NimmtDateienEntgegen;
+
     protected static string $resource = AnliegenResource::class;
 
     public function getTitle(): string
@@ -105,24 +105,13 @@ class CreateAnliegen extends CreateRecord
      * ungeprüft aus dem Formular, ließe sich mit einer geänderten Anfrage ein
      * Anliegen in einem fremden Projekt anlegen.
      */
-    /**
-     * Die hochgeladenen Dateien, zwischengeparkt.
-     *
-     * Sie gehören nicht ins Ticket-Model — "dateien" ist keine Spalte —, und
-     * zuordnen lassen sie sich erst, wenn das Anliegen eine ID hat. Deshalb
-     * werden sie vor dem Anlegen aus den Formulardaten genommen und danach
-     * in afterCreate() verarbeitet.
-     *
-     * @var list<string>
-     */
-    private array $dateien = [];
-
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $nutzer = auth()->user();
 
-        $this->dateien = array_values((array) ($data['dateien'] ?? []));
-        unset($data['dateien']);
+        // "dateien" ist keine Spalte; die Dateien werden erst in afterCreate()
+        // zugeordnet, wenn das Anliegen eine Nummer hat.
+        $data = $this->dateienAusFormular($data);
 
         // Gehört das Projekt wirklich diesem Kunden? Die Auswahlliste zeigt
         // nur passende, aber eine Auswahlliste ist keine Prüfung.
@@ -160,83 +149,9 @@ class CreateAnliegen extends CreateRecord
         ];
     }
 
-    /**
-     * Die mitgeschickten Dateien an das eben angelegte Anliegen hängen.
-     *
-     * Sie liegen bis hierher im Zwischenlager anhaenge/eingang, weil beim
-     * Hochladen noch keine Ticketnummer existierte. Jetzt wandern sie in den
-     * Ordner des Anliegens — derselbe Aufbau wie bei intern hochgeladenen
-     * Anhängen, damit es später nur eine Art von Ablage gibt.
-     *
-     * Fehler beim Verschieben werden übersprungen und nicht hochgeworfen: das
-     * Anliegen ist zu diesem Zeitpunkt bereits angelegt und benachrichtigt,
-     * und ein Abbruch hier hinterließe dem Kunden eine Fehlermeldung für
-     * etwas, das in Wahrheit angekommen ist.
-     */
+    /** Die mitgeschickten Dateien an das eben angelegte Anliegen hängen. */
     protected function afterCreate(): void
     {
-        if ($this->dateien === []) {
-            return;
-        }
-
-        $ticket = $this->getRecord();
-        $platte = Storage::disk(Attachment::PLATTE);
-
-        foreach ($this->dateien as $eingang) {
-            $basis = basename($eingang);
-            $ziel = 'anhaenge/'.$ticket->getKey().'/'.$basis;
-
-            if (! $platte->exists($eingang)) {
-                continue;
-            }
-
-            if ($eingang !== $ziel && ! $platte->move($eingang, $ziel)) {
-                continue;
-            }
-
-            // Alles hinter "__" ist der ursprüngliche Dateiname; davor steht
-            // der Zufallsvorsatz, der zwei "screenshot.png" auseinanderhält.
-            $anzeigename = str_contains($basis, '__')
-                ? Str::after($basis, '__')
-                : $basis;
-
-            $ticket->attachments()->create([
-                'user_id' => auth()->id(),
-                'pfad' => $ziel,
-                'dateiname' => $anzeigename,
-                'mime' => $platte->mimeType($ziel) ?: null,
-                'groesse' => $platte->size($ziel),
-            ]);
-        }
-
-        $this->dateien = [];
-    }
-
-    /**
-     * Liegengebliebene Dateien im Zwischenlager wegräumen.
-     *
-     * Filament legt einen Upload sofort ab, auch wenn das Formular danach nie
-     * abgeschickt wird — wer einen Screenshot anhängt und es sich anders
-     * überlegt, hinterlässt eine Datei, die zu nichts mehr gehört. Das ist
-     * derselbe Fall, für den Attachment::booted() beim Löschen die Datei
-     * mitnimmt: verwaiste Dateien lassen sich niemandem mehr zuordnen, und
-     * sie enthalten unter Umständen genau das, was weg sollte.
-     *
-     * Der Aufräumer hängt am Aufruf dieser Seite und nicht am Zeitplan: einen
-     * Scheduler gibt es in diesem Projekt nicht (siehe deploy/entrypoint.sh),
-     * ein schedule:run wäre also ein zusätzlicher Dauerprozess für eine
-     * Handvoll Dateien. Wer ein Anliegen meldet, räumt beim Betreten das auf,
-     * was jemand anders vor mehr als einem Tag stehengelassen hat.
-     */
-    private function zwischenlagerAufraeumen(): void
-    {
-        $platte = Storage::disk(Attachment::PLATTE);
-        $grenze = now()->subDay()->getTimestamp();
-
-        foreach ($platte->files('anhaenge/eingang') as $datei) {
-            if ($platte->lastModified($datei) < $grenze) {
-                $platte->delete($datei);
-            }
-        }
+        $this->dateienAnhaengen($this->getRecord());
     }
 }
