@@ -15,10 +15,10 @@ use App\Filament\Resources\Tickets\Tables\TicketsTable;
 use App\Models\Ticket;
 use BackedEnum;
 use Filament\Resources\Resource;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class TicketResource extends Resource
 {
@@ -51,6 +51,36 @@ class TicketResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->sichtbarFuer(auth()->user());
+    }
+
+    /**
+     * Der Weg zu einer bestimmten Menge Tickets — für alles, was eine Zahl
+     * anzeigt und sie beim Wort genommen wissen will: die Dashboard-Kacheln
+     * und das "… und N weitere" im Kanban.
+     *
+     * Die Liste merkt sich Filter, Suche und Reiter über die Sitzung. Für
+     * eine Zahl, auf die man klickt, ist das Gift: die Kachel zählt ohne
+     * Einschränkung, die Liste zeigte dann noch die Suche von vorhin. Diese
+     * Adresse räumt sie deshalb ausdrücklich weg.
+     *
+     * Drei Teile, und jeder ist nötig:
+     *
+     *  - `tab` benennt den Reiter (die Schlüssel stehen in ListTickets).
+     *  - `filters` steht immer da, auch ohne Zeitfenster: Filament greift auf
+     *    die gemerkten Filter nur zurück, wenn die Adresse gar keinen
+     *    mitbringt.
+     *  - `frisch` löscht die gemerkte Suche. Für sie reicht der leere Wert
+     *    nicht — Filament prüft dort auf "leer", nicht auf "nicht gesetzt".
+     *
+     * @param  array<string, array<string, mixed>>  $weitereFilter
+     */
+    public static function listeUrl(string $reiter, string $zeitfenster = '', array $weitereFilter = []): string
+    {
+        return static::getUrl('index', [
+            'tab' => $reiter,
+            'frisch' => 1,
+            'filters' => ['zeitfenster' => ['value' => $zeitfenster]] + $weitereFilter,
+        ]);
     }
 
     public static function form(Schema $schema): Schema

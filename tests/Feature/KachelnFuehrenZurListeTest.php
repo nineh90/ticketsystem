@@ -94,6 +94,94 @@ class KachelnFuehrenZurListeTest extends TestCase
         }
     }
 
+    public function test_ein_gemerkter_filter_verfaelscht_die_kachel_nicht(): void
+    {
+        // Der Zusammenstoß der beiden Wünsche: Filter sollen über die Sitzung
+        // stehen bleiben, und eine Kachel soll zeigen, was sie zählt. Wer
+        // vormittags nach einem Kunden gefiltert hat und nachmittags auf
+        // "Meine offenen Tickets" klickt, sähe sonst nur dessen Tickets — die
+        // Kachel stünde auf 4 und die Liste zeigte eins.
+        $nutzer = $this->admin();
+        $this->beispieldaten($nutzer);
+
+        $fremderKunde = Customer::factory()->create();
+
+        session()->put(
+            (new ListTickets)->getTableFiltersSessionKey(),
+            ['customer' => ['value' => $fremderKunde->getKey()]],
+        );
+
+        $this->pruefeKacheln(MeinUeberblick::class, $nutzer);
+        $this->pruefeKacheln(TeamUeberblick::class, $nutzer);
+    }
+
+    public function test_eine_gemerkte_suche_verfaelscht_die_kachel_nicht(): void
+    {
+        // Dieselbe Falle wie beim Filter, aber eine Stufe tückischer: für die
+        // Suche genügt es nicht, sie in der Adresse leer mitzugeben — Filament
+        // holt den gemerkten Stand, sobald sie leer ist, nicht erst wenn sie
+        // fehlt. Deshalb tragen die Kachel-Adressen "frisch" mit sich.
+        $nutzer = $this->admin();
+        $this->beispieldaten($nutzer);
+
+        session()->put(
+            (new ListTickets)->getTableSearchSessionKey(),
+            'findet-mit-sicherheit-nichts',
+        );
+
+        $this->pruefeKacheln(MeinUeberblick::class, $nutzer);
+        $this->pruefeKacheln(TeamUeberblick::class, $nutzer);
+    }
+
+    public function test_ohne_deeplink_bleiben_suche_und_filter_stehen(): void
+    {
+        // Die Gegenprobe zu den beiden oben: das Aufräumen darf nur passieren,
+        // wenn man über eine Zahl hereinkommt. Wer die Liste ganz normal über
+        // die Navigation aufruft, will seinen Stand wiederfinden — das ist der
+        // ganze Sinn der Sache.
+        $nutzer = $this->admin();
+        $this->beispieldaten($nutzer);
+        $this->actingAs($nutzer);
+
+        Livewire::test(ListTickets::class)
+            ->set('tableSearch', 'Patent')
+            ->set('activeTab', 'alle');
+
+        Livewire::test(ListTickets::class)
+            ->assertSet('tableSearch', 'Patent')
+            ->assertSet('activeTab', 'alle');
+    }
+
+    public function test_der_zuletzt_gewaehlte_reiter_steht_beim_naechsten_aufruf_wieder_da(): void
+    {
+        $nutzer = $this->admin();
+        $this->beispieldaten($nutzer);
+        $this->actingAs($nutzer);
+
+        // Erst wechseln …
+        Livewire::test(ListTickets::class)
+            ->assertSet('activeTab', 'offen')
+            ->set('activeTab', 'unzugewiesen');
+
+        // … dann die Liste frisch aufrufen, so wie nach einem Ausflug ins
+        // Dashboard und einem Klick auf "Tickets" in der Navigation.
+        Livewire::test(ListTickets::class)
+            ->assertSet('activeTab', 'unzugewiesen');
+    }
+
+    public function test_ein_reiter_der_nicht_mehr_existiert_wirft_die_liste_nicht_um(): void
+    {
+        $nutzer = $this->admin();
+        $this->beispieldaten($nutzer);
+        $this->actingAs($nutzer);
+
+        session()->put(ListTickets::class.'_aktiver_reiter', 'gab-es-mal');
+
+        Livewire::test(ListTickets::class)
+            ->assertSuccessful()
+            ->assertSet('activeTab', 'offen');
+    }
+
     public function test_die_zeitkacheln_bleiben_bewusst_ohne_adresse(): void
     {
         // Sonst führt der nächste Handgriff sie "der Vollständigkeit halber"

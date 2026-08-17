@@ -74,20 +74,10 @@ class MeinUeberblick extends StatsOverviewWidget
             ->count();
 
         // Wohin die Kacheln führen. Die Reiterschlüssel stehen in
-        // ListTickets::getTabs(), die Filterwerte in TicketsTable — jede
-        // Adresse hier hat drüben ihr Gegenstück, und beide Seiten benutzen
-        // dieselben Scopes am Ticket. Sonst zeigt die Liste nach dem Klick
-        // eine andere Zahl als die Kachel davor.
-        //
-        // Die Parameter heißen "tab" und "filters", nicht "activeTab" und
-        // "tableFilters" — so sind sie in ListRecords als #[Url] benannt. Der
-        // Unterschied fällt beim Ausprobieren nicht auf: ein unbekannter
-        // Parameter wird stillschweigend ignoriert, die Liste geht auf und
-        // steht auf ihrem Standardreiter.
-        $liste = fn (string $reiter, ?string $zeitfenster = null) => TicketResource::getUrl('index', array_filter([
-            'tab' => $reiter,
-            'filters' => $zeitfenster ? ['zeitfenster' => ['value' => $zeitfenster]] : null,
-        ]));
+        // ListTickets::getTabs(), die Filterwerte in TicketsTable; wie die
+        // Adresse zusammengesetzt sein muss, damit die Liste danach genau
+        // diese Menge zeigt, steht in TicketResource::listeUrl().
+        $liste = TicketResource::listeUrl(...);
 
         $minutenDieseWoche = TimeEntry::query()
             ->where('user_id', $nutzer->getKey())

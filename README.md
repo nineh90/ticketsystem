@@ -116,6 +116,47 @@ Zwei Dinge sind daran heikel, und beide sieht man nicht:
   21 Zeilen sehen; `KachelnFuehrenZurListeTest` nimmt jede verlinkte Kachel
   beim Wort und zählt nach.
 
+Solche Adressen baut man deshalb **nicht von Hand**, sondern mit
+`TicketResource::listeUrl()`. Dort steht auch, warum jede von ihnen ein leeres
+Zeitfenster und ein `frisch=1` mit sich trägt — siehe den nächsten Abschnitt.
+
+## Eingestelltes bleibt eingestellt
+
+Die Ticketliste hält Filter, Suche und Sortierung über die Sitzung
+(`persistFiltersInSession()` und Geschwister in `TicketsTable`), den aktiven
+Reiter hält `ListTickets` selbst. Wer nach „Kunde: Landhaus, Reiter: Meine" ein
+Ticket öffnet und über die Navigation zurückkommt, findet seinen Stand wieder.
+Dasselbe gilt für die Vorauswahl im Kanban.
+
+Die Sitzung, nicht die Adresse: ein Filter, der in der URL klebt, wandert in
+Lesezeichen und weitergeschickte Links.
+
+**Das stößt sich mit den Kacheln**, und die Auflösung ist der Grund für die
+zwei Merkwürdigkeiten in `listeUrl()`:
+
+| | greift auf die Sitzung zurück, wenn … | also braucht die Adresse … |
+|---|---|---|
+| Filter | die Adresse gar keinen mitbringt | ein Zeitfenster, notfalls leer |
+| Suche | sie **leer** ist — nicht erst, wenn sie fehlt | `frisch=1`, das sie löscht |
+
+Der Unterschied ist der ganze Punkt: bei der Suche reicht der leere Wert nicht.
+Beide Fälle stehen als Test in `KachelnFuehrenZurListeTest`, samt der
+Gegenprobe, dass ein normaler Aufruf über die Navigation nichts wegräumt.
+
+## Kanban
+
+Das Brett ist so hoch wie der Bildschirm und keinen Pixel höher; jede Spalte
+scrollt für sich. Vorher wuchs es mit der längsten Spalte — bei
+sechsundzwanzig Karten auf gut dreitausend Pixel, und die waagerechte
+Bildlaufleiste saß ganz unten an deren Ende. Wer nach rechts wollte, musste
+erst durch die ganze Spalte nach unten.
+
+Abschließende Spalten zeigen höchstens `Kanban::KARTEN_JE_ABSCHLUSS_SPALTE`
+Karten und darunter „… und N weitere". Gekappt wird nur die Anzeige: die Zahl
+im Spaltenkopf zählt vollständig, und der Weg dahinter führt auf genau diese
+Menge. Offene Spalten bleiben ungekürzt — jede Karte darin ist etwas, das
+noch jemand anfassen muss.
+
 ## Nachrichten
 
 Ein Chat neben den Tickets, an kein Ticket gebunden: `/nachrichten` innen,

@@ -90,12 +90,9 @@ class TeamUeberblick extends StatsOverviewWidget
 
         // Wohin die Kacheln führen. Reiterschlüssel aus ListTickets,
         // Filterwerte aus TicketsTable; die Bedingungen dahinter sind
-        // dieselben Scopes, die oben gezählt haben. Zu den Parameternamen
-        // steht das Nötige in MeinUeberblick.
-        $liste = fn (string $reiter, ?string $zeitfenster = null) => TicketResource::getUrl('index', array_filter([
-            'tab' => $reiter,
-            'filters' => $zeitfenster ? ['zeitfenster' => ['value' => $zeitfenster]] : null,
-        ]));
+        // dieselben Scopes, die oben gezählt haben. Wie die Adresse gebaut
+        // sein muss, steht in TicketResource::listeUrl().
+        $liste = TicketResource::listeUrl(...);
 
         return [
             // Die Beschreibung nennt zwei Teilmengen, die Kachel kann nur

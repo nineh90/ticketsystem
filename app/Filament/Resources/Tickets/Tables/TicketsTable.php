@@ -184,6 +184,23 @@ class TicketsTable
             // stehen auch im geschlossenen Zustand als Abzeichen daneben.
             ->filtersLayout(FiltersLayout::AboveContentCollapsible)
             ->filtersFormColumns(3)
+            // Was man eingestellt hat, bleibt eingestellt — über die ganze
+            // Sitzung, auch über den Umweg Dashboard und zurück. Vorher war
+            // jeder Weg aus der Liste heraus ein Zurücksetzen: wer nach
+            // "Kunde: Landhaus, Priorität: dringend" ein Ticket öffnete und
+            // über die Navigation zurückkam, stellte beides neu ein.
+            //
+            // Die Sitzung, nicht die Adresse: ein Filter, der in der URL
+            // klebt, wandert in Lesezeichen und in weitergeschickte Links,
+            // und dann sieht der andere eine Liste, die er nicht gewählt hat.
+            //
+            // Ein Deeplink schlägt die Sitzung — Filament liest den
+            // gespeicherten Stand nur, wenn die Adresse selbst keinen Filter
+            // mitbringt. Deshalb tragen die Dashboard-Kacheln ihr Zeitfenster
+            // immer mit, auch als leeren Wert (siehe MeinUeberblick).
+            ->persistFiltersInSession()
+            ->persistSearchInSession()
+            ->persistSortInSession()
             // Klick auf die Zeile führt auf die Detailseite mit Kommentaren,
             // Zeiten und Verlauf — nicht direkt ins Bearbeiten-Formular.
             ->recordUrl(fn ($record) => TicketResource::getUrl('view', ['record' => $record]))

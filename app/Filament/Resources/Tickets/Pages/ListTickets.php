@@ -20,6 +20,74 @@ class ListTickets extends ListRecords
     }
 
     /**
+     * Der zuletzt gewählte Reiter, für die Dauer der Sitzung.
+     *
+     * Filter, Suche und Sortierung hält Filament selbst in der Sitzung
+     * (siehe TicketsTable) — den Reiter nicht, und der ist die sichtbarste
+     * Einstellung von allen. Ohne das hier stünde man nach jedem Ausflug ins
+     * Dashboard wieder auf "Offen", obwohl man den ganzen Vormittag unter
+     * "Meine" gearbeitet hat.
+     */
+    public function getDefaultActiveTab(): string|int|null
+    {
+        $gemerkt = session()->get($this->reiterSchluessel());
+
+        // Ein Reiter, den es nicht mehr gibt, führt zu einer Liste ohne
+        // Einschränkung und ohne markierten Reiter — also lieber zurück auf
+        // den ersten. Das kostet einmal nach einer Umbenennung eine falsche
+        // Voreinstellung statt dauerhaft eine kaputte Ansicht.
+        return is_string($gemerkt) && array_key_exists($gemerkt, $this->getCachedTabs())
+            ? $gemerkt
+            : parent::getDefaultActiveTab();
+    }
+
+    public function mount(): void
+    {
+        parent::mount();
+
+        // Wer über eine Zahl hereinkommt, soll genau die Menge sehen, die
+        // darauf stand — und nicht zusätzlich die Suche von heute Vormittag.
+        // Reiter und Filter bringt die Adresse selbst mit, die Suche muss
+        // hier weg (siehe TicketResource::listeUrl).
+        if (request()->boolean('frisch')) {
+            $this->tableSearch = '';
+            $this->tableColumnSearches = [];
+
+            session()->put($this->getTableSearchSessionKey(), '');
+            session()->put($this->getTableColumnSearchesSessionKey(), []);
+        }
+
+        // Auch beim Ankommen merken, nicht erst beim Klicken: wer über eine
+        // Dashboard-Kachel auf "Alle" landet, will beim nächsten Aufruf dort
+        // weitermachen und nicht wieder auf "Offen" stehen.
+        $this->reiterMerken();
+    }
+
+    /**
+     * Livewire ruft das nach jedem Reiterwechsel.
+     *
+     * Der Elternaufruf muss bleiben: er setzt die Seitenzahl zurück und baut
+     * den Spaltenmanager neu. Ohne ihn steht man nach dem Wechsel auf Seite 4
+     * einer Liste, die nur zwei Seiten hat.
+     */
+    public function updatedActiveTab(): void
+    {
+        parent::updatedActiveTab();
+
+        $this->reiterMerken();
+    }
+
+    private function reiterMerken(): void
+    {
+        session()->put($this->reiterSchluessel(), $this->activeTab);
+    }
+
+    private function reiterSchluessel(): string
+    {
+        return static::class.'_aktiver_reiter';
+    }
+
+    /**
      * Die Ansichten, die man täglich braucht — als Reiter über der Liste.
      *
      * Vorher steckten dieselben Einschränkungen als Schalter im
