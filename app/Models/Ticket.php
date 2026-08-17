@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -37,6 +38,9 @@ class Ticket extends Model
      * sieben Zeilen.
      */
     public const RUHEND_AB_TAGEN = 3;
+
+    /** Wie viel vom Titel in die Adresse darf (siehe getRouteKey). */
+    private const TITEL_IN_ADRESSE = 60;
 
     /**
      * Was im Verlauf protokolliert wird.
@@ -159,6 +163,74 @@ class Ticket extends Model
     public function kennung(): string
     {
         return $this->customer->kuerzel.'-'.$this->nummer;
+    }
+
+    /**
+     * Was in der Adresszeile steht: `dlh-3-allergene-pflegen`.
+     *
+     * Vorher stand dort die Datenbank-ID — eine Zahl, die in der Oberfläche
+     * nirgends vorkommt. Wer einen Link weitergibt oder ein Lesezeichen
+     * ansieht, weiß jetzt, worum es geht.
+     *
+     * Die Kennung steht vorn und der Titel dahinter, und diese Reihenfolge
+     * ist die ganze Konstruktion: aufgelöst wird ausschließlich über die
+     * Kennung, der Titel ist Beiwerk. Er darf sich ändern, er darf doppelt
+     * vorkommen — beides gibt es hier wirklich, "Impressum anpassen" liegt
+     * bei zwei Kunden —, ohne dass ein Link darunter kaputtgeht.
+     */
+    public function getRouteKey(): string
+    {
+        $kennung = Str::lower($this->customer?->kuerzel.'-'.$this->nummer);
+
+        // Mit 'de', sonst fällt Str::slug die Umlaute einfach weg: aus
+        // "Grüße" würde "grusse" statt "gruesse". Auf Deutsch gelesen sieht
+        // das nach Tippfehler aus, und Adressen sind das Erste, was man von
+        // einem Ticket sieht, bevor man es geöffnet hat.
+        $titel = Str::of($this->titel)->slug('-', 'de')->limit(self::TITEL_IN_ADRESSE, '')->trim('-');
+
+        return $titel->isEmpty() ? $kennung : $kennung.'-'.$titel;
+    }
+
+    /**
+     * Und zurück.
+     *
+     * Drei Fälle, und der dritte ist der Grund, warum hier überhaupt etwas
+     * steht statt einer Slug-Spalte:
+     *
+     *  - `dlh-3-irgendein-titel` — Kennung vorn, Rest wird weggeworfen.
+     *  - `7` — die alte Form. Sie muss gültig bleiben: in den gespeicherten
+     *    Benachrichtigungen stehen fertige Adressen mit der ID darin, und
+     *    deren "Ansehen"-Knopf soll auch in einem halben Jahr noch etwas
+     *    öffnen.
+     *  - alles andere — nichts finden, also 404. Ausdrücklich und nicht
+     *    dadurch, dass die Abfrage zufällig leer ausgeht.
+     *
+     * Kürzel sind laut Formular alphanumerisch und zwei bis fünf Zeichen
+     * lang, die Nummer ist eine Ziffernfolge — daher lässt sich der Anfang
+     * eindeutig abtrennen, ohne dass ein Bindestrich im Titel stört.
+     *
+     * @param  Builder<Ticket>  $query
+     * @return Builder<Ticket>
+     */
+    public function resolveRouteBindingQuery($query, $value, $field = null)
+    {
+        if ($field !== null) {
+            return parent::resolveRouteBindingQuery($query, $value, $field);
+        }
+
+        $wert = (string) $value;
+
+        if (ctype_digit($wert)) {
+            return $query->whereKey($wert);
+        }
+
+        if (! preg_match('/^([a-z0-9]{2,5})-(\d+)(?:-|$)/i', $wert, $teile)) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query
+            ->whereHas('customer', fn (Builder $q) => $q->whereRaw('lower(kuerzel) = ?', [Str::lower($teile[1])]))
+            ->where('nummer', (int) $teile[2]);
     }
 
     public function project(): BelongsTo

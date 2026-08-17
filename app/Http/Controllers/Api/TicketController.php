@@ -143,7 +143,10 @@ class TicketController extends Controller
             'prioritaet' => $ticket->prioritaet->value,
             'kunde' => $ticket->customer->name,
             'projekt' => $ticket->project->name,
-            'url' => url('/tickets/'.$ticket->id),
+            // Die sprechende Adresse, nicht die ID: diese Zeile wandert in
+            // n8n weiter und landet am Ende in einer Mail oder einer
+            // Chatnachricht, wo man sie liest, bevor man sie anklickt.
+            'url' => url('/tickets/'.$ticket->getRouteKey()),
         ];
     }
 }

@@ -82,11 +82,16 @@ Antwort `201`:
   "ticket": {
     "id": 6, "kennung": "LDX-5", "titel": "…", "status": "Backlog",
     "prioritaet": "hoch", "kunde": "Lerndex", "projekt": "Website",
-    "url": "https://intern.nils-digital.de/tickets/6"
+    "url": "https://intern.nils-digital.de/tickets/ldx-5-neue-anmeldung-klemmt"
   },
   "neu": true
 }
 ```
+
+Die Adresse trägt Kennung und Titel, damit man in einer Mail schon vor dem
+Klick sieht, worum es geht. Aufgelöst wird nur über die Kennung: ein
+umbenanntes Ticket bleibt unter der alten Adresse erreichbar, und die frühere
+Form `/tickets/6` funktioniert ebenfalls weiter.
 
 ### `external_ref` — bitte immer mitgeben
 

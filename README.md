@@ -143,6 +143,29 @@ Der Unterschied ist der ganze Punkt: bei der Suche reicht der leere Wert nicht.
 Beide Fälle stehen als Test in `KachelnFuehrenZurListeTest`, samt der
 Gegenprobe, dass ein normaler Aufruf über die Navigation nichts wegräumt.
 
+## Die Adresse eines Tickets
+
+`/tickets/dlh-3-allergene-pflegen` statt `/tickets/7`. Die Reihenfolge ist die
+ganze Konstruktion: **die Kennung steht vorn und löst allein auf, der Titel
+dahinter ist Beiwerk.** Beides steckt in `Ticket::getRouteKey()` und
+`resolveRouteBindingQuery()` — keine Slug-Spalte, keine Migration; Kürzel und
+Nummer sind in der Datenbank schon je für sich eindeutig.
+
+Daraus folgt, was sonst weh täte:
+
+* **Titel dürfen sich ändern.** Ein verschickter Link bleibt gültig, weil der
+  Titelteil beim Auflösen weggeworfen wird.
+* **Titel dürfen doppelt sein.** „Impressum anpassen" liegt bei zwei Kunden —
+  `kev-12-…` und `sar-15-…` sind trotzdem verschiedene Adressen.
+* **Die alte Form `/tickets/7` funktioniert weiter.** Nicht aus Höflichkeit:
+  in den gespeicherten Benachrichtigungen stehen fertige Adressen mit der ID
+  darin, und deren „Ansehen"-Knopf soll auch in einem halben Jahr noch etwas
+  öffnen.
+
+`Str::slug()` wird mit `'de'` aufgerufen, sonst fallen die Umlaute weg statt
+umschrieben zu werden — aus „Grüße" würde „grusse". Die n8n-Schnittstelle gibt
+dieselbe Adresse zurück (`docs/n8n.md`), weil sie von dort in Mails wandert.
+
 ## Kanban
 
 Das Brett ist so hoch wie der Bildschirm und keinen Pixel höher; jede Spalte
