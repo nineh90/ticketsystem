@@ -4,7 +4,6 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Models\Ticket;
-use App\Support\Raster;
 use App\Support\Sichtbarkeit;
 use Filament\Support\Colors\Color;
 use Filament\Tables\Columns\TextColumn;
@@ -17,17 +16,18 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class MeineTickets extends TableWidget
 {
-    protected static ?int $sort = 3;
+    /** Unter den eigenen Zahlen, der Uhr und den offenen Nachrichten. */
+    protected static ?int $sort = 4;
 
     /**
-     * Halbe Breite, mit dem Geschehen daneben.
+     * Volle Breite.
      *
-     * Beides in voller Breite untereinander hieße: entweder sieht man seine
-     * Arbeit oder man sieht, was los ist — je nachdem, wie weit man gescrollt
-     * hat. Auf einem Dashboard sollen beide Fragen ohne Scrollen beantwortet
-     * sein.
+     * Stand vorher halb, mit dem Geschehen daneben — das ist mit der Trennung
+     * auf die Betriebsseite gewandert. Der Ticketliste kommt das entgegen:
+     * halbe Breite war für Titel, Kunde und Projekt ohnehin knapp, deshalb
+     * gab es dafür überhaupt Raster::HALB mit seiner xl-Schwelle.
      */
-    protected int|string|array $columnSpan = Raster::HALB;
+    protected int|string|array $columnSpan = 'full';
 
     public function getTableHeading(): string
     {
@@ -56,9 +56,9 @@ class MeineTickets extends TableWidget
                     ELSE 3 END"))
             ->columns([
                 // Die Priorität steckt in der Farbe der Nummer, statt eine
-                // eigene Spalte zu belegen. Auf halber Breite ist Platz das
-                // knappste Gut, und "dringend" erkennt man an Rot schneller
-                // als am gelesenen Wort.
+                // eigene Spalte zu belegen: "dringend" erkennt man an Rot
+                // schneller als am gelesenen Wort, und eine Spalte weniger
+                // ist eine Spalte, die auf einem Laptop nicht umbricht.
                 TextColumn::make('kennung')
                     ->label('Nr.')
                     ->state(fn (Ticket $record) => $record->kennung())

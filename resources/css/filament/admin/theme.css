@@ -72,6 +72,33 @@
     box-shadow: 0 0 0 3px rgb(0 188 212 / 0.15);
 }
 
+/*
+ * Glocke: Gelesenes tritt zurück, Neues bleibt vorne.
+ *
+ * Filament unterscheidet beides bereits, aber nur durch einen zwei Pixel
+ * breiten Balken links — in einer Liste aus zwölf gleich aussehenden Zeilen
+ * findet man den nicht, ohne ihn zu suchen. Genau daran scheiterte der Zweck:
+ * eine Glocke, in der Gelesenes und Neues gleich aussehen, liest man nach der
+ * zweiten Woche gar nicht mehr, weil ohnehin immer etwas darin steht.
+ *
+ * Gelesenes verschwindet trotzdem nicht. Die Glocke ist auch ein kleines
+ * Gedächtnis ("wann kam das noch mal rein"), und eine Liste, die sich beim
+ * Lesen selbst leert, kann das nicht sein.
+ */
+.fi-no-notification-read-ctn {
+    opacity: 0.55;
+    transition: opacity 0.2s ease;
+}
+
+.fi-no-notification-read-ctn:hover {
+    opacity: 1;
+}
+
+/* Und Neues bekommt zusätzlich zum Balken einen leichten Grund. */
+.fi-no-notification-unread-ctn {
+    background-color: rgb(0 188 212 / 0.06);
+}
+
 /* Karten heben sich beim Überfahren leicht an — wie auf der Website. */
 .fi-wi-stats-overview-stat {
     transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;

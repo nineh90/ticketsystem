@@ -47,6 +47,32 @@ class LaufendeZeiten
             ->get();
     }
 
+    /**
+     * Nur die eigenen laufenden Buchungen.
+     *
+     * In aller Regel höchstens eine — zwei parallele Uhren derselben Person
+     * verhindert der Startknopf. Trotzdem eine Sammlung und kein einzelner
+     * Eintrag: Altbestände aus der Zeit davor gibt es, und eine Ansicht, die
+     * genau eine davon zeigt, verschweigt die andere.
+     *
+     * @return Collection<int, TimeEntry>
+     */
+    public static function eigene(?User $nutzer = null): Collection
+    {
+        $nutzer ??= auth()->user();
+
+        if ($nutzer === null) {
+            return collect();
+        }
+
+        return TimeEntry::query()
+            ->laufend()
+            ->where('user_id', $nutzer->getKey())
+            ->with(['user', 'ticket.customer', 'ticket.project'])
+            ->orderBy('gestartet_am')
+            ->get();
+    }
+
     /** Läuft überhaupt etwas? Ohne die Einträge dafür zu laden. */
     public static function gibtEs(?User $nutzer = null): bool
     {

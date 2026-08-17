@@ -71,6 +71,73 @@ davon beim Kunden ankommt, entscheiden Schalter je Datensatz — Vorgabe beim
 Tresor ist *nicht sichtbar*. Ausführlich in
 [`docs/betrieb.md`](docs/betrieb.md#die-kundenakte).
 
+## Zwei Einstiegsseiten statt eines Dashboards
+
+Intern gibt es zwei Startseiten, und die Trennlinie ist eine Frage: kann ich
+daran etwas tun?
+
+| | Adresse | Was darauf steht |
+|---|---|---|
+| Mein Bereich | `/` | Meine Zahlen, meine Uhr, ungelesene Nachrichten, meine Tickets, wartende Kundenanliegen |
+| Betrieb | `/betrieb` | Zahlen des Betriebs, alle laufenden Uhren, Geschehen, Verteilung |
+
+Beide sind `Filament\Pages\Dashboard`-Ableitungen und sagen in `getWidgets()`
+selbst, welche Karten sie tragen. Im `AdminPanelProvider` steht **keine**
+gemeinsame Widget-Liste mehr — `discoverWidgets()` meldet sie nur noch als
+Livewire-Komponenten an. Eine Karte, die nirgends in einem `getWidgets()`
+steht, erscheint damit auch nirgends.
+
+## Nachrichten
+
+Ein Chat neben den Tickets, an kein Ticket gebunden: `/nachrichten` innen,
+`/kunde/nachrichten` außen. Für alles, wofür ein Ticket zu viel wäre — eine
+Terminfrage, eine Rückfrage zur Rechnung, ein Hinweis an einen Kollegen.
+
+Zwei Arten, und der Unterschied ist der Empfängerkreis:
+
+* **Kundenunterhaltung** — gehört dem Kunden, nicht einer Person. Es gibt je
+  Kunde genau einen Verlauf (`unique` auf `customer_id`). Es lesen alle
+  Zugänge des Kunden und alle, die für ihn zuständig sind — dieselbe Regel wie
+  bei Tickets und Zeiten (`Customer::sichtbarFuer`). Damit bleibt der Faden
+  auch dann bedient, wenn jemand im Urlaub ist.
+* **Interne Unterhaltung** — zwischen genau zwei von uns. Hier gilt als
+  einzige Stelle im System **nicht** „Administrator sieht alles": wer nicht
+  Teilnehmer ist, liest nicht mit. Siehe `UnterhaltungPolicy::view()`.
+
+Der Lesestand steht je Beteiligtem als Zeitstempel
+(`unterhaltung_teilnehmer.gelesen_bis`), nicht als Zähler — ein Zähler müsste
+bei jeder Nachricht für jeden fortgeschrieben werden und liefe beim ersten
+Fehlschlag still auseinander. Die Zahl an der Navigation kommt aus
+`Unterhaltungen::ungelesen()` und ist bewusst **eine** Abfrage: sie läuft bei
+jedem Seitenaufruf.
+
+## Die Glocke
+
+Jede Meldung trägt in ihren Daten eine **Herkunft** mit (`ticket:42`,
+`unterhaltung:7`, `kunde:3` — siehe `App\Support\Herkunft`). Öffnet jemand
+später genau diese Sache, gelten alle Meldungen dazu für ihn als gelesen:
+
+| Geöffnet | Verstummt |
+|---|---|
+| Ticket (`ViewTicket`) bzw. Anliegen (`ViewAnliegen`) | `ticket:<id>` |
+| Verlauf (`Unterhaltung::alsGelesenMarkieren`) | `unterhaltung:<id>` |
+| Kundenakte (`EditCustomer`) | `kunde:<id>` |
+
+Ohne das zählte die Glocke nur herunter, wenn man eine Meldung in ihr selbst
+anklickt — wer die Antwort längst im Ticket gelesen hatte, trug die Zahl
+trotzdem weiter vor sich her, und eine Zahl, die immer da ist, heißt nach der
+dritten Woche nichts mehr.
+
+Gelesenes **bleibt in der Liste stehen**, nur eben zurückgetreten (`opacity`
+in `theme.css` auf `.fi-no-notification-read-ctn`); Neues behält Balken und
+Farbgrund. Die Glocke ist auch ein kleines Gedächtnis dafür, wann etwas
+hereinkam, und das kann eine Liste nicht sein, die sich beim Lesen leert.
+
+Die Herkunft wird in `Benachrichtigung::zustellen()` untergemischt, weil
+Filaments `Notification` nur ihre eigenen Felder kennt und alles andere
+wegwirft. Beim Zurücklesen übergeht `Notification::fromArray()` den
+zusätzlichen Schlüssel.
+
 ## Zugang
 
 Ein Konto allein reicht nicht. `User::canAccessPanel()` verlangt zusätzlich

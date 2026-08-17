@@ -190,9 +190,37 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsToMany(Customer::class)->withTimestamps();
     }
 
+    /**
+     * Darf dieser Nutzer mit diesem Kunden zu tun haben?
+     *
+     * Die Frage stellt sich außerhalb von Listen — beim Öffnen einer
+     * einzelnen Unterhaltung etwa, wo es keine Abfrage gibt, die man filtern
+     * könnte. Sie geht trotzdem durch denselben Scope wie jede Liste: eine
+     * zweite, von Hand nachgebaute Fassung der Zuständigkeit wäre genau die,
+     * die beim nächsten "Mitarbeiter dürfen jetzt auch …" übersehen wird.
+     */
+    public function istBerechtigtFuerKunde(int $customerId): bool
+    {
+        return Customer::query()->whereKey($customerId)->sichtbarFuer($this)->exists();
+    }
+
     public function zugewieseneTickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'assigned_to');
+    }
+
+    /**
+     * Alle Unterhaltungen, an denen dieser Nutzer als Person beteiligt ist.
+     *
+     * Nur für die internen Fäden aussagekräftig — an einer Kundenunterhaltung
+     * hängt die Zeile am Lesestand, nicht an einer Mitgliedschaft. Siehe
+     * Unterhaltung::teilnehmer().
+     */
+    public function unterhaltungen(): BelongsToMany
+    {
+        return $this->belongsToMany(Unterhaltung::class, 'unterhaltung_teilnehmer')
+            ->withPivot('gelesen_bis')
+            ->withTimestamps();
     }
 
     public function timeEntries(): HasMany

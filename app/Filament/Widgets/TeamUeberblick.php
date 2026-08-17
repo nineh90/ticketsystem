@@ -6,7 +6,6 @@ use App\Models\Ticket;
 use App\Models\TimeEntry;
 use App\Models\User;
 use App\Support\Dauer;
-use App\Support\Raster;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\Eloquent\Builder;
@@ -33,10 +32,16 @@ class TeamUeberblick extends StatsOverviewWidget
 {
     protected static ?int $sort = 2;
 
-    /** Steht neben MeinUeberblick, deshalb halbe Breite und zwei Kacheln je Reihe. */
-    protected int|string|array $columnSpan = Raster::HALB;
+    /**
+     * Volle Breite und vier Kacheln nebeneinander.
+     *
+     * Vorher halb, weil MeinUeberblick daneben stand. Seit der Trennung steht
+     * es das nicht mehr — die eigenen Zahlen sind auf "Mein Bereich"
+     * gewandert, hier oben ist die Reihe frei.
+     */
+    protected int|string|array $columnSpan = 'full';
 
-    protected int|array|null $columns = ['default' => 4, 'xl' => 2];
+    protected int|array|null $columns = 4;
 
     /** Wie lange ein offenes Ticket ruhen darf, bevor es auffällt. */
     private const RUHEND_AB_TAGEN = 3;

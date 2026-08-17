@@ -3,6 +3,8 @@
 namespace App\Filament\Kunde\Resources\Anliegen\Pages;
 
 use App\Filament\Kunde\Resources\Anliegen\AnliegenResource;
+use App\Support\Benachrichtigung;
+use App\Support\Herkunft;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
 use Filament\Resources\Pages\ViewRecord;
@@ -13,6 +15,21 @@ use Filament\Support\Colors\Color;
 class ViewAnliegen extends ViewRecord
 {
     protected static string $resource = AnliegenResource::class;
+
+    /**
+     * Dieselbe Regel wie innen: geöffnet heißt gelesen.
+     *
+     * Für den Kunden wiegt es schwerer als für uns. Er kommt zwei- bis
+     * dreimal im Jahr her; eine Glocke, die ihn beim übernächsten Besuch mit
+     * einer Zahl empfängt, die er beim letzten Mal schon gesehen hat, ist für
+     * ihn kein Hinweis mehr, sondern Zierde.
+     */
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+
+        Benachrichtigung::gesehen(auth()->user(), Herkunft::ticket($this->record));
+    }
 
     public function getTitle(): string
     {

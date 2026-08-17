@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Enums\Rolle;
+use App\Filament\Pages\Betrieb;
+use App\Filament\Pages\MeinBereich;
 use App\Filament\Widgets\MeineTickets;
 use App\Filament\Widgets\MeinUeberblick;
+use App\Filament\Widgets\TeamUeberblick;
 use App\Filament\Widgets\TicketsVerteilung;
 use App\Models\Customer;
 use App\Models\Project;
@@ -47,6 +50,38 @@ class DashboardTest extends TestCase
         ]);
 
         $this->actingAs($admin)->get('/')->assertOk();
+    }
+
+    public function test_betrieb_liegt_auf_einer_eigenen_seite(): void
+    {
+        $admin = $this->admin();
+
+        $status = TicketStatus::factory()->create();
+        Ticket::factory()->create([
+            'ticket_status_id' => $status->id,
+            'assigned_to' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)->get('/betrieb')->assertOk();
+    }
+
+    public function test_die_beiden_seiten_teilen_sich_die_karten_ohne_ueberschneidung(): void
+    {
+        // Der eigentliche Zweck der Trennung. Ein Widget auf beiden Seiten
+        // wäre kein Fehler, den man sieht — es sähe nur wieder nach der alten
+        // Wand aus Karten aus, und zwar zweimal.
+        $meins = (new MeinBereich)->getWidgets();
+        $betrieb = (new Betrieb)->getWidgets();
+
+        $this->assertSame([], array_intersect($meins, $betrieb));
+
+        $this->assertContains(MeinUeberblick::class, $meins);
+        $this->assertContains(MeineTickets::class, $meins);
+        $this->assertNotContains(TeamUeberblick::class, $meins);
+
+        $this->assertContains(TeamUeberblick::class, $betrieb);
+        $this->assertContains(TicketsVerteilung::class, $betrieb);
+        $this->assertNotContains(MeineTickets::class, $betrieb);
     }
 
     public function test_kundendiagramm_laeuft_unter_postgres(): void

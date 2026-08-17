@@ -5,7 +5,6 @@ namespace App\Filament\Widgets;
 use App\Models\Ticket;
 use App\Models\TimeEntry;
 use App\Support\Dauer;
-use App\Support\Raster;
 use App\Support\Sichtbarkeit;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -23,29 +22,26 @@ class MeinUeberblick extends StatsOverviewWidget
     protected static ?int $sort = 1;
 
     /**
-     * Überschrift, weil rechts daneben vier weitere Kacheln stehen. Ohne sie
-     * sähe man acht gleich aussehende Zahlen und wüsste bei keiner, ob sie
-     * die eigene Arbeit meint oder alles, was im Projekt läuft.
+     * Die Überschrift bleibt, obwohl die Betriebszahlen nicht mehr daneben
+     * stehen. Sie beantwortet weiterhin die Frage, die man vor einer Zahl
+     * hat: meint sie mich oder alles, was läuft. Die Antwort steht jetzt
+     * zusätzlich schon im Seitentitel — doppelt ist hier richtig, denn eine
+     * Kachelreihe wird auch quer gelesen.
      */
     protected ?string $heading = 'Meine Arbeit';
 
     /**
-     * Halbe Breite, sobald die Projektzahlen daneben stehen. Zwei volle
-     * Reihen Kacheln übereinander hätten das eigentliche Dashboard — Tickets
-     * und Geschehen — unter den Bildschirmrand geschoben.
+     * Volle Breite.
+     *
+     * Bis zur Trennung von "Mein Bereich" und "Betrieb" stand hier eine
+     * Rechnung: halbe Breite, sobald TeamUeberblick daneben sichtbar war.
+     * Die Zahlen des Betriebs stehen jetzt auf einer eigenen Seite, neben
+     * diesen hier steht also nichts mehr — und eine halbe Reihe Kacheln mit
+     * leerer Fläche daneben sieht aus, als fehle etwas.
      */
-    public function getColumnSpan(): int|string|array
-    {
-        return TeamUeberblick::canView() ? Raster::HALB : 'full';
-    }
+    protected int|string|array $columnSpan = 'full';
 
-    protected function getColumns(): int|array|null
-    {
-        // Halbe Breite trägt zwei Kacheln nebeneinander, volle drei — und
-        // unterhalb von xl steht die Karte wieder über die ganze Breite, dann
-        // passen dort auch wieder alle drei nebeneinander.
-        return TeamUeberblick::canView() ? ['default' => 3, 'xl' => 2] : 3;
-    }
+    protected int|array|null $columns = 3;
 
     protected function getStats(): array
     {

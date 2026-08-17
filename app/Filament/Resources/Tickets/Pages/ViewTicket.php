@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Tickets\Pages;
 
 use App\Filament\Resources\Tickets\TicketResource;
+use App\Support\Benachrichtigung;
+use App\Support\Herkunft;
 use Filament\Actions\EditAction;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
@@ -18,6 +20,22 @@ use Filament\Support\Colors\Color;
 class ViewTicket extends ViewRecord
 {
     protected static string $resource = TicketResource::class;
+
+    /**
+     * Wer das Ticket öffnet, hat die Meldungen dazu gesehen.
+     *
+     * Der Knopf in der Glocke führt genau hierher — wer ihn benutzt, hat sie
+     * damit gelesen, und wer den Weg über die Ticketliste nimmt, ebenso. Ohne
+     * das trüge man die Zahl an der Glocke auch dann weiter vor sich her,
+     * wenn man die Antwort längst kennt, und nach der dritten Woche sagt eine
+     * Zahl, die immer da ist, gar nichts mehr.
+     */
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+
+        Benachrichtigung::gesehen(auth()->user(), Herkunft::ticket($this->record));
+    }
 
     public function getTitle(): string
     {

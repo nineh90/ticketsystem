@@ -4,13 +4,8 @@ namespace App\Providers\Filament;
 
 use App\Filament\Auth\Anmeldung;
 use App\Filament\AvatarProviders\InitialenAvatar;
-use App\Filament\Widgets\Geschehen;
-use App\Filament\Widgets\MeineTickets;
-use App\Filament\Widgets\MeinUeberblick;
-use App\Filament\Widgets\TeamUeberblick;
-use App\Filament\Widgets\TicketsVerteilung;
-use App\Filament\Widgets\VonKunden;
-use App\Filament\Widgets\WerArbeitetGerade;
+use App\Filament\Pages\Betrieb;
+use App\Filament\Pages\MeinBereich;
 use App\Http\Middleware\PasswortWechseln;
 use App\Http\Middleware\SicherheitsHeader;
 use Filament\Actions\Action;
@@ -19,7 +14,6 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -99,28 +93,26 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
+            // Zwei Einstiegsseiten statt eines Dashboards. Filaments
+            // Dashboard::class ist damit raus — MeinBereich tritt an seine
+            // Stelle und liegt auf derselben Adresse (routePath '/').
+            //
+            // Welche Karte auf welcher Seite steht, sagen die Seiten selbst
+            // (getWidgets()) und nicht mehr eine gemeinsame Liste hier. Das
+            // ist der Punkt der Trennung: die Zuordnung steht da, wo man sie
+            // sucht, wenn man eine der beiden Seiten vor sich hat.
             ->pages([
-                Dashboard::class,
+                MeinBereich::class,
+                Betrieb::class,
             ])
+            // Die Widgets müssen trotzdem entdeckt werden — Filament meldet
+            // sie dabei als Livewire-Komponenten an, und ohne das lässt sich
+            // keine davon darstellen, gleich von welcher Seite aus.
+            //
+            // AccountWidget und FilamentInfoWidget sind bewusst nicht dabei:
+            // das eine wiederholt nur den Namen aus der Kopfleiste, das
+            // andere wirbt für Filament. Beide kosten die beste Stelle.
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
-            // AccountWidget und FilamentInfoWidget sind bewusst raus: das eine
-            // wiederholt nur den Namen aus der Kopfleiste, das andere wirbt für
-            // Filament. Beide kosten die beste Stelle des Dashboards.
-            // Reihenfolge auf dem Dashboard: erst die eigenen Zahlen, daneben
-            // die des Betriebs bzw. der eigenen Projekte, darunter die eigene
-            // Arbeitsliste neben dem Geschehen, zuletzt die Verteilung.
-            ->widgets([
-                // Ganz oben und nur dann da, wenn ein Kunde tatsächlich
-                // wartet — siehe VonKunden::canView().
-                VonKunden::class,
-                // Ebenfalls nur da, wenn wirklich eine Uhr läuft.
-                WerArbeitetGerade::class,
-                MeinUeberblick::class,
-                TeamUeberblick::class,
-                Geschehen::class,
-                MeineTickets::class,
-                TicketsVerteilung::class,
-            ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

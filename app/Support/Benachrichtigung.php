@@ -8,6 +8,7 @@ use App\Filament\Resources\Tickets\TicketResource;
 use App\Models\Ticket;
 use App\Models\User;
 use Filament\Actions\Action;
+use Filament\Notifications\DatabaseNotification;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -39,7 +40,7 @@ class Benachrichtigung
      */
     public static function nachInnen(Ticket $ticket, Notification $meldung): void
     {
-        self::zustellen(self::innenkreis($ticket), $meldung);
+        self::zustellen(self::innenkreis($ticket), $meldung, Herkunft::ticket($ticket));
     }
 
     /**
@@ -52,7 +53,7 @@ class Benachrichtigung
      */
     public static function nachAussen(Ticket $ticket, Notification $meldung): void
     {
-        self::zustellen(self::aussenkreis($ticket), $meldung);
+        self::zustellen(self::aussenkreis($ticket), $meldung, Herkunft::ticket($ticket));
     }
 
     /**
@@ -66,7 +67,22 @@ class Benachrichtigung
      */
     public static function anZustaendige(int $customerId, Notification $meldung): void
     {
-        $empfaenger = User::query()
+        self::zustellen(self::zustaendige($customerId), $meldung, Herkunft::kunde($customerId));
+    }
+
+    /**
+     * Wer bei uns für diesen Kunden zuständig ist.
+     *
+     * Öffentlich, weil nicht nur Benachrichtigungen diesen Kreis brauchen:
+     * die Unterhaltungen fragen ihn ebenfalls, um zu wissen, wer eine
+     * Nachricht des Kunden zu sehen bekommt. Zweimal formuliert wäre er
+     * spätestens bei der nächsten Änderung an den Zuordnungen zweierlei.
+     *
+     * @return Collection<int, User>
+     */
+    public static function zustaendige(int $customerId): Collection
+    {
+        return User::query()
             ->where('aktiv', true)
             ->where('rolle', '!=', Rolle::Kunde->value)
             ->where(fn (Builder $q) => $q
@@ -74,8 +90,74 @@ class Benachrichtigung
                 ->orWhereHas('customers', fn (Builder $c) => $c->whereKey($customerId))
                 ->orWhereHas('projects', fn (Builder $p) => $p->where('customer_id', $customerId)))
             ->get();
+    }
 
-        self::zustellen($empfaenger, $meldung);
+    /**
+     * Alle nutzbaren Zugänge eines Kunden.
+     *
+     * Ohne Bezug auf ein Ticket — anders als aussenkreis(), das zusätzlich
+     * prüft, ob das betroffene Projekt für den Kunden überhaupt sichtbar ist.
+     * Für eine Unterhaltung gibt es diese Einschränkung nicht: sie hängt an
+     * keinem Projekt.
+     *
+     * @return Collection<int, User>
+     */
+    public static function kundenzugaenge(int $customerId): Collection
+    {
+        return User::query()
+            ->where('aktiv', true)
+            ->where('panel_zugang', true)
+            ->where('rolle', Rolle::Kunde->value)
+            ->where('customer_id', $customerId)
+            ->get();
+    }
+
+    /**
+     * An einen fertig ermittelten Kreis.
+     *
+     * Der Ausnahmefall, und deshalb ausdrücklich benannt: die Unterhaltungen
+     * kennen ihren Empfängerkreis selbst — bei einem internen Faden sind es
+     * genau die beiden Beteiligten, und keine der Regeln oben trifft darauf
+     * zu. Der Weg zur Glocke soll trotzdem derselbe bleiben.
+     *
+     * @param  Collection<int, User>  $empfaenger
+     */
+    public static function an(Collection $empfaenger, Notification $meldung, ?string $herkunft = null): void
+    {
+        self::zustellen($empfaenger, $meldung, $herkunft);
+    }
+
+    /**
+     * Alles, was zu dieser Sache gemeldet wurde, gilt für diesen Nutzer als
+     * gelesen.
+     *
+     * Wird von den Stellen gerufen, an denen jemand die Sache tatsächlich vor
+     * sich hat: ein geöffnetes Ticket, ein geöffneter Verlauf, eine geöffnete
+     * Kundenakte. Der Gedanke dahinter ist derselbe wie beim Lesestand der
+     * Unterhaltungen — gelesen ist, was jemand gesehen hat, und nicht, was er
+     * zusätzlich weggeklickt hat.
+     *
+     * Die Meldung bleibt in der Glocke stehen; sie zählt nur nicht mehr mit.
+     * Das ist Absicht: die Glocke ist auch ein kleines Gedächtnis ("wann kam
+     * das noch mal rein"), und eine Liste, die sich beim Lesen selbst löscht,
+     * kann das nicht sein.
+     *
+     * @return int  wie viele Meldungen dadurch gelesen wurden
+     */
+    public static function gesehen(?User $nutzer, string $herkunft): int
+    {
+        if ($nutzer === null) {
+            return 0;
+        }
+
+        // Die Abfrage geht über die data-Spalte, die in dieser Anwendung
+        // ausdrücklich json ist und nicht text — siehe die Migration der
+        // notifications-Tabelle. Auf text kennt Postgres den ->>-Operator
+        // nicht, und diese Bedingung liefe in denselben 500er wie damals
+        // Filaments Glocke.
+        return $nutzer->unreadNotifications()
+            ->where('data->herkunft', $herkunft)
+            ->update(['read_at' => now()]);
     }
 
     /**
@@ -97,10 +179,21 @@ class Benachrichtigung
      *
      * @param  Collection<int, User>  $empfaenger
      */
-    private static function zustellen(Collection $empfaenger, Notification $meldung): void
+    private static function zustellen(Collection $empfaenger, Notification $meldung, ?string $herkunft = null): void
     {
+        // Die Herkunft wird der fertigen Meldung untergemischt statt über
+        // Filament gesetzt: dessen Notification kennt nur ihre eigenen Felder,
+        // und getDatabaseMessage() wirft alles andere weg. Beim Zurücklesen
+        // stört der zusätzliche Schlüssel nicht — Notification::fromArray()
+        // greift sich die Felder, die es kennt, und übergeht den Rest.
+        $daten = $meldung->getDatabaseMessage();
+
+        if ($herkunft !== null) {
+            $daten['herkunft'] = $herkunft;
+        }
+
         foreach ($empfaenger as $nutzer) {
-            $nutzer->notifyNow($meldung->toDatabase());
+            $nutzer->notifyNow(new DatabaseNotification($daten));
         }
 
         // Filaments DatabaseNotificationsSent wird hier bewusst NICHT
@@ -140,12 +233,7 @@ class Benachrichtigung
             return collect();
         }
 
-        return User::query()
-            ->where('aktiv', true)
-            ->where('panel_zugang', true)
-            ->where('rolle', Rolle::Kunde->value)
-            ->where('customer_id', $ticket->customer_id)
-            ->get();
+        return self::kundenzugaenge($ticket->customer_id);
     }
 
     /**
