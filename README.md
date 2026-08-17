@@ -87,6 +87,35 @@ gemeinsame Widget-Liste mehr — `discoverWidgets()` meldet sie nur noch als
 Livewire-Komponenten an. Eine Karte, die nirgends in einem `getWidgets()`
 steht, erscheint damit auch nirgends.
 
+### Die Zahlen sind Wege
+
+Jede Kachel, hinter der eine Ticketmenge steht, führt auf die Liste dieser
+Tickets — Reiter und Filter schon gesetzt:
+
+| Kachel | Ziel |
+|---|---|
+| Meine offenen Tickets | Reiter *Meine* |
+| Fällig bis Sonntag | Reiter *Meine* + Zeitfenster *Fällig bis Sonntag* |
+| Offen gesamt | Reiter *Offen* |
+| Heute eingegangen | Reiter *Alle* + Zeitfenster *Heute eingegangen* |
+| Liegt seit 3 Tagen | Reiter *Offen* + Zeitfenster *Ruhend* |
+
+Die beiden Zeitkacheln bleiben absichtlich ohne Ziel: erfasste Zeiten haben
+keine eigene Liste.
+
+Zwei Dinge sind daran heikel, und beide sieht man nicht:
+
+* **Die Parameter heißen `tab` und `filters`**, nicht `activeTab` und
+  `tableFilters` (so stehen sie als `#[Url]` in Filaments `ListRecords`). Ein
+  unbekannter Parameter wird stillschweigend verworfen — die Liste geht auf
+  und steht auf ihrem Standardreiter. Genau so stand es im Kundenbereich
+  monatelang falsch da.
+* **Kachel und Liste müssen dieselbe Bedingung benutzen.** Deshalb stehen
+  „überfällig", „ruhend" und „fällig bis" als Scopes am `Ticket` und nicht
+  ausgeschrieben in Widget, Reiter und Filter. Wer auf eine 21 klickt, will
+  21 Zeilen sehen; `KachelnFuehrenZurListeTest` nimmt jede verlinkte Kachel
+  beim Wort und zählt nach.
+
 ## Nachrichten
 
 Ein Chat neben den Tickets, an kein Ticket gebunden: `/nachrichten` innen,

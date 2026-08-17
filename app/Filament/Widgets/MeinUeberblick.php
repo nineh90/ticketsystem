@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\Tickets\TicketResource;
 use App\Models\Ticket;
 use App\Models\TimeEntry;
 use App\Support\Dauer;
@@ -72,6 +73,22 @@ class MeinUeberblick extends StatsOverviewWidget
             ->whereBetween('faellig_am', [today(), today()->endOfWeek()])
             ->count();
 
+        // Wohin die Kacheln führen. Die Reiterschlüssel stehen in
+        // ListTickets::getTabs(), die Filterwerte in TicketsTable — jede
+        // Adresse hier hat drüben ihr Gegenstück, und beide Seiten benutzen
+        // dieselben Scopes am Ticket. Sonst zeigt die Liste nach dem Klick
+        // eine andere Zahl als die Kachel davor.
+        //
+        // Die Parameter heißen "tab" und "filters", nicht "activeTab" und
+        // "tableFilters" — so sind sie in ListRecords als #[Url] benannt. Der
+        // Unterschied fällt beim Ausprobieren nicht auf: ein unbekannter
+        // Parameter wird stillschweigend ignoriert, die Liste geht auf und
+        // steht auf ihrem Standardreiter.
+        $liste = fn (string $reiter, ?string $zeitfenster = null) => TicketResource::getUrl('index', array_filter([
+            'tab' => $reiter,
+            'filters' => $zeitfenster ? ['zeitfenster' => ['value' => $zeitfenster]] : null,
+        ]));
+
         $minutenDieseWoche = TimeEntry::query()
             ->where('user_id', $nutzer->getKey())
             ->where('gestartet_am', '>=', today()->startOfWeek())
@@ -81,13 +98,25 @@ class MeinUeberblick extends StatsOverviewWidget
             Stat::make('Meine offenen Tickets', (string) $meine->count())
                 ->description($ueberfaellig > 0 ? "{$ueberfaellig} davon überfällig" : 'nichts überfällig')
                 ->descriptionIcon($ueberfaellig > 0 ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-check-circle')
-                ->color($ueberfaellig > 0 ? 'danger' : 'success'),
+                ->color($ueberfaellig > 0 ? 'danger' : 'success')
+                // Auf alle meine offenen, auch wenn welche überfällig sind:
+                // die Zahl auf der Kachel ist die Gesamtzahl, und eine Kachel,
+                // die auf weniger Zeilen führt, als sie anzeigt, ist genau die
+                // Art von Ungenauigkeit, die man einmal bemerkt und der man
+                // danach nicht mehr traut. Die Überfälligen stehen im Reiter
+                // daneben, mit ihrer eigenen roten Zahl.
+                ->url($liste('meine')),
 
             Stat::make('Fällig bis Sonntag', (string) $dieseWoche)
                 ->description('aus meinen Tickets')
                 ->descriptionIcon('heroicon-m-calendar-days')
-                ->color($dieseWoche > 0 ? 'warning' : 'gray'),
+                ->color($dieseWoche > 0 ? 'warning' : 'gray')
+                ->url($liste('meine', 'faellig-diese-woche')),
 
+            // Ohne Adresse, und das bleibt so: erfasste Zeiten haben keine
+            // eigene Liste, sie hängen an den Tickets. Eine Kachel, die
+            // irgendwohin führt, weil die beiden daneben es auch tun, ist
+            // schlechter als eine, die stehen bleibt.
             Stat::make('Meine Zeit diese Woche', Dauer::alsStunden((int) $minutenDieseWoche))
                 ->description('seit Montag erfasst')
                 ->descriptionIcon('heroicon-m-clock')

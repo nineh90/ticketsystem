@@ -28,6 +28,17 @@ class Ticket extends Model
     use HasFactory, LogsActivity;
 
     /**
+     * Wie lange ein offenes Ticket ruhen darf, bevor es auffällt.
+     *
+     * Stand vorher als Konstante im Widget TeamUeberblick. Seit die Kachel
+     * dorthin verlinkt, wo dieselben Tickets stehen, muss die Zahl an einer
+     * Stelle stehen: Kachel und Liste, die sich auseinanderentwickeln, sind
+     * schlimmer als gar keine Verlinkung — man klickt auf eine 4 und findet
+     * sieben Zeilen.
+     */
+    public const RUHEND_AB_TAGEN = 3;
+
+    /**
      * Was im Verlauf protokolliert wird.
      *
      * Bewusst nicht die Beschreibung: sie wird beim Schreiben oft mehrfach
@@ -219,6 +230,49 @@ class Ticket extends Model
     public function scopeOffen(Builder $query): Builder
     {
         return $query->whereHas('status', fn (Builder $q) => $q->where('ist_abschluss', false));
+    }
+
+    /**
+     * Offen und der Termin liegt in der Vergangenheit.
+     *
+     * Beide Bedingungen gehören zusammen: ein erledigtes Ticket mit altem
+     * Termin ist nicht überfällig, sondern fertig.
+     *
+     * Stand bis eben an vier Stellen ausgeschrieben — im Reiter, in zwei
+     * Dashboard-Kacheln und im Filter. Seit die Kacheln auf die Liste
+     * verlinken, ist die Doppelung nicht mehr bloß unschön: eine Zahl, die
+     * auf eine Liste mit anderer Definition führt, ist eine Lüge.
+     */
+    public function scopeUeberfaellig(Builder $query): Builder
+    {
+        return $query
+            ->offen()
+            ->whereDate('faellig_am', '<', today());
+    }
+
+    /**
+     * Offen, seit Tagen unverändert und ohne Wortmeldung.
+     *
+     * Nur auf updated_at zu schauen reicht nicht — ein Ticket, unter dem
+     * heute diskutiert wurde, ist nicht liegen geblieben, auch wenn niemand
+     * ein Feld angefasst hat.
+     */
+    public function scopeRuhend(Builder $query): Builder
+    {
+        $grenze = now()->subDays(self::RUHEND_AB_TAGEN);
+
+        return $query
+            ->offen()
+            ->where('updated_at', '<', $grenze)
+            ->whereDoesntHave('comments', fn (Builder $q) => $q->where('created_at', '>=', $grenze));
+    }
+
+    /** Offen und fällig in einem Zeitraum — von heute bis Sonntag etwa. */
+    public function scopeFaelligBis(Builder $query, mixed $bis): Builder
+    {
+        return $query
+            ->offen()
+            ->whereBetween('faellig_am', [today(), $bis]);
     }
 
     /** Was Kunden selbst gemeldet haben. */

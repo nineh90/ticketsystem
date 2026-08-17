@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\Tickets\TicketResource;
 use App\Models\Ticket;
 use App\Models\TimeEntry;
 use App\Models\User;
@@ -43,9 +44,6 @@ class TeamUeberblick extends StatsOverviewWidget
 
     protected int|array|null $columns = 4;
 
-    /** Wie lange ein offenes Ticket ruhen darf, bevor es auffällt. */
-    private const RUHEND_AB_TAGEN = 3;
-
     protected ?string $heading = 'Im Betrieb';
 
     public static function canView(): bool
@@ -62,10 +60,7 @@ class TeamUeberblick extends StatsOverviewWidget
 
         $offen = $sichtbar()->offen()->count();
 
-        $ueberfaellig = $sichtbar()
-            ->offen()
-            ->whereDate('faellig_am', '<', today())
-            ->count();
+        $ueberfaellig = $sichtbar()->ueberfaellig()->count();
 
         // Was offen ist und noch niemandem gehört. Steht als Beschreibung an
         // der Gesamtzahl statt in einer eigenen Kachel: es ist kein zweiter
@@ -83,17 +78,7 @@ class TeamUeberblick extends StatsOverviewWidget
             ->whereDate('erledigt_at', today())
             ->count();
 
-        // Ruhend heißt: seit Tagen nichts geändert UND niemand hat etwas dazu
-        // geschrieben. Nur auf updated_at zu schauen reichte nicht — ein
-        // Ticket, unter dem heute diskutiert wurde, gilt nicht als liegen
-        // geblieben, auch wenn niemand ein Feld angefasst hat.
-        $grenze = now()->subDays(self::RUHEND_AB_TAGEN);
-
-        $ruhend = $sichtbar()
-            ->offen()
-            ->where('updated_at', '<', $grenze)
-            ->whereDoesntHave('comments', fn (Builder $q) => $q->where('created_at', '>=', $grenze))
-            ->count();
+        $ruhend = $sichtbar()->ruhend()->count();
 
         // Bewusst die Zeit aller Beteiligten, nicht nur die eigene: die eigene
         // steht schon nebenan in MeinUeberblick. Hier geht es darum, was
@@ -103,25 +88,45 @@ class TeamUeberblick extends StatsOverviewWidget
             ->whereDate('gestartet_am', today())
             ->sum('minuten');
 
+        // Wohin die Kacheln führen. Reiterschlüssel aus ListTickets,
+        // Filterwerte aus TicketsTable; die Bedingungen dahinter sind
+        // dieselben Scopes, die oben gezählt haben. Zu den Parameternamen
+        // steht das Nötige in MeinUeberblick.
+        $liste = fn (string $reiter, ?string $zeitfenster = null) => TicketResource::getUrl('index', array_filter([
+            'tab' => $reiter,
+            'filters' => $zeitfenster ? ['zeitfenster' => ['value' => $zeitfenster]] : null,
+        ]));
+
         return [
+            // Die Beschreibung nennt zwei Teilmengen, die Kachel kann nur
+            // eine Adresse haben — sie führt auf die Gesamtmenge. "Überfällig"
+            // und "Unzugewiesen" stehen dort als eigene Reiter mit ihrer Zahl
+            // direkt über der Liste, also einen Klick weiter und sichtbar.
             Stat::make('Offen gesamt', (string) $offen)
                 ->description(
                     ($ueberfaellig > 0 ? "{$ueberfaellig} überfällig" : 'nichts überfällig')
                     .', '.$unzugewiesen.' nicht zugeteilt',
                 )
                 ->descriptionIcon($ueberfaellig > 0 ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-check-circle')
-                ->color($ueberfaellig > 0 ? 'danger' : 'success'),
+                ->color($ueberfaellig > 0 ? 'danger' : 'success')
+                ->url($liste('offen')),
 
+            // Reiter "Alle", nicht "Offen": gezählt wird alles, was heute
+            // hereinkam, auch das, was schon wieder erledigt ist.
             Stat::make('Heute eingegangen', (string) $neuHeute)
                 ->description($erledigtHeute.' heute erledigt')
                 ->descriptionIcon('heroicon-m-arrow-down-tray')
-                ->color($neuHeute > 0 ? 'primary' : 'gray'),
+                ->color($neuHeute > 0 ? 'primary' : 'gray')
+                ->url($liste('alle', 'heute-eingegangen')),
 
-            Stat::make('Liegt seit '.self::RUHEND_AB_TAGEN.' Tagen', (string) $ruhend)
+            Stat::make('Liegt seit '.Ticket::RUHEND_AB_TAGEN.' Tagen', (string) $ruhend)
                 ->description('offen, ohne Änderung und ohne Kommentar')
                 ->descriptionIcon('heroicon-m-moon')
-                ->color($ruhend > 0 ? 'warning' : 'gray'),
+                ->color($ruhend > 0 ? 'warning' : 'gray')
+                ->url($liste('offen', 'ruhend')),
 
+            // Wie nebenan in "Meine Zeit diese Woche" ohne Adresse: erfasste
+            // Zeiten haben keine eigene Liste.
             Stat::make('Zeit heute', Dauer::alsStunden((int) $minutenHeute))
                 ->description('von allen Beteiligten erfasst')
                 ->descriptionIcon('heroicon-m-clock')

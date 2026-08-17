@@ -6,6 +6,7 @@ use App\Enums\Prioritaet;
 use App\Enums\Quelle;
 use App\Enums\TicketArt;
 use App\Filament\Resources\Tickets\TicketResource;
+use App\Models\Ticket;
 use App\Support\Sichtbarkeit;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -16,6 +17,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class TicketsTable
 {
@@ -134,6 +136,37 @@ class TicketsTable
                     ->label('Art')
                     ->options(TicketArt::class)
                     ->multiple(),
+
+                // Die Zeitschnitte, auf die die Dashboard-Kacheln zeigen.
+                //
+                // Ein Filter und kein achter Reiter: die Reiterleiste
+                // beantwortet "in welchem Zustand", und sieben Reiter sind
+                // die Grenze dessen, was man in einer Zeile noch überblickt.
+                // Hier geht es um etwas anderes — "aus welchem Zeitfenster" —
+                // und das lässt sich mit jedem Reiter kombinieren: "Meine"
+                // plus "fällig bis Sonntag" ist genau die Kachel oben links.
+                //
+                // Die Bedingungen stehen absichtlich nicht hier, sondern als
+                // Scopes am Ticket. Kachel, Reiter und Filter zählen sonst
+                // drei leicht verschiedene Mengen, und beim Klick auf eine
+                // Zahl steht eine andere darunter.
+                SelectFilter::make('zeitfenster')
+                    ->label('Zeitfenster')
+                    ->options([
+                        'faellig-diese-woche' => 'Fällig bis Sonntag',
+                        'ueberfaellig' => 'Überfällig',
+                        'heute-eingegangen' => 'Heute eingegangen',
+                        'heute-erledigt' => 'Heute erledigt',
+                        'ruhend' => 'Liegt seit '.Ticket::RUHEND_AB_TAGEN.' Tagen',
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
+                        'faellig-diese-woche' => $query->faelligBis(today()->endOfWeek()),
+                        'ueberfaellig' => $query->ueberfaellig(),
+                        'heute-eingegangen' => $query->whereDate('created_at', today()),
+                        'heute-erledigt' => $query->whereDate('erledigt_at', today()),
+                        'ruhend' => $query->ruhend(),
+                        default => $query,
+                    }),
 
                 // "Nur meine", "Nur offene", "Überfällig" und "Unzugewiesen"
                 // standen hier einmal als Schalter. Sie sind jetzt Reiter über

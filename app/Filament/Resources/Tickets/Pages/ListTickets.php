@@ -53,9 +53,9 @@ class ListTickets extends ListRecords
 
             'ueberfaellig' => Tab::make('Überfällig')
                 ->icon('heroicon-m-exclamation-triangle')
-                ->badge($this->zaehlen(fn (Builder $query) => $this->ueberfaellig($query)))
+                ->badge($this->zaehlen(fn (Builder $query) => $query->ueberfaellig()))
                 ->badgeColor('danger')
-                ->modifyQueryUsing(fn (Builder $query) => $this->ueberfaellig($query)),
+                ->modifyQueryUsing(fn (Builder $query) => $query->ueberfaellig()),
 
             // Seit es den Kundenbereich gibt: was von draußen hereinkommt.
             // Der eigene Reiter, weil auf der anderen Seite jemand wartet —
@@ -82,19 +82,6 @@ class ListTickets extends ListRecords
             'alle' => Tab::make('Alle')
                 ->icon('heroicon-m-bars-3'),
         ];
-    }
-
-    /**
-     * Offen und der Termin liegt in der Vergangenheit.
-     *
-     * Beide Bedingungen gehören zusammen: ein erledigtes Ticket mit altem
-     * Termin ist nicht überfällig, sondern fertig.
-     */
-    private function ueberfaellig(Builder $query): Builder
-    {
-        return $query
-            ->offen()
-            ->whereDate('faellig_am', '<', today());
     }
 
     /**

@@ -43,19 +43,24 @@ class StandDerDinge extends StatsOverviewWidget
                     : 'Nichts liegt bei Ihnen')
                 ->descriptionIcon($amZug > 0 ? 'heroicon-m-hand-raised' : 'heroicon-m-check-circle')
                 ->color($amZug > 0 ? 'warning' : 'success')
-                ->url($amZug > 0 ? AnliegenResource::getUrl('index', ['activeTab' => 'am-zug']) : null),
+                // "tab", nicht "activeTab". Hier stand das Falsche, seit es
+                // die Kacheln gibt, und es war nicht zu sehen: ein Parameter,
+                // den Filament nicht kennt, wird verworfen — die Liste ging
+                // auf und stand auf ihrem ersten Reiter, was zufällig fast
+                // richtig aussah.
+                ->url($amZug > 0 ? AnliegenResource::getUrl('index', ['tab' => 'am-zug']) : null),
 
             Stat::make('In Bearbeitung', (string) $offen)
                 ->description('Anliegen, an denen wir arbeiten')
                 ->descriptionIcon('heroicon-m-arrow-path')
                 ->color('info')
-                ->url(AnliegenResource::getUrl('index', ['activeTab' => 'offen'])),
+                ->url(AnliegenResource::getUrl('index', ['tab' => 'offen'])),
 
             Stat::make('Erledigt', (string) $erledigt)
                 ->description('abgeschlossen')
                 ->descriptionIcon('heroicon-m-check-circle')
                 ->color('gray')
-                ->url(AnliegenResource::getUrl('index', ['activeTab' => 'erledigt'])),
+                ->url(AnliegenResource::getUrl('index', ['tab' => 'erledigt'])),
         ];
     }
 }
