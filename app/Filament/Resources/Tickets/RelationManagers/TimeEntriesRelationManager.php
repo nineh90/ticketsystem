@@ -148,7 +148,16 @@ class TimeEntriesRelationManager extends RelationManager
                     // nicht auflösbar — niemand arbeitet an zwei Tickets
                     // gleichzeitig. Statt das zu verbieten, wird die alte
                     // Uhr auf Nachfrage sauber beendet.
-                    ->requiresConfirmation(fn () => $this->laufendeZeit() !== null)
+                    //
+                    // Das ->modal() davor ist der eigentliche Schalter und
+                    // muss stehenbleiben: Filament öffnet ein Modal schon
+                    // dann, wenn irgendein Modal-Teil gesetzt ist — und
+                    // ->modalHeading() gilt für die Aktion, nicht nur für den
+                    // Fall mit laufender Uhr. Ohne diese Zeile fragte der
+                    // Knopf "Es läuft schon eine Uhr" auch dann, wenn gar
+                    // keine lief.
+                    ->modal(fn () => $this->laufendeZeit() !== null)
+                    ->requiresConfirmation()
                     ->modalHeading('Es läuft schon eine Uhr')
                     ->modalDescription(function (): ?string {
                         $laufend = $this->laufendeZeit();

@@ -277,6 +277,36 @@ class LaufendeZeitenTest extends TestCase
         $this->assertSame(1, TimeEntry::query()->count());
     }
 
+    public function test_starten_fragt_nur_nach_wenn_wirklich_eine_uhr_laeuft(): void
+    {
+        // callAction() oben geht am Modal vorbei und hätte den Fehler nie
+        // gesehen: Filament öffnete das Rückfrage-Fenster allein deshalb,
+        // weil die Aktion eine modalHeading hat. Der Knopf fragte also
+        // "Es läuft schon eine Uhr", während gar keine lief. Deshalb hier
+        // ausdrücklich über das Aufklappen der Aktion geprüft.
+        $nutzer = $this->mitarbeiter();
+        $ticket = $this->ticketFuer($nutzer);
+
+        $this->zeitentabelle($nutzer, $ticket)
+            ->mountAction(TestAction::make('starten')->table())
+            ->assertActionNotMounted()
+            ->assertHasNoActionErrors();
+
+        // Kein Modal heißt: der Klick hat schon gestartet.
+        $this->assertSame($ticket->id, $nutzer->fresh()->laufendeZeit()?->ticket_id);
+
+        // Läuft dagegen woanders eine, bleibt die Rückfrage stehen — und
+        // solange sie nicht bestätigt ist, passiert nichts.
+        $anderes = $this->ticketFuer($nutzer);
+
+        $this->zeitentabelle($nutzer, $anderes)
+            ->mountAction(TestAction::make('starten')->table())
+            ->assertActionMounted(TestAction::make('starten')->table());
+
+        $this->assertSame($ticket->id, $nutzer->fresh()->laufendeZeit()?->ticket_id);
+        $this->assertSame(1, TimeEntry::query()->count());
+    }
+
     public function test_startknopf_fehlt_nur_am_ticket_der_laufenden_uhr(): void
     {
         $nutzer = $this->mitarbeiter();
