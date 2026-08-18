@@ -299,10 +299,17 @@ unter „Sie sind am Zug". Voreingestellt ist das bei *Warten auf Kunde*.
   MAIL_MAILER=smtp
   MAIL_HOST=smtp.strato.de
   MAIL_PORT=587
-  MAIL_USERNAME=ticketsystem@nils-digital.de
+  MAIL_USERNAME=info@nils-digital.de
   MAIL_PASSWORD=…
   MAIL_SCHEME=tls
+  MAIL_FROM_ADDRESS=info@nils-digital.de
   ```
+
+  **Absender und Postfach müssen zusammenpassen.** Strato lässt nur senden,
+  wer sich mit demselben Postfach anmeldet — ein Absender, den es nicht gibt,
+  wird abgewiesen. `ticketsystem@nils-digital.de` gibt es nicht; Vorgabe ist
+  deshalb `info@nils-digital.de`. Kommt später ein eigenes Postfach dazu,
+  genügt die Zeile in `deploy/.env`, ohne Änderung am Code.
 
   Danach `docker compose up -d` in `/docker/ticketsystem/deploy`. Ein Deploy
   über Push tut dasselbe.

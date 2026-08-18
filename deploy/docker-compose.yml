@@ -69,7 +69,12 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       MAIL_SCHEME: ${MAIL_SCHEME:-tls}
-      MAIL_FROM_ADDRESS: ticketsystem@nils-digital.de
+
+      # Der Absender muss zu dem Postfach passen, mit dem sich der Versand
+      # anmeldet — Strato weist Mails sonst ab. Deshalb hier keine feste
+      # Adresse mehr, sondern eine, die sich in deploy/.env übersteuern
+      # lässt: ein Postfach ist Betrieb, kein Code.
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-info@nils-digital.de}
 
       TICKET_API_TOKEN: ${TICKET_API_TOKEN:-}
 
