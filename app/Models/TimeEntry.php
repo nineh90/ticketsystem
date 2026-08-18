@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 #[Fillable([
     'ticket_id', 'user_id', 'gestartet_am', 'beendet_am',
@@ -41,6 +42,21 @@ class TimeEntry extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Die Rechnung, die diese Buchung abdeckt — oder null, solange sie offen
+     * ist.
+     *
+     * Bewusst nicht in der Fillable-Liste: die Zuordnung entsteht an genau
+     * einer Stelle (der Aktion "Zeiten zuordnen" am Dokument) und nirgends
+     * sonst. Über ein Formularfeld wäre sie sonst versehentlich zu setzen,
+     * und eine Buchung, die als abgerechnet gilt, ohne dass jemand eine
+     * Rechnung geschrieben hat, fällt niemandem mehr auf.
+     */
+    public function dokument(): BelongsTo
+    {
+        return $this->belongsTo(Dokument::class);
     }
 
     public function laeuft(): bool
@@ -95,7 +111,7 @@ class TimeEntry extends Model
             return;
         }
 
-        $ende = $zeitpunkt ? \Illuminate\Support\Carbon::instance($zeitpunkt) : now();
+        $ende = $zeitpunkt ? Carbon::instance($zeitpunkt) : now();
 
         $this->beendet_am = $ende;
         $this->minuten = max(0, (int) $this->gestartet_am->diffInMinutes($ende));
@@ -105,6 +121,33 @@ class TimeEntry extends Model
     public function scopeLaufend(Builder $query): Builder
     {
         return $query->whereNull('beendet_am');
+    }
+
+    /**
+     * Was noch abzurechnen ist.
+     *
+     * Drei Bedingungen, und jede hat ihren Grund:
+     *
+     *  - abrechenbar: der Schalter an der Buchung. Kulanz und Einarbeitung
+     *    stehen mit demselben Recht in den Zeiten wie bezahlte Arbeit, sie
+     *    gehören nur nicht auf die Rechnung.
+     *  - noch keiner Rechnung zugeordnet.
+     *  - beendet: eine laufende Uhr hat "minuten" noch auf 0 stehen. Sie
+     *    mitzuzählen hieße, sie mit null Minuten abzurechnen — und danach
+     *    wäre sie als erledigt markiert, obwohl nie etwas dafür berechnet
+     *    wurde. Von allen Fehlern in dieser Ecke ist das der teuerste.
+     *  - mehr als null Minuten: eine sofort wieder gestoppte Uhr ist ein
+     *    Fehlgriff, keine Leistung. Sie stünde sonst für immer in der
+     *    Auswahl — abrechnen lässt sie sich nicht, und wegräumen müsste man
+     *    sie von Hand. Aufgefallen an echten Daten, nicht am Reißbrett.
+     */
+    public function scopeOffenZumAbrechnen(Builder $query): Builder
+    {
+        return $query
+            ->where('abrechenbar', true)
+            ->whereNull('dokument_id')
+            ->whereNotNull('beendet_am')
+            ->where('minuten', '>', 0);
     }
 
     /**

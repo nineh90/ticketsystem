@@ -200,6 +200,12 @@ class LaufendeZeitenTest extends TestCase
 
     public function test_lange_laufende_uhr_faellt_auf(): void
     {
+        // Die Zeit festnageln, sonst hängt der Test an der Wanduhr: läuft er
+        // kurz nach Mitternacht, wurde eine "vor 30 Minuten" gestartete Uhr
+        // gestern gestartet — und ist damit nach der Regel unten auffällig.
+        // Der Test schlug dann einmal am Tag fehl, für eine halbe Stunde.
+        $this->travelTo(today()->setTime(14, 0));
+
         $nutzer = $this->mitarbeiter();
         $ticket = $this->ticketFuer($nutzer);
 

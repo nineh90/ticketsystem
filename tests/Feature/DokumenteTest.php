@@ -10,6 +10,9 @@ use App\Filament\Kunde\Resources\Dokumente\Pages\ViewDokument;
 use App\Models\Customer;
 use App\Models\Dokument;
 use App\Models\Project;
+use App\Models\Ticket;
+use App\Models\TicketStatus;
+use App\Models\TimeEntry;
 use App\Models\User;
 use App\Support\Ereignis;
 use App\Support\Ereignisstrom;
@@ -154,6 +157,55 @@ class DokumenteTest extends TestCase
 
         $this->assertFalse($rechnung->wartetAufAntwort());
         $this->assertFalse($zugang->can('beantworten', $rechnung));
+    }
+
+    public function test_der_kunde_sieht_die_summe_der_arbeitszeit_aber_keine_buchungen(): void
+    {
+        // Ausdrücklich nur die Summe: sie beantwortet "wofür", ohne die
+        // einzelnen Posten und ohne die Tätigkeitstexte, die für interne
+        // Augen geschrieben sind.
+        $kunde = Customer::factory()->create();
+        $zugang = $this->kundenzugang($kunde);
+
+        $ticket = Ticket::factory()
+            ->for(Project::factory()->for($kunde, 'customer'), 'project')
+            ->create(['ticket_status_id' => TicketStatus::factory()->create()->id]);
+
+        $rechnung = Dokument::factory()->for($kunde, 'customer')->freigegeben()->create();
+
+        TimeEntry::factory()->create([
+            'ticket_id' => $ticket->id,
+            'minuten' => 85,
+            'beschreibung' => 'Interner Vermerk, geht niemanden an',
+        ])->forceFill(['dokument_id' => $rechnung->getKey()])->save();
+
+        $this->actingAs($zugang, 'kunde');
+        Filament::setCurrentPanel('kunde');
+
+        Livewire::test(ViewDokument::class, ['record' => $rechnung->getRouteKey()])
+            ->assertSuccessful()
+            ->assertSee('Enthaltene Arbeitszeit')
+            ->assertSee('1:25 h')
+            ->assertDontSee('Interner Vermerk');
+
+        // Und an die Buchungen selbst kommt er weiterhin nicht heran.
+        $this->assertSame(0, TimeEntry::query()->sichtbarFuer($zugang)->count());
+    }
+
+    public function test_ohne_zugeordnete_zeit_steht_dort_nichts(): void
+    {
+        // Eine Zeile "0:00 h" an einer Rechnung wirft mehr Fragen auf, als
+        // sie beantwortet.
+        $kunde = Customer::factory()->create();
+        $zugang = $this->kundenzugang($kunde);
+        $rechnung = Dokument::factory()->for($kunde, 'customer')->freigegeben()->create();
+
+        $this->actingAs($zugang, 'kunde');
+        Filament::setCurrentPanel('kunde');
+
+        Livewire::test(ViewDokument::class, ['record' => $rechnung->getRouteKey()])
+            ->assertSuccessful()
+            ->assertDontSee('Enthaltene Arbeitszeit');
     }
 
     public function test_die_datei_kommt_nur_an_berechtigte(): void

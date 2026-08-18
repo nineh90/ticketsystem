@@ -191,6 +191,12 @@ Schalter führt dazu, dass der Kunde etwas nicht sieht, nie dazu, dass ein
 Entwurf bei ihm landet. Der Bereich *Dokumente* taucht in seinem Menü
 überhaupt erst auf, wenn mindestens ein Dokument freigegeben ist.
 
+**Zeiten zuordnen.** An einer Rechnung sagt der Knopf *Zeiten zuordnen*,
+welche Buchungen damit abgegolten sind. Sie verschwinden danach aus
+`/abrechnung`. Abwählen löst die Zuordnung wieder; eine gelöschte Rechnung
+gibt ihre Zeiten ebenfalls frei. Der Kunde sieht davon nur die Summe
+(„Enthaltene Arbeitszeit"), nie die einzelnen Buchungen.
+
 **Angebote kann der Kunde annehmen oder ablehnen.** Seine Antwort wird mit
 Zeitstempel und Person festgehalten; steht dort nichts, haben wir den Stand
 selbst eingetragen. Wir erfahren es über die Glocke *und* im Ereignisstrom

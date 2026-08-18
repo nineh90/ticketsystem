@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -87,6 +88,24 @@ class Dokument extends Model
     public function hochgeladenVon(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Die Zeitbuchungen, die mit dieser Rechnung abgegolten sind.
+     *
+     * Erlaubt die Frage, die ein Stichdatum nicht beantworten könnte: wofür
+     * genau steht dieser Betrag. Ein halbes Jahr später ist das der
+     * Unterschied zwischen "da war irgendwas im August" und einer Liste.
+     */
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class);
+    }
+
+    /** Wie viele Minuten dieser Rechnung zugeordnet sind. */
+    public function zugeordneteMinuten(): int
+    {
+        return (int) $this->timeEntries()->sum('minuten');
     }
 
     /** Welcher Kundenzugang zu-/abgesagt hat. */

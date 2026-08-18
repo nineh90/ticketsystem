@@ -6,6 +6,7 @@ use App\Filament\Resources\Tickets\TicketResource;
 use App\Models\Customer;
 use App\Models\Dokument;
 use App\Models\TimeEntry;
+use App\Support\Abrechnung;
 use App\Support\Dauer;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -51,10 +52,11 @@ class KundeKennzahlen extends StatsOverviewWidget
             ->whereIn('ticket_id', $kunde->tickets()->select('tickets.id'))
             ->sum('minuten');
 
-        $minutenJahr = (int) TimeEntry::query()
-            ->whereIn('ticket_id', $kunde->tickets()->select('tickets.id'))
-            ->where('gestartet_am', '>=', now()->startOfYear())
-            ->sum('minuten');
+        // Was davon noch auf keiner Rechnung steht. Steht als Beschreibung
+        // an der erfassten Zeit und nicht als eigene Kachel: es ist keine
+        // zweite Zahl, sondern ein Teil derselben — und die Reihe hat vier
+        // Plätze, die alle belegt sind.
+        $offeneMinuten = Abrechnung::minutenFuer($kunde, auth()->user());
 
         $offeneRechnungen = $kunde->dokumente()
             ->rechnungen()
@@ -86,9 +88,11 @@ class KundeKennzahlen extends StatsOverviewWidget
                 ->url(TicketResource::listeUrl('alle', '', $nurDieserKunde)),
 
             Stat::make('Erfasste Zeit', Dauer::alsStunden($minuten))
-                ->description(Dauer::alsStunden($minutenJahr).' davon in diesem Jahr')
-                ->descriptionIcon('heroicon-m-clock')
-                ->color('info'),
+                ->description($offeneMinuten > 0
+                    ? Dauer::alsStunden($offeneMinuten).' noch abzurechnen'
+                    : 'alles abgerechnet')
+                ->descriptionIcon($offeneMinuten > 0 ? 'heroicon-m-calculator' : 'heroicon-m-check')
+                ->color($offeneMinuten > 0 ? 'warning' : 'info'),
 
             // Ohne Betrag am Dokument bleibt die Summe bei 0 — das ist
             // richtig so und keine Lücke: eine Rechnung ohne erfassten Betrag

@@ -107,6 +107,39 @@ Glocke und im Ereignisstrom unter *Betrieb*, wo "Angebote" ein eigener Filter
 ist. Es ist der einzige Ereignistyp ohne Ticket; er trägt deshalb den Kunden
 als Bezug (`Ereignis::$kontext`).
 
+## Abrechnung vorbereiten
+
+`/abrechnung`. Beantwortet die Frage, die vor jeder Rechnung stand und
+Handarbeit war: **bei wem ist abrechenbare Zeit aufgelaufen, die noch auf
+keiner Rechnung steht.** Der Schalter `abrechenbar` hing seit dem ersten Tag
+an jeder Zeitbuchung und wurde von nichts ausgewertet.
+
+Der Weg im Alltag: Rechnung in sevDesk schreiben → PDF in der Kundenakte unter
+*Dokumente* hochladen → am Dokument **Zeiten zuordnen**. Danach sind die
+Buchungen als abgerechnet markiert (`time_entries.dokument_id`) und fallen aus
+der Liste.
+
+Ein Verweis auf das Dokument und **kein Stichdatum** am Kunden. Ein Datum
+beantwortet „was ist offen" auch, aber nicht die zweite Frage: *welche*
+Stunden stecken in dieser Rechnung. Und eine nachgetragene Buchung aus dem
+Vormonat fiele bei einem Stichdatum stillschweigend unter den Tisch.
+
+Was **nicht** mitzählt, steht in `TimeEntry::scopeOffenZumAbrechnen()`: nicht
+abrechenbare Buchungen, laufende Uhren (deren `minuten` steht noch auf 0) und
+Buchungen über null Minuten. Wer welche sieht, entscheidet wie überall
+`Ticket::sichtbarFuer` — ein Mitarbeiter sieht die offene Zeit seiner Kunden.
+Soll das strenger sein, genügt ein `istAdmin()` in `Support\Abrechnung`; Seite
+und Aktion gehen beide durch diese Klasse.
+
+Stundensätze gibt es im System nicht und sollen es nicht geben — deshalb
+Stunden und keine Beträge. Die Rechnung entsteht in sevDesk.
+
+**Der Kunde sieht davon die Summe**, nicht die Posten: an einem Dokument steht
+„Enthaltene Arbeitszeit: 5:25 h", sobald etwas zugeordnet ist. Die
+Tätigkeitstexte der Buchungen bleiben draußen — die sind für interne Augen
+geschrieben. An die Buchungen selbst kommt ein Kundenzugang unverändert nicht
+heran (`TimeEntry::sichtbarFuer` gibt ihm `1 = 0`).
+
 ## Zwei Einstiegsseiten statt eines Dashboards
 
 Intern gibt es zwei Startseiten, und die Trennlinie ist eine Frage: kann ich

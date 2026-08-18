@@ -7,10 +7,14 @@ use App\Enums\DokumentStand;
 use App\Filament\Resources\Customers\Schemas\DokumentForm;
 use App\Models\Customer;
 use App\Models\Dokument;
+use App\Models\TimeEntry;
+use App\Support\Abrechnung;
+use App\Support\Dauer;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
@@ -106,6 +110,18 @@ class DokumenteRelationManager extends RelationManager
                         ? 'danger'
                         : $record->stand?->getColor()),
 
+                // Wie viel Arbeitszeit diese Rechnung abdeckt. Leer bei
+                // allem, dem nichts zugeordnet ist — also bei Angeboten und
+                // bei Rechnungen, die noch niemand verknüpft hat.
+                TextColumn::make('zeiten')
+                    ->label('Zeiten')
+                    ->state(fn (Dokument $record) => $record->timeEntries()->exists()
+                        ? Dauer::alsStunden($record->zugeordneteMinuten())
+                        : null)
+                    ->placeholder('—')
+                    ->alignEnd()
+                    ->color('gray'),
+
                 IconColumn::make('kunden_sichtbar')
                     ->label('Sichtbar')
                     ->boolean()
@@ -165,6 +181,36 @@ class DokumenteRelationManager extends RelationManager
                     ->url(fn (Dokument $record) => $record->url())
                     ->openUrlInNewTab(),
 
+                // Der Schritt, der die Zeiterfassung mit der Rechnung
+                // verbindet. Nur an Rechnungen: ein Angebot deckt keine
+                // geleistete Arbeit ab, es kündigt sie an.
+                Action::make('zeiten')
+                    ->label('Zeiten zuordnen')
+                    ->icon('heroicon-o-clock')
+                    ->color('gray')
+                    ->visible(fn (Dokument $record) => $record->art === DokumentArt::Rechnung)
+                    ->modalHeading('Zeiten dieser Rechnung zuordnen')
+                    ->modalDescription('Zugeordnete Buchungen gelten als abgerechnet und verschwinden aus der Abrechnungsliste.')
+                    ->modalSubmitActionLabel('Zuordnen')
+                    ->fillForm(fn (Dokument $record) => [
+                        // Was schon zugeordnet ist, steht angehakt da —
+                        // damit ist dasselbe Fenster auch der Weg, eine
+                        // Zuordnung wieder zu lösen.
+                        'zeiten' => $record->timeEntries()->pluck('id')->all(),
+                    ])
+                    ->schema(fn (Dokument $record) => [
+                        CheckboxList::make('zeiten')
+                            ->label('Offene Buchungen')
+                            ->options(fn () => self::buchungsAuswahl($record))
+                            ->bulkToggleable()
+                            ->columns(1)
+                            ->helperText('Nur abrechenbare, beendete Buchungen dieses Kunden. Zeiten ohne den Haken „abrechenbar" stehen hier nie.')
+                            ->noSearchResultsMessage('Keine offenen Buchungen.'),
+                    ])
+                    ->action(function (Dokument $record, array $data) {
+                        self::zuordnen($record, array_map('intval', $data['zeiten'] ?? []));
+                    }),
+
                 EditAction::make()
                     ->label('Bearbeiten')
                     ->mutateDataUsing(fn (array $data) => self::dateiAngabenErgaenzen($data)),
@@ -179,6 +225,70 @@ class DokumenteRelationManager extends RelationManager
             ->emptyStateHeading('Noch keine Dokumente')
             ->emptyStateDescription('Angebote, Rechnungen und Verträge aus sevDesk. Freigegebene erscheinen im Bereich des Kunden — solange keines freigegeben ist, sieht er den Bereich gar nicht.')
             ->emptyStateIcon('heroicon-o-document-currency-euro');
+    }
+
+    /**
+     * Die Buchungen, die in dieser Rechnung stehen können.
+     *
+     * Offene dieses Kunden plus die, die dieser Rechnung bereits zugeordnet
+     * sind — sonst verschwänden die schon zugeordneten aus der Auswahl und
+     * das Fenster würde beim Öffnen alles wieder abwählen.
+     *
+     * @return array<int, string>
+     */
+    private static function buchungsAuswahl(Dokument $dokument): array
+    {
+        $nutzer = auth()->user();
+
+        $offen = Abrechnung::buchungenFuer($dokument->customer, $nutzer)->get();
+
+        $bereits = $dokument->timeEntries()->with(['ticket', 'user'])->get();
+
+        return $offen
+            ->concat($bereits)
+            ->unique('id')
+            ->sortBy('gestartet_am')
+            ->mapWithKeys(fn (TimeEntry $zeit) => [
+                $zeit->getKey() => sprintf(
+                    '%s · %s · %s%s',
+                    $zeit->gestartet_am->format('d.m.Y'),
+                    Dauer::alsStunden((int) $zeit->minuten),
+                    $zeit->ticket?->kennung() ?? '—',
+                    $zeit->beschreibung ? ' — '.$zeit->beschreibung : '',
+                ),
+            ])
+            ->all();
+    }
+
+    /**
+     * Die Auswahl festschreiben.
+     *
+     * Zwei Schritte, und der erste ist der, den man vergisst: was abgewählt
+     * wurde, muss wieder gelöst werden. Ohne ihn ließe sich eine Zuordnung
+     * nie zurücknehmen, und ein Fehlgriff bliebe für immer stehen.
+     *
+     * Die Menge ist doppelt begrenzt — auf die Buchungen dieses Dokuments und
+     * auf das, was der Nutzer überhaupt sehen darf. Ohne die zweite Grenze
+     * ließe sich über eine nachgebaute Anfrage eine fremde Buchung an die
+     * eigene Rechnung hängen.
+     *
+     * @param  array<int, int>  $ids
+     */
+    private static function zuordnen(Dokument $dokument, array $ids): void
+    {
+        $erlaubt = array_keys(self::buchungsAuswahl($dokument));
+        $ids = array_values(array_intersect($ids, $erlaubt));
+
+        // Erst lösen, was nicht mehr angehakt ist.
+        $dokument->timeEntries()
+            ->whereNotIn('id', $ids ?: [0])
+            ->update(['dokument_id' => null]);
+
+        if ($ids !== []) {
+            TimeEntry::query()
+                ->whereIn('id', $ids)
+                ->update(['dokument_id' => $dokument->getKey()]);
+        }
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Filament\Kunde\Resources\Dokumente\DokumentResource;
 use App\Filament\Resources\Customers\CustomerResource;
 use App\Models\Dokument;
 use App\Support\Benachrichtigung;
+use App\Support\Dauer;
 use Filament\Actions\Action;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
@@ -210,6 +211,21 @@ class ViewDokument extends ViewRecord
                     TextEntry::make('project.name')
                         ->label('Projekt')
                         ->placeholder('—'),
+
+                    // Wie viel Arbeitszeit in dieser Rechnung steckt — als
+                    // Summe und nicht aufgeschlüsselt. Sie beantwortet die
+                    // Frage "wofür", ohne eine Diskussion über einzelne
+                    // Posten zu eröffnen; und die Tätigkeitstexte der
+                    // Buchungen bleiben ganz draußen, die sind für interne
+                    // Augen geschrieben.
+                    //
+                    // Nur wenn wirklich etwas zugeordnet ist: eine Zeile
+                    // "0:00 h" an einer Rechnung über 420 € wirft mehr Fragen
+                    // auf, als sie beantwortet.
+                    TextEntry::make('arbeitszeit')
+                        ->label('Enthaltene Arbeitszeit')
+                        ->state(fn (Dokument $record) => Dauer::alsStunden($record->zugeordneteMinuten()))
+                        ->visible(fn (Dokument $record) => $record->zugeordneteMinuten() > 0),
 
                     // Nur wenn der Kunde selbst geantwortet hat. Haben wir den
                     // Stand eingetragen, steht hier nichts — die Zeile wäre
