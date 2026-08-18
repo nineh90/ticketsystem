@@ -167,6 +167,12 @@ class GlockeTest extends TestCase
 
         $this->assertSame(2, $admin->unreadNotifications()->count());
 
+        // Verlauf A nach oben zwingen. Die Seite öffnet beim Aufbau den
+        // obersten Faden und markiert ihn dabei als gelesen — ohne diese
+        // Zeile entschiede die Sortierung, ob das A oder B trifft, und der
+        // Test prüfte mal das eine und mal das andere.
+        $verlaufA->forceFill(['letzte_nachricht_am' => now()->addMinute()])->save();
+
         $this->actingAs($admin);
         Filament::setCurrentPanel('admin');
 

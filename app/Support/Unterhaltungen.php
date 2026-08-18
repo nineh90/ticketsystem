@@ -84,6 +84,15 @@ class Unterhaltungen
             ->begonnen()
             ->with(['customer', 'teilnehmer'])
             ->orderByDesc('letzte_nachricht_am')
+            // Zweiter Schlüssel, damit die Reihenfolge feststeht. Die
+            // Zeitstempel haben Sekundengenauigkeit (timestamp(0)); zwei
+            // Nachrichten in derselben Sekunde sind im Alltag selten, aber
+            // dann entscheidet ohne diese Zeile Postgres, welcher Faden oben
+            // steht — und beim nächsten Aufruf womöglich anders. Sichtbar
+            // wurde es an einem Test, der auf einer Maschine durchlief und
+            // auf der anderen nicht; in der Oberfläche wäre es eine Liste,
+            // die beim Neuladen springt.
+            ->orderByDesc('id')
             ->get();
     }
 
