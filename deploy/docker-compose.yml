@@ -68,7 +68,11 @@ services:
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-      MAIL_SCHEME: ${MAIL_SCHEME:-tls}
+      # "smtp" heisst Port 587 mit STARTTLS, "smtps" heisst Port 465 mit
+      # sofortigem TLS. Ein "tls" gibt es hier NICHT — das ist die alte
+      # Schreibweise aus MAIL_ENCRYPTION und wird abgewiesen ("The tls scheme
+      # is not supported"). Genau daran ist der erste Versand gescheitert.
+      MAIL_SCHEME: ${MAIL_SCHEME:-smtp}
 
       # Der Absender muss zu dem Postfach passen, mit dem sich der Versand
       # anmeldet — Strato weist Mails sonst ab. Deshalb hier keine feste

@@ -301,9 +301,15 @@ unter „Sie sind am Zug". Voreingestellt ist das bei *Warten auf Kunde*.
   MAIL_PORT=587
   MAIL_USERNAME=info@nils-digital.de
   MAIL_PASSWORD=…
-  MAIL_SCHEME=tls
+  MAIL_SCHEME=smtp
   MAIL_FROM_ADDRESS=info@nils-digital.de
   ```
+
+  `MAIL_SCHEME` kennt genau zwei Werte: **`smtp`** (Port 587, STARTTLS) und
+  **`smtps`** (Port 465). Ein `tls` gibt es nicht — das ist die alte
+  Schreibweise aus `MAIL_ENCRYPTION` und wird mit *„The tls scheme is not
+  supported"* abgewiesen. Der Fehler steht dann im Protokoll, die Glocke
+  bleibt davon unberührt.
 
   **Absender und Postfach müssen zusammenpassen.** Strato lässt nur senden,
   wer sich mit demselben Postfach anmeldet — ein Absender, den es nicht gibt,
