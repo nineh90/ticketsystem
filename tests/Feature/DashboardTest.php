@@ -9,10 +9,12 @@ use App\Filament\Widgets\MeineTickets;
 use App\Filament\Widgets\MeinUeberblick;
 use App\Filament\Widgets\TeamUeberblick;
 use App\Filament\Widgets\TicketsVerteilung;
+use App\Filament\Widgets\ZeitenVerteilung;
 use App\Models\Customer;
 use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\TicketStatus;
+use App\Models\TimeEntry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -81,6 +83,7 @@ class DashboardTest extends TestCase
 
         $this->assertContains(TeamUeberblick::class, $betrieb);
         $this->assertContains(TicketsVerteilung::class, $betrieb);
+        $this->assertContains(ZeitenVerteilung::class, $betrieb);
         $this->assertNotContains(MeineTickets::class, $betrieb);
     }
 
@@ -201,5 +204,170 @@ class DashboardTest extends TestCase
             ->assertSee('Offene Tickets je Projekt')
             ->assertSee('Mein Projekt')
             ->assertDontSee('Fremdes Projekt');
+    }
+
+    public function test_zeitdiagramm_summiert_je_kunde(): void
+    {
+        $admin = $this->admin();
+        $status = TicketStatus::factory()->create();
+
+        $viel = Customer::factory()->create(['name' => 'Vielarbeiter']);
+        $wenig = Customer::factory()->create(['name' => 'Wenigarbeiter']);
+        // Ein Kunde ganz ohne Buchungen gehört nicht in eine Verteilung der
+        // Zeit — er stünde sonst als Balken der Höhe null in der Achse.
+        Customer::factory()->create(['name' => 'Ohnezeit']);
+
+        $ticketA = Ticket::factory()
+            ->for(Project::factory()->for($viel, 'customer'), 'project')
+            ->create(['ticket_status_id' => $status->id]);
+        $ticketB = Ticket::factory()
+            ->for(Project::factory()->for($wenig, 'customer'), 'project')
+            ->create(['ticket_status_id' => $status->id]);
+
+        // Zwei Buchungen auf denselben Kunden, damit die Summe geprüft wird
+        // und nicht nur die letzte Zeile.
+        TimeEntry::factory()->create(['ticket_id' => $ticketA->id, 'minuten' => 90]);
+        TimeEntry::factory()->create(['ticket_id' => $ticketA->id, 'minuten' => 45]);
+        TimeEntry::factory()->create(['ticket_id' => $ticketB->id, 'minuten' => 30]);
+
+        Livewire::actingAs($admin)
+            ->test(ZeitenVerteilung::class)
+            ->assertSuccessful()
+            ->assertSee('Erfasste Zeit je Kunde')
+            ->assertSee('Vielarbeiter')
+            ->assertSee('Wenigarbeiter')
+            ->assertDontSee('Ohnezeit');
+
+        $daten = $this->datenVon(new ZeitenVerteilung);
+
+        // 135 Minuten sind 2,25 Stunden, und der Vielarbeiter steht vorn.
+        $this->assertSame(['Vielarbeiter', 'Wenigarbeiter'], $daten['labels']);
+        $this->assertSame([2.25, 0.5], $daten['datasets'][0]['data']);
+    }
+
+    public function test_zeitdiagramm_zeigt_mitarbeitern_nur_ihre_projekte(): void
+    {
+        // Der eigentliche Punkt des Widgets: gebuchte Zeit sagt, was ein
+        // Kunde kostet. Fremde Zeiten hier durchzulassen wäre dasselbe Leck
+        // wie fremde Tickets in der Liste, nur schwerer zu bemerken.
+        $mitarbeiter = User::factory()->create([
+            'rolle' => Rolle::Mitarbeiter,
+            'panel_zugang' => true,
+        ]);
+
+        $status = TicketStatus::factory()->create();
+
+        $meins = Project::factory()->create(['name' => 'Mein Projekt']);
+        $meins->mitarbeiter()->attach($mitarbeiter);
+        $meinTicket = Ticket::factory()->for($meins, 'project')->create([
+            'ticket_status_id' => $status->id,
+        ]);
+        TimeEntry::factory()->create(['ticket_id' => $meinTicket->id, 'minuten' => 60]);
+
+        $fremd = Project::factory()->create(['name' => 'Fremdes Projekt']);
+        $fremdesTicket = Ticket::factory()->for($fremd, 'project')->create([
+            'ticket_status_id' => $status->id,
+        ]);
+        TimeEntry::factory()->create(['ticket_id' => $fremdesTicket->id, 'minuten' => 600]);
+
+        Livewire::actingAs($mitarbeiter)
+            ->test(ZeitenVerteilung::class)
+            ->assertSuccessful()
+            ->assertSee('Erfasste Zeit je Projekt')
+            ->assertSee('Mein Projekt')
+            ->assertDontSee('Fremdes Projekt');
+
+        $this->actingAs($mitarbeiter);
+        $daten = $this->datenVon(new ZeitenVerteilung);
+
+        // Nur die eigene Stunde, nicht die zehn des fremden Projekts.
+        $this->assertSame([1.0], $daten['datasets'][0]['data']);
+    }
+
+    public function test_zeitdiagramm_grenzt_den_zeitraum_ein(): void
+    {
+        $admin = $this->admin();
+        $status = TicketStatus::factory()->create();
+
+        $kunde = Customer::factory()->create(['name' => 'Langjährig']);
+        $ticket = Ticket::factory()
+            ->for(Project::factory()->for($kunde, 'customer'), 'project')
+            ->create(['ticket_status_id' => $status->id]);
+
+        TimeEntry::factory()->create([
+            'ticket_id' => $ticket->id,
+            'gestartet_am' => now()->startOfMonth()->addHours(9),
+            'minuten' => 60,
+        ]);
+        TimeEntry::factory()->create([
+            'ticket_id' => $ticket->id,
+            'gestartet_am' => now()->subMonthNoOverflow()->startOfMonth()->addHours(9),
+            'minuten' => 120,
+        ]);
+
+        $this->actingAs($admin);
+
+        $gesamt = new ZeitenVerteilung;
+        $this->assertSame([3.0], $this->datenVon($gesamt)['datasets'][0]['data']);
+
+        $monat = new ZeitenVerteilung;
+        $monat->filter = 'monat';
+        $this->assertSame([1.0], $this->datenVon($monat)['datasets'][0]['data']);
+
+        // Der letzte Monat darf den laufenden nicht mitnehmen — das ist die
+        // Grenze, an der ein <= statt < den ersten Tag doppelt zählen würde.
+        $letzter = new ZeitenVerteilung;
+        $letzter->filter = 'letzter-monat';
+        $this->assertSame([2.0], $this->datenVon($letzter)['datasets'][0]['data']);
+    }
+
+    public function test_zeitdiagramm_sagt_es_wenn_der_zeitraum_leer_ist(): void
+    {
+        // Ohne diesen Fall stünde bei "Letzter Monat" eine Achse von 0 bis
+        // 1 h ohne einen einzigen Balken — was aussieht, als sei das
+        // Diagramm kaputt, und nicht, als sei nichts gebucht worden.
+        $admin = $this->admin();
+        $status = TicketStatus::factory()->create();
+
+        $ticket = Ticket::factory()->create(['ticket_status_id' => $status->id]);
+        TimeEntry::factory()->create([
+            'ticket_id' => $ticket->id,
+            'gestartet_am' => now()->startOfMonth()->addHours(9),
+            'minuten' => 60,
+        ]);
+
+        $this->actingAs($admin);
+
+        $letzter = new ZeitenVerteilung;
+        $letzter->filter = 'letzter-monat';
+
+        $this->assertSame([], $this->datenVon($letzter));
+        $this->assertTrue($letzter->isEmpty());
+    }
+
+    public function test_zeitdiagramm_bleibt_ohne_zuordnung_weg(): void
+    {
+        $mitarbeiter = User::factory()->create([
+            'rolle' => Rolle::Mitarbeiter,
+            'panel_zugang' => true,
+        ]);
+
+        $this->actingAs($mitarbeiter);
+
+        $this->assertFalse(ZeitenVerteilung::canView());
+    }
+
+    /**
+     * Die Rohdaten eines Diagramms, an den geschützten getData() vorbei.
+     *
+     * Über assertSee allein wäre nur zu sehen, dass ein Name im Diagramm
+     * steht — nicht, mit welchem Wert. Und der Wert ist hier die Aussage.
+     *
+     * @return array<string, mixed>
+     */
+    private function datenVon(ZeitenVerteilung $widget): array
+    {
+        // Ohne setAccessible(): seit PHP 8.1 wirkungslos, seit 8.5 verworfen.
+        return (new \ReflectionMethod($widget, 'getData'))->invoke($widget);
     }
 }

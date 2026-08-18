@@ -66,10 +66,46 @@ in `User::booted()`, die Umleitung macht `PasswortWechseln`.
 
 Der Kunde ist die **Akte**: Stammdaten, Vertrag, Hoster und Demo-Adresse,
 mehrere Ansprechpartner (`kontakte`), ein verschlüsselter Zugangsdaten-Tresor
-(`zugangsdaten`) und je Projekt Phase, zwei Adressen und Meilensteine. Was
-davon beim Kunden ankommt, entscheiden Schalter je Datensatz — Vorgabe beim
-Tresor ist *nicht sichtbar*. Ausführlich in
-[`docs/betrieb.md`](docs/betrieb.md#die-kundenakte).
+(`zugangsdaten`), **Dokumente** (`dokumente`) und je Projekt Phase, zwei
+Adressen und Meilensteine. Was davon beim Kunden ankommt, entscheiden Schalter
+je Datensatz — Vorgabe bei Tresor und Dokumenten ist *nicht sichtbar*.
+Ausführlich in [`docs/betrieb.md`](docs/betrieb.md#die-kundenakte).
+
+Die Akte hat eine eigene **Ansichtsseite** (`/customers/{id}`), auf der man
+landet; das Formular liegt einen Knopf weiter. Oben stehen vier Zahlen —
+offene Tickets, erledigte, erfasste Zeit, offene Posten — darunter zwei
+Verläufe über zwölf Monate: gebuchte Zeit je Monat und Tickets je Monat
+(eingegangen gegen erledigt). Die beiden Reihen des zweiten Diagramms sind
+absichtlich nicht gleich lang: gezählt wird nach Datum des Ereignisses, ein
+Ticket vom März steht bei Erledigung im Mai in beiden Monaten.
+
+## Angebote, Rechnungen, Verträge
+
+Die PDF entsteht in **sevDesk** und wird hier nur abgelegt (`dokumente`,
+Platte `local` wie die Ticket-Anhänge, also außerhalb von `public/`). Die
+Felder daneben sind bewusst wenige: Art, Titel, Nummer, Datum, Frist, Betrag,
+Stand. Positionen und Steuersätze stehen im PDF und bleiben dort — eine zweite
+Wahrheit daneben wäre die, die als Erste veraltet.
+
+Welche Stände es gibt, entscheidet die Art (`DokumentArt::staende()`): ein
+Angebot wird angenommen oder abgelehnt, eine Rechnung bezahlt, ein Vertrag hat
+gar keinen. Die Spalte `faellig_am` trägt zwei Bedeutungen — beim Angebot
+"gültig bis", bei der Rechnung "zahlbar bis"; die Beschriftung richtet sich
+nach der Art.
+
+**Der Kunde sieht den Bereich erst, wenn etwas darin steht.** `canAccess()`
+prüft, ob es für ihn ein freigegebenes Dokument gibt, und steuert damit
+Menüpunkt und Direktaufruf zugleich. Ein Menüpunkt, der ein Jahr lang leer
+ist, sieht nicht nach "kommt noch" aus — man gewöhnt sich an, ihn zu
+übergehen, und übersieht ihn dann auch, wenn das erste Angebot darin liegt.
+
+Ein offenes Angebot kann der Kunde **annehmen oder ablehnen**. Seine Antwort
+landet mit Zeitstempel und Person am Dokument (`beantwortet_at`,
+`beantwortet_von`) — daran ist hinterher zu erkennen, ob er entschieden hat
+oder ob wir den Stand eingetragen haben. Wir erfahren es doppelt: über die
+Glocke und im Ereignisstrom unter *Betrieb*, wo "Angebote" ein eigener Filter
+ist. Es ist der einzige Ereignistyp ohne Ticket; er trägt deshalb den Kunden
+als Bezug (`Ereignis::$kontext`).
 
 ## Zwei Einstiegsseiten statt eines Dashboards
 
@@ -79,7 +115,7 @@ daran etwas tun?
 | | Adresse | Was darauf steht |
 |---|---|---|
 | Mein Bereich | `/` | Meine Zahlen, meine Uhr, ungelesene Nachrichten, meine Tickets, wartende Kundenanliegen |
-| Betrieb | `/betrieb` | Zahlen des Betriebs, alle laufenden Uhren, Geschehen, Verteilung |
+| Betrieb | `/betrieb` | Zahlen des Betriebs, alle laufenden Uhren, Geschehen, offene Tickets je Kunde, erfasste Zeit je Kunde |
 
 Beide sind `Filament\Pages\Dashboard`-Ableitungen und sagen in `getWidgets()`
 selbst, welche Karten sie tragen. Im `AdminPanelProvider` steht **keine**

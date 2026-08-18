@@ -2,8 +2,11 @@
 
 namespace App\Support;
 
+use App\Enums\DokumentStand;
+use App\Filament\Resources\Customers\CustomerResource;
 use App\Models\Attachment;
 use App\Models\Comment;
+use App\Models\Dokument;
 use App\Models\Ticket;
 use App\Models\TimeEntry;
 use App\Models\User;
@@ -24,9 +27,9 @@ use Spatie\Activitylog\Models\Activity;
  * geschieht. Eine eigene "Ereignis"-Tabelle, die von nun an mitschreibt,
  * hätte am Einführungstag leer dagestanden.
  *
- * Die vier Quellen werden per UNION ALL zusammengeführt und erst danach
- * sortiert und begrenzt. Das ist der Grund, warum hier mit dem Query Builder
- * gearbeitet wird und nicht mit Eloquent: vier Modelle einzeln zu laden,
+ * Die Quellen werden per UNION ALL zusammengeführt und erst danach sortiert
+ * und begrenzt. Das ist der Grund, warum hier mit dem Query Builder
+ * gearbeitet wird und nicht mit Eloquent: fünf Modelle einzeln zu laden,
  * zusammenzuwerfen und in PHP zu sortieren, würde bei "zeige die letzten 20"
  * jedes Mal alles laden.
  */
@@ -99,7 +102,7 @@ class Ereignisstrom
     }
 
     /**
-     * Die vier Quellen als eine Abfrage.
+     * Die Quellen als eine Abfrage.
      */
     private static function union(User $nutzer, string $umfang, string $typ, ?Carbon $seit = null): Builder
     {
@@ -137,6 +140,27 @@ class Ereignisstrom
                 ->whereIn('ticket_id', self::sichtbareTickets($nutzer, $umfang));
         }
 
+        // Antworten des Kunden auf ein Angebot. Die einzige Quelle ohne
+        // Ticket — und die einzige, deren Zeitpunkt nicht created_at ist:
+        // gemeint ist, wann geantwortet wurde, nicht wann wir das Dokument
+        // hochgeladen haben.
+        //
+        // Unter "Meine Tickets" hat sie nichts zu suchen: ein Angebot ist
+        // niemandem zugewiesen, und der Umfang fragt genau danach. Unter
+        // "Von anderen" gehört sie dagegen immer — der Urheber ist der Kunde,
+        // also nie man selbst.
+        if (self::gewuenscht($typ, Ereignis::DOKUMENT) && $umfang !== self::MEINE) {
+            $teile[] = self::grundgeruest($nutzer, $umfang, $seit, 'beantwortet_von', 'beantwortet_at')
+                ->from('dokumente')
+                // null::bigint, nicht bloß null: bei UNION ALL bestimmt der
+                // erste Teil den Spaltentyp, und Postgres weist eine
+                // typlose Null zurück, sobald dieser Teil vorn steht — also
+                // genau dann, wenn man nur nach Dokumenten filtert.
+                ->selectRaw("'".Ereignis::DOKUMENT."' as typ, id as quelle_id, null::bigint as ticket_id, beantwortet_von as user_id, beantwortet_at as zeitpunkt")
+                ->whereNotNull('beantwortet_at')
+                ->whereIn('id', self::sichtbareDokumente($nutzer));
+        }
+
         /** @var Builder $union */
         $union = array_shift($teile);
 
@@ -155,6 +179,7 @@ class Ereignisstrom
         string $umfang,
         ?Carbon $seit,
         string $urheberSpalte = 'user_id',
+        string $zeitSpalte = 'created_at',
     ): Builder {
         $query = DB::query();
 
@@ -168,7 +193,7 @@ class Ereignisstrom
         }
 
         if ($seit !== null) {
-            $query->where('created_at', '>', $seit);
+            $query->where($zeitSpalte, '>', $seit);
         }
 
         return $query;
@@ -192,6 +217,22 @@ class Ereignisstrom
         }
 
         return $tickets->select('tickets.id')->toBase();
+    }
+
+    /**
+     * Auf welche Dokumente der Strom schauen darf.
+     *
+     * Dieselbe Regel wie überall: der Scope entscheidet, nicht diese Klasse.
+     * Für einen Mitarbeiter sind das die Dokumente seiner Kunden — ein
+     * Angebot über fünfstellige Beträge bei einem fremden Kunden geht ihn
+     * nichts an, auch nicht als Zeile im Ticker.
+     */
+    private static function sichtbareDokumente(User $nutzer): BuilderVertrag
+    {
+        return Dokument::query()
+            ->sichtbarFuer($nutzer)
+            ->select('dokumente.id')
+            ->toBase();
     }
 
     private static function gewuenscht(string $gewaehlt, string $typ): bool
@@ -230,6 +271,7 @@ class Ereignisstrom
             Ereignis::KOMMENTAR => Comment::query()->whereIn('id', $ids(Ereignis::KOMMENTAR))->get()->keyBy('id'),
             Ereignis::ZEIT => TimeEntry::query()->whereIn('id', $ids(Ereignis::ZEIT))->get()->keyBy('id'),
             Ereignis::ANHANG => Attachment::query()->whereIn('id', $ids(Ereignis::ANHANG))->get()->keyBy('id'),
+            Ereignis::DOKUMENT => Dokument::query()->with('customer')->whereIn('id', $ids(Ereignis::DOKUMENT))->get()->keyBy('id'),
         ];
 
         return $roh
@@ -288,6 +330,22 @@ class Ereignisstrom
                     ? 'hat die Zeiterfassung gestartet'
                     : 'hat Zeit erfasst: '.self::alsStunden((int) $quelle->minuten),
                 zeilen: array_filter([$quelle->beschreibung]),
+            ),
+
+            Ereignis::DOKUMENT => new Ereignis(
+                typ: Ereignis::DOKUMENT,
+                zeitpunkt: $zeitpunkt,
+                ticket: null,
+                nutzer: $nutzer,
+                was: $quelle->stand === DokumentStand::Angenommen
+                    ? 'hat das Angebot angenommen'
+                    : 'hat das Angebot abgelehnt',
+                zeilen: array_filter([$quelle->nummer]),
+                kontext: trim($quelle->customer?->name.' — '.$quelle->titel
+                    .($quelle->betragLesbar() ? ' ('.$quelle->betragLesbar().')' : '')),
+                kontextUrl: $quelle->customer
+                    ? CustomerResource::getUrl('view', ['record' => $quelle->customer], panel: 'admin')
+                    : null,
             ),
 
             default => new Ereignis(

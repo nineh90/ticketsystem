@@ -874,6 +874,9 @@ class KundenakteTest extends TestCase
         Filament::setCurrentPanel('kunde');
 
         Livewire::test(Profil::class)
+            // Seit "Mein Konto" im Anzeigemodus startet, liegt das Formular
+            // hinter diesem Knopf.
+            ->callAction('bearbeiten')
             ->fillForm([
                 'kunde_strasse' => 'Hauptstraße 1',
                 'kunde_plz' => '30159',
@@ -907,6 +910,9 @@ class KundenakteTest extends TestCase
         // aller Projekte. Das Feld ist deaktiviert; der Test sichert, dass
         // auch eine nachgebaute Anfrage daran nichts ändert.
         Livewire::test(Profil::class)
+            // Seit "Mein Konto" im Anzeigemodus startet, liegt das Formular
+            // hinter diesem Knopf.
+            ->callAction('bearbeiten')
             ->fillForm(['kunde_name' => 'Etwas ganz anderes'])
             ->call('save');
 
@@ -959,6 +965,9 @@ class KundenakteTest extends TestCase
         // Auch eine nachgebaute Anfrage kommt nicht durch: die Prüfung sitzt
         // im Speichern, nicht nur im deaktivierten Feld.
         Livewire::test(Profil::class)
+            // Seit "Mein Konto" im Anzeigemodus startet, liegt das Formular
+            // hinter diesem Knopf.
+            ->callAction('bearbeiten')
             ->fillForm(['kunde_ort' => 'Berlin'])
             ->call('save');
 
@@ -976,6 +985,9 @@ class KundenakteTest extends TestCase
         Filament::setCurrentPanel('kunde');
 
         Livewire::test(Profil::class)
+            // Seit "Mein Konto" im Anzeigemodus startet, liegt das Formular
+            // hinter diesem Knopf.
+            ->callAction('bearbeiten')
             ->fillForm(['kunde_ort' => 'Berlin'])
             ->call('save')
             ->assertHasNoFormErrors();
@@ -997,6 +1009,9 @@ class KundenakteTest extends TestCase
         Filament::setCurrentPanel('kunde');
 
         Livewire::test(Profil::class)
+            // Seit "Mein Konto" im Anzeigemodus startet, liegt das Formular
+            // hinter diesem Knopf.
+            ->callAction('bearbeiten')
             ->fillForm(['kontakt_telefon' => '0511 999'])
             ->call('save')
             ->assertHasNoFormErrors();
@@ -1017,6 +1032,9 @@ class KundenakteTest extends TestCase
         // Anmelden auffällt — und dann ist der Zugang zu. Ohne Mailversand
         // gibt es an dieser Stelle keinen Weg zurück außer einem Anruf.
         Livewire::test(Profil::class)
+            // Seit "Mein Konto" im Anzeigemodus startet, liegt das Formular
+            // hinter diesem Knopf.
+            ->callAction('bearbeiten')
             ->fillForm([
                 'password' => 'Distel-Kompass-Segel-41',
                 'passwordConfirmation' => 'Distel-Kompass-Segel-42',

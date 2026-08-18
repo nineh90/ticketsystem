@@ -92,6 +92,18 @@ class Customer extends Model
     }
 
     /**
+     * Angebote, Rechnungen und Verträge dieses Kunden.
+     *
+     * Ungefiltert — wie zugangsdaten(). Wer sie ausgibt, setzt sichtbarFuer
+     * oder fuerKunden davor; im Kundenbereich passiert das an genau einer
+     * Stelle (DokumentResource::getEloquentQuery).
+     */
+    public function dokumente(): HasMany
+    {
+        return $this->hasMany(Dokument::class);
+    }
+
+    /**
      * Die Ansprechpartner beim Kunden.
      *
      * Nicht zu verwechseln mit zugaenge(): das sind Anmeldekonten, das hier

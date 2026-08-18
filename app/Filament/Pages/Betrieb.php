@@ -6,6 +6,7 @@ use App\Filament\Widgets\Geschehen;
 use App\Filament\Widgets\TeamUeberblick;
 use App\Filament\Widgets\TicketsVerteilung;
 use App\Filament\Widgets\WerArbeitetGerade;
+use App\Filament\Widgets\ZeitenVerteilung;
 use BackedEnum;
 use Filament\Pages\Dashboard;
 use Filament\Support\Icons\Heroicon;
@@ -15,7 +16,8 @@ use Filament\Support\Icons\Heroicon;
  *
  * Die Gegenseite zu MeinBereich. Hier steht, was man nicht abarbeitet,
  * sondern im Blick behält: die Zahlen des Betriebs, wer gerade an der Uhr
- * hängt, was sich zuletzt getan hat und wo die Arbeit liegt.
+ * hängt, was sich zuletzt getan hat, wo die Arbeit liegt und wohin die Zeit
+ * geflossen ist.
  *
  * Eigene Seite und kein Reiter: die laufenden Uhren sind der Grund. Sie sind
  * die Karte, deretwegen abends noch jemand hinschaut, ob irgendwo etwas
@@ -55,6 +57,7 @@ class Betrieb extends Dashboard
             WerArbeitetGerade::class,
             Geschehen::class,
             TicketsVerteilung::class,
+            ZeitenVerteilung::class,
         ];
     }
 }

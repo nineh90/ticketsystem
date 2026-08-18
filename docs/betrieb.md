@@ -156,15 +156,48 @@ Am Kunden hängen inzwischen mehr als Name und Farbe:
   Zugang haben. Der Buchhalter braucht keinen, seine Mailadresse aber schon.
   Ein Zugang kann auf einen Kontakt zeigen (Feld *Ist welcher Kontakt?*).
 - **Zugangsdaten** — der Tresor, siehe unten.
+- **Dokumente** — Angebote, Rechnungen und Verträge als PDF, siehe unten.
 
 Der Kunde pflegt Anschrift, Rechnungsadresse, USt-IdNr., Website und seine
 Telefonnummer unter *Mein Konto* selbst; wir bekommen darüber eine
 Benachrichtigung. Firmenname, Kürzel, Betreuung und Vertrag kann er nicht
 ändern — am Namen hängen die Ticketnummern.
 
+*Mein Konto* steht dabei im **Anzeigemodus**; zum Ändern gibt es oben rechts
+einen Knopf. Die meisten Aufrufe sind ein Nachsehen ("stimmt die Anschrift
+noch?"), und ein sofort offenes Formular mit dreizehn Feldern beantwortet die
+falsche Frage. Nur beim erzwungenen Passwortwechsel steht das Formular gleich
+da — dort ist es der Zweck der Seite.
+
 Die alten Spalten `customers.ansprechpartner/email/telefon` stehen weiterhin
 in der Datenbank und wurden beim Umstieg in die Kontakte **kopiert**, nicht
 verschoben. Sie sind nur aus dem Formular verschwunden.
+
+### Dokumente: Angebote, Rechnungen, Verträge
+
+*Kunden → der Kunde → Dokumente*. Die PDF kommt fertig aus **sevDesk** und
+wird hier nur abgelegt — hier entsteht keine Rechnung. Daneben stehen Art,
+Titel, Nummer, Datum, Frist, Betrag und Stand; alles Weitere steht im PDF.
+
+Die Dateien liegen auf der Platte `local`, also **außerhalb von `public/`**,
+und werden nur über `/dokument/{id}` bzw. `/kunde/dokument/{id}` gegen die
+`DokumentPolicy` ausgeliefert. Das wiegt hier schwerer als bei Ticket-Anhängen:
+in einem Angebot stehen Preise, und Dateinamen aus einem Buchhaltungsprogramm
+sind fortlaufend und damit erratbar. Der abgelegte Name bekommt deshalb einen
+Zufallsvorsatz, der echte Name steht hinter `__`.
+
+**Freigabe je Dokument, Vorgabe aus** — wie beim Tresor. Ein vergessener
+Schalter führt dazu, dass der Kunde etwas nicht sieht, nie dazu, dass ein
+Entwurf bei ihm landet. Der Bereich *Dokumente* taucht in seinem Menü
+überhaupt erst auf, wenn mindestens ein Dokument freigegeben ist.
+
+**Angebote kann der Kunde annehmen oder ablehnen.** Seine Antwort wird mit
+Zeitstempel und Person festgehalten; steht dort nichts, haben wir den Stand
+selbst eingetragen. Wir erfahren es über die Glocke *und* im Ereignisstrom
+unter *Betrieb*.
+
+Löschen nimmt die Datei mit — und darf nur der Administrator oder wer sie
+hochgeladen hat.
 
 ### Zugangsdaten-Tresor
 
@@ -256,12 +289,6 @@ unter „Sie sind am Zug". Voreingestellt ist das bei *Warten auf Kunde*.
 - **Kontaktdaten im Kundenbereich.** `config/kontakt.php` liest
   `KONTAKT_TELEFON` aus der `.env` — solange die Variable fehlt, steht auf der
   Kontaktseite keine Telefonnummer.
-- **Dokumente am Kunden.** Angebote, Rechnungen und Verträge sollen später
-  hochladbar sein. Das Muster steht schon: eine Tabelle `dokumente` mit
-  `customer_id`, optionalem `project_id` und einem Schalter `kunden_sichtbar`
-  je Datei — dieselbe Anlage wie beim Zugangsdaten-Tresor, ausgeliefert über
-  eine geschützte Route wie die Ticket-Anhänge (`AnhangController`), nicht
-  aus `public/`.
 - **Kein Queue-Worker.** `QUEUE_CONNECTION=database`, aber nichts arbeitet die
   Warteschlange ab. Benachrichtigungen umgehen sie deshalb bewusst (siehe
   README). Wer künftig etwas in die Warteschlange legt, muss entweder einen

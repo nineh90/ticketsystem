@@ -22,6 +22,7 @@
         Ereignis::ZEIT => 'bg-info-500/10 text-info-400 ring-info-500/20',
         Ereignis::ANHANG => 'bg-warning-500/10 text-warning-400 ring-warning-500/20',
         Ereignis::AENDERUNG => 'bg-gray-500/10 text-gray-400 ring-gray-500/20',
+        Ereignis::DOKUMENT => 'bg-success-500/10 text-success-400 ring-success-500/20',
     ];
 @endphp
 
@@ -31,7 +32,7 @@
         :heading="'Was passiert ist'"
         :description="$this->neu > 0
             ? $this->neu . ' ' . ($this->neu === 1 ? 'Ereignis' : 'Ereignisse') . ' seit deinem letzten Besuch'
-            : 'Kommentare, Änderungen, Zeiten und Anhänge aus allen Tickets, die du siehst'"
+            : 'Kommentare, Änderungen, Zeiten und Anhänge aus allen Tickets, die du siehst — dazu Antworten auf Angebote'"
     >
         {{-- Alle 60 Sekunden nachladen: das Dashboard bleibt den Tag über
              offen und soll dann auch etwas zeigen, ohne dass jemand F5 drückt. --}}
@@ -175,6 +176,22 @@
                                                         @endif
                                                     </span>
                                                 </a>
+                                            @endif
+
+                                            {{-- Einträge ohne Ticket brauchen trotzdem einen Bezug:
+                                                 eine Angebotszusage ohne Kundennamen wäre eine
+                                                 Meldung, zu der man erst suchen muss. --}}
+                                            @if (! $ereignis->ticket && $ereignis->kontext)
+                                                @if ($ereignis->kontextUrl)
+                                                    <a
+                                                        href="{{ $ereignis->kontextUrl }}"
+                                                        class="mt-1 block text-sm text-gray-200 hover:underline"
+                                                    >
+                                                        {{ $ereignis->kontext }}
+                                                    </a>
+                                                @else
+                                                    <p class="mt-1 text-sm text-gray-200">{{ $ereignis->kontext }}</p>
+                                                @endif
                                             @endif
 
                                             @foreach ($ereignis->zeilen as $zeile)

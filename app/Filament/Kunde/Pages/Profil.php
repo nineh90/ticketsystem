@@ -5,8 +5,10 @@ namespace App\Filament\Kunde\Pages;
 use App\Models\Customer;
 use App\Models\Kontakt;
 use App\Support\Benachrichtigung;
+use Filament\Actions\Action;
 use Filament\Auth\Pages\EditProfile;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -30,6 +32,14 @@ use SensitiveParameter;
  * Änderungen an den Firmendaten melden wir uns selbst (siehe afterSave).
  * Eine stille Änderung der Rechnungsanschrift fällt sonst erst auf, wenn die
  * nächste Rechnung zurückkommt.
+ *
+ * **Die Seite steht im Anzeigemodus, bis jemand auf "Bearbeiten" drückt.**
+ * Vorher lag hier sofort ein Formular mit dreizehn Eingabefeldern, und das
+ * ist die falsche Antwort auf die Frage, mit der ein Kunde herkommt: er will
+ * meistens nur nachsehen, ob die Anschrift stimmt. Ein Formular sagt ihm
+ * stattdessen "hier ist etwas auszufüllen" — und wer nur nachsehen wollte,
+ * verlässt es im Zweifel mit einem halb geänderten Feld. Ändern kann er
+ * weiterhin alles, was ihm gehört; es ist nur ein Knopf davor.
  */
 class Profil extends EditProfile
 {
@@ -43,6 +53,33 @@ class Profil extends EditProfile
     protected array $kundendaten = [];
 
     protected array $kontaktdaten = [];
+
+    /**
+     * Steht die Seite gerade im Bearbeitungsmodus?
+     *
+     * Öffentlich, weil Livewire nur öffentliche Eigenschaften über die
+     * Anfrage hinweg behält — als geschützte wäre der Modus nach dem ersten
+     * Klick wieder weg.
+     */
+    public bool $bearbeiten = false;
+
+    /**
+     * Kam dieser Aufruf mit einem zugeteilten Passwort herein?
+     *
+     * Wird beim Aufbau der Seite festgehalten und nicht später erfragt: nach
+     * dem Speichern ist der Schalter am Nutzer gelöscht, und dann ließe sich
+     * nicht mehr unterscheiden, ob jemand gerade den Zwangswechsel hinter
+     * sich gebracht hat oder ohnehin nur seine Anschrift gepflegt hat. Davon
+     * hängt ab, wohin es danach geht (siehe getRedirectUrl).
+     */
+    public bool $kamMitZugeteiltemPasswort = false;
+
+    public function mount(): void
+    {
+        parent::mount();
+
+        $this->kamMitZugeteiltemPasswort = $this->mussWechseln();
+    }
 
     public function getTitle(): string
     {
@@ -99,6 +136,10 @@ class Profil extends EditProfile
                         $this->getCurrentPasswordFormComponent(),
                     ]),
             ]);
+        }
+
+        if (! $this->bearbeiten) {
+            return $this->anzeige($schema);
         }
 
         return $schema->components([
@@ -179,6 +220,178 @@ class Profil extends EditProfile
     }
 
     /**
+     * Dieselben Angaben, nur zum Lesen.
+     *
+     * Bewusst als Schema und nicht als zweite Seite: Filaments Schemas
+     * tragen seit Version 4 Eingabefelder und Anzeigefelder nebeneinander,
+     * und damit bleibt alles an einer Stelle — Beschriftungen, Reihenfolge
+     * und Abschnitte sind in beiden Modi dieselben. Zwei Dateien, die
+     * dasselbe Formular einmal zum Lesen und einmal zum Schreiben
+     * beschreiben, laufen beim ersten neuen Feld auseinander.
+     *
+     * Die Werte kommen direkt aus den Modellen und nicht aus dem
+     * Formularzustand: im Anzeigemodus gibt es keinen, der gefüllt sein
+     * müsste, und ein leeres Feld sähe aus wie eine fehlende Angabe.
+     */
+    private function anzeige(Schema $schema): Schema
+    {
+        $nutzer = $this->getUser();
+        $kunde = $this->kunde();
+
+        return $schema->components([
+            Section::make('Ihr Zugang')
+                ->description('Name und E-Mail-Adresse, mit der Sie sich anmelden.')
+                ->columns(2)
+                ->schema([
+                    TextEntry::make('anzeige_name')
+                        ->label('Name')
+                        ->state($nutzer->name),
+
+                    TextEntry::make('anzeige_email')
+                        ->label('E-Mail')
+                        ->state($nutzer->email)
+                        ->copyable(),
+
+                    TextEntry::make('anzeige_telefon')
+                        ->label('Telefon')
+                        ->state($nutzer->kontakt?->telefon)
+                        ->placeholder('nicht hinterlegt'),
+
+                    // Punkte statt eines leeren Feldes: dass ein Passwort
+                    // gesetzt ist, weiß der Kunde — die Zeile steht hier,
+                    // damit er sieht, wo er es ändern kann.
+                    TextEntry::make('anzeige_passwort')
+                        ->label('Passwort')
+                        ->state('••••••••')
+                        ->helperText('Ändern über "Bearbeiten".'),
+                ]),
+
+            Section::make('Ihr Unternehmen')
+                ->description($this->darfStammdaten()
+                    ? 'Diese Angaben verwenden wir für Rechnungen und Schriftverkehr.'
+                    : 'Diese Angaben verwenden wir für Rechnungen und Schriftverkehr. Ändern kann sie der Zugang, der bei Ihnen dafür zuständig ist — stimmt etwas nicht, sagen Sie uns kurz Bescheid.')
+                ->columns(2)
+                ->visible($kunde !== null)
+                ->schema([
+                    TextEntry::make('anzeige_firma')
+                        ->label('Firma')
+                        ->state($kunde?->name),
+
+                    // Im Anzeigemodus eine Zeile statt vier Felder: so liest
+                    // man eine Anschrift, und so steht sie auch auf der
+                    // Rechnung. Aufgeteilt wird sie erst beim Bearbeiten.
+                    TextEntry::make('anzeige_anschrift')
+                        ->label('Anschrift')
+                        ->state(fn () => $kunde?->anschrift())
+                        ->placeholder('nicht hinterlegt'),
+
+                    TextEntry::make('anzeige_rechnung_email')
+                        ->label('Rechnungen an')
+                        ->state($kunde?->rechnung_email)
+                        ->placeholder('an Ihre E-Mail-Adresse oben'),
+
+                    TextEntry::make('anzeige_ust_id')
+                        ->label('USt-IdNr.')
+                        ->state($kunde?->ust_id)
+                        ->placeholder('nicht hinterlegt'),
+
+                    TextEntry::make('anzeige_website')
+                        ->label('Website')
+                        ->state($kunde?->website)
+                        ->url($kunde?->website)
+                        ->openUrlInNewTab()
+                        ->placeholder('nicht hinterlegt'),
+                ]),
+        ]);
+    }
+
+    /**
+     * Der Knopf, der aus der Ansicht ein Formular macht.
+     *
+     * Beim erzwungenen Passwortwechsel gibt es ihn nicht: dort ist das
+     * Formular der Zweck der Seite, und ein Knopf davor wäre eine Hürde vor
+     * der Hürde.
+     */
+    protected function getHeaderActions(): array
+    {
+        if ($this->mussWechseln() || $this->bearbeiten) {
+            return [];
+        }
+
+        return [
+            Action::make('bearbeiten')
+                ->label('Bearbeiten')
+                ->icon('heroicon-o-pencil-square')
+                ->action(fn () => $this->modusWechseln(true)),
+        ];
+    }
+
+    /**
+     * Zwischen Ansicht und Formular umschalten.
+     *
+     * Das Vergessen der zwischengespeicherten Schemas ist der eigentliche
+     * Inhalt dieser Methode. Filament baut ein Schema je Anfrage einmal und
+     * hält es danach fest — sinnvoll, weil eine Seite es mehrfach abfragt.
+     * Hier ist es eine Falle: der Klick auf "Bearbeiten" setzt zwar die
+     * Eigenschaft, das schon gebaute Schema bleibt aber die Ansicht, und die
+     * Seite sieht danach genauso aus wie vorher. Erst der nächste
+     * Seitenaufbau brächte das Formular — was aussieht, als hätte der Knopf
+     * nichts getan.
+     *
+     * "content" muss mit weg, nicht nur "form": darin stecken die Knöpfe
+     * unter dem Formular, und die unterscheiden sich zwischen den Modi.
+     */
+    private function modusWechseln(bool $bearbeiten): void
+    {
+        $this->bearbeiten = $bearbeiten;
+
+        unset($this->cachedSchemas['form'], $this->cachedSchemas['content']);
+
+        $this->fillForm();
+    }
+
+    /**
+     * Speichern und Abbrechen nur im Bearbeitungsmodus.
+     *
+     * Ohne das stünde unter der reinen Ansicht ein Speichern-Knopf, der
+     * nichts zu speichern hat — und ein Knopf, der nichts tut, lässt einen
+     * am Rest der Seite zweifeln.
+     */
+    protected function getFormActions(): array
+    {
+        if (! ($this->bearbeiten || $this->mussWechseln())) {
+            return [];
+        }
+
+        return parent::getFormActions();
+    }
+
+    /**
+     * Abbrechen führt zurück in die Ansicht, nicht aus der Seite heraus.
+     *
+     * Filaments Vorgabe ist der Zurück-Knopf des Panels. Der war richtig,
+     * solange die Seite nur ein Formular war; jetzt wäre er die Antwort auf
+     * eine Frage, die niemand gestellt hat — wer das Bearbeiten abbricht,
+     * will seine Daten sehen und nicht woanders sein. Beim erzwungenen
+     * Wechsel bleibt es beim Zurück-Knopf: dort gibt es keine Ansicht,
+     * in die man zurückkönnte.
+     */
+    protected function getCancelFormAction(): Action
+    {
+        if ($this->mussWechseln()) {
+            return parent::getCancelFormAction();
+        }
+
+        return Action::make('abbrechen')
+            ->label('Abbrechen')
+            ->color('gray')
+            // Der Wechsel füllt das Formular neu — damit bleiben halb
+            // getippte Änderungen nicht stehen und tauchen beim nächsten
+            // "Bearbeiten" nicht wieder auf.
+            ->action(fn () => $this->modusWechseln(false));
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
@@ -224,22 +437,30 @@ class Profil extends EditProfile
     {
         $this->kontaktSpeichern();
         $this->kundendatenSpeichern();
+
+        // Zurück in die Ansicht. Wer gespeichert hat, will sehen, dass es
+        // angekommen ist — und nicht wieder vor demselben Formular stehen.
+        if (! $this->mussWechseln()) {
+            $this->modusWechseln(false);
+        }
     }
 
     /**
-     * Nach dem Speichern zurück auf die Übersicht.
+     * Nach dem erzwungenen Passwortwechsel weiter zur Übersicht.
      *
-     * Filament bleibt von sich aus auf dem Formular stehen. Das ist in einer
-     * Verwaltungsoberfläche richtig, wo man mehrere Datensätze nacheinander
-     * bearbeitet — hier aber nicht: sein Konto füllt ein Kunde einmal aus und
-     * will danach dorthin, wo er hergekommen ist. Besonders deutlich beim
-     * erzwungenen Passwortwechsel: dort ist das Formular eine Hürde vor dem
-     * eigentlichen Ziel, und wer nach dem Speichern wieder davor steht, sucht
-     * den Ausweg.
+     * Dort ist das Formular eine Hürde vor dem eigentlichen Ziel, und wer
+     * nach dem Speichern wieder davor steht, sucht den Ausweg. Im normalen
+     * Betrieb gilt das nicht mehr: seit die Seite eine Ansicht hat, landet
+     * man nach dem Speichern in genau dieser — mit den eben geänderten
+     * Angaben vor sich.
      */
     protected function getRedirectUrl(): ?string
     {
-        return Uebersicht::getUrl();
+        // Nur nach dem erzwungenen Wechsel. Sonst bleibt die Seite stehen und
+        // zeigt die gespeicherten Angaben in der Ansicht — dorthin
+        // zurückzuspringen, wo man hergekommen ist, wäre bei einer
+        // Anschriftsänderung eine Antwort ohne Bestätigung.
+        return $this->kamMitZugeteiltemPasswort ? Uebersicht::getUrl() : null;
     }
 
     /**

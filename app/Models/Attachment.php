@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Dateigroesse;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -58,16 +59,6 @@ class Attachment extends Model
     /** Größe als "1,4 MB" statt "1468006". */
     public function groesseLesbar(): string
     {
-        $bytes = $this->groesse;
-
-        if ($bytes < 1024) {
-            return $bytes.' B';
-        }
-
-        if ($bytes < 1024 * 1024) {
-            return number_format($bytes / 1024, 0, ',', '.').' KB';
-        }
-
-        return number_format($bytes / 1024 / 1024, 1, ',', '.').' MB';
+        return Dateigroesse::lesbar((int) $this->groesse);
     }
 }

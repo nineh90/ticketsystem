@@ -5,6 +5,8 @@ namespace App\Filament\Resources\Customers;
 use App\Filament\Resources\Customers\Pages\CreateCustomer;
 use App\Filament\Resources\Customers\Pages\EditCustomer;
 use App\Filament\Resources\Customers\Pages\ListCustomers;
+use App\Filament\Resources\Customers\Pages\ViewCustomer;
+use App\Filament\Resources\Customers\RelationManagers\DokumenteRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\KontakteRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\ProjectsRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\ZugaengeRelationManager;
@@ -62,7 +64,9 @@ class CustomerResource extends Resource
             ProjectsRelationManager::class,
             // Reihenfolge nach Alltag: erst wer beteiligt ist, dann womit man
             // reinkommt, zuletzt die Anmeldekonten — die legt man einmal an
-            // und sieht sie danach selten wieder.
+            // und sieht sie danach selten wieder. Die Dokumente stehen weit
+            // vorn, weil sie das Einzige sind, das laufend dazukommt.
+            DokumenteRelationManager::class,
             KontakteRelationManager::class,
             ZugangsdatenRelationManager::class,
             ZugaengeRelationManager::class,
@@ -74,6 +78,11 @@ class CustomerResource extends Resource
         return [
             'index' => ListCustomers::route('/'),
             'create' => CreateCustomer::route('/create'),
+            // Die Akte zum Ansehen ist der Ort, an dem man landet; das
+            // Formular liegt einen Knopf weiter. Vorher gab es nur das
+            // Formular, und damit keine Stelle, an der Zahlen zu einem
+            // Kunden stehen konnten.
+            'view' => ViewCustomer::route('/{record}'),
             'edit' => EditCustomer::route('/{record}/edit'),
         ];
     }

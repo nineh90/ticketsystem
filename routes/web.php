@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AbmeldenController;
 use App\Http\Controllers\AnhangController;
+use App\Http\Controllers\DokumentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -57,3 +58,22 @@ Route::middleware(['auth'])
 Route::middleware(['auth:kunde'])
     ->get('/kunde/anhang/{anhang}', AnhangController::class)
     ->name('kunde.anhang.zeigen');
+
+/*
+ * Angebote, Rechnungen, Verträge — dieselbe Bauart wie die Anhänge oben und
+ * aus denselben Gründen: geschützte Route, Prüfung über die DokumentPolicy,
+ * und je ein Pfad für innen und für /kunde, damit eine abgelaufene Sitzung
+ * an der richtigen Anmeldung landet.
+ *
+ * Der Unterschied zur Anhang-Route steht in der Policy, nicht hier: beim
+ * Kunden entscheidet zusätzlich die Freigabe (kunden_sichtbar). Ein Dokument,
+ * das ihm gehört, aber noch nicht freigegeben ist, gibt es für ihn auch unter
+ * dieser Adresse nicht.
+ */
+Route::middleware(['auth'])
+    ->get('/dokument/{dokument}', DokumentController::class)
+    ->name('dokument.zeigen');
+
+Route::middleware(['auth:kunde'])
+    ->get('/kunde/dokument/{dokument}', DokumentController::class)
+    ->name('kunde.dokument.zeigen');

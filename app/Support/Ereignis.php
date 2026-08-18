@@ -9,10 +9,11 @@ use Illuminate\Support\Carbon;
 /**
  * Ein einzelner Eintrag im Ereignisstrom.
  *
- * Bewusst kein Model: der Strom setzt sich aus vier Tabellen zusammen
- * (Protokoll, Kommentare, Zeiten, Anhänge). Ein gemeinsames Model dafür gäbe
- * es nur um den Preis einer weiteren Tabelle, die dieselben Daten ein zweites
- * Mal hält — und die dann bei jedem vergessenen Schreibpfad auseinanderläuft.
+ * Bewusst kein Model: der Strom setzt sich aus fünf Tabellen zusammen
+ * (Protokoll, Kommentare, Zeiten, Anhänge, Dokumente). Ein gemeinsames Model
+ * dafür gäbe es nur um den Preis einer weiteren Tabelle, die dieselben Daten
+ * ein zweites Mal hält — und die dann bei jedem vergessenen Schreibpfad
+ * auseinanderläuft.
  */
 readonly class Ereignis
 {
@@ -27,6 +28,16 @@ readonly class Ereignis
     public const ANHANG = 'anhang';
 
     /**
+     * Ein Kunde hat auf ein Angebot geantwortet.
+     *
+     * Der einzige Typ ohne Ticket. Er steht trotzdem hier und nicht in einer
+     * eigenen Liste: eine Angebotszusage ist genau die Art Nachricht, für die
+     * man den Ticker offen hat — und wer sie in einer zweiten Karte suchen
+     * muss, erfährt sie am nächsten Tag.
+     */
+    public const DOKUMENT = 'dokument';
+
+    /**
      * @param  array<int, string>  $zeilen  Detailzeilen, etwa "Status: Offen → In Arbeit"
      */
     public function __construct(
@@ -38,6 +49,13 @@ readonly class Ereignis
         public array $zeilen = [],
         public ?string $zitat = null,
         public bool $intern = false,
+        /**
+         * Worauf sich der Eintrag bezieht, wenn es kein Ticket ist — heute
+         * der Kunde eines Dokuments. Ohne das stünde eine Angebotszusage
+         * ohne jeden Hinweis darauf da, um wen es geht.
+         */
+        public ?string $kontext = null,
+        public ?string $kontextUrl = null,
     ) {}
 
     /** Wer es getan hat. Leer heißt: über die Schnittstelle, nicht von Hand. */
@@ -53,6 +71,7 @@ readonly class Ereignis
             self::ANGELEGT => 'heroicon-o-sparkles',
             self::ZEIT => 'heroicon-o-clock',
             self::ANHANG => 'heroicon-o-paper-clip',
+            self::DOKUMENT => 'heroicon-o-document-check',
             default => 'heroicon-o-arrow-path',
         };
     }
@@ -69,6 +88,7 @@ readonly class Ereignis
             self::ANGELEGT => 'success',
             self::ZEIT => 'info',
             self::ANHANG => 'warning',
+            self::DOKUMENT => 'success',
             default => 'gray',
         };
     }

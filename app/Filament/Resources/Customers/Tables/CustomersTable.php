@@ -6,6 +6,7 @@ use App\Support\Sichtbarkeit;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\ColorColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
@@ -102,6 +103,10 @@ class CustomersTable
                     ->default(true),
             ])
             ->recordActions([
+                // Ansehen zuerst und als Standardweg: die Akte trägt jetzt
+                // Zahlen und Verläufe, und die will man öfter sehen als ein
+                // Feld ändern.
+                ViewAction::make()->label('Ansehen'),
                 EditAction::make()->label('Bearbeiten'),
             ])
             ->toolbarActions([
