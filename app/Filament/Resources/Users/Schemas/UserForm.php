@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use App\Enums\Rolle;
+use App\Models\User;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -99,6 +100,16 @@ class UserForm
                             ->label('Aktiv')
                             ->default(true)
                             ->helperText('Ausgeschiedene Personen deaktivieren statt löschen — ihre Tickets und Zeiten bleiben zuordenbar.'),
+
+                        // Bewusst je Zugang und nicht für alle: der Versand
+                        // wird stufenweise eingeführt. Bei Kundenzugängen
+                        // bleibt er wirkungslos, solange ihre Adressen nicht
+                        // bestätigt sind (User::bekommtMailMeldungen) —
+                        // deshalb steht das Feld dort auch nicht.
+                        Toggle::make('mail_benachrichtigungen')
+                            ->label('E-Mail bei Meldungen')
+                            ->visible(fn (?User $record) => ! ($record?->istKunde() ?? false))
+                            ->helperText('Schickt jede Meldung der Glocke zusätzlich per Mail. Ohne hinterlegten Mailversand passiert nichts — dann steht sie nur im Protokoll.'),
                     ]),
 
                 Section::make('Zuständigkeit')

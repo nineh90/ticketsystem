@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\Rolle;
 use App\Filament\Kunde\Resources\Anliegen\AnliegenResource;
 use App\Filament\Resources\Tickets\TicketResource;
+use App\Mail\Glockenmeldung;
 use App\Models\Ticket;
 use App\Models\User;
 use Filament\Actions\Action;
@@ -12,6 +13,8 @@ use Filament\Notifications\DatabaseNotification;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * Wer erfährt wovon.
@@ -142,7 +145,7 @@ class Benachrichtigung
      * das noch mal rein"), und eine Liste, die sich beim Lesen selbst löscht,
      * kann das nicht sein.
      *
-     * @return int  wie viele Meldungen dadurch gelesen wurden
+     * @return int wie viele Meldungen dadurch gelesen wurden
      */
     public static function gesehen(?User $nutzer, string $herkunft): int
     {
@@ -196,6 +199,8 @@ class Benachrichtigung
             $nutzer->notifyNow(new DatabaseNotification($daten));
         }
 
+        self::perMailNachreichen($empfaenger, $daten);
+
         // Filaments DatabaseNotificationsSent wird hier bewusst NICHT
         // ausgelöst. Das Ereignis ist ein ShouldBroadcast und landet damit
         // seinerseits als Job in der Warteschlange — dieselbe Falle noch
@@ -204,6 +209,62 @@ class Benachrichtigung
         // (databaseNotificationsPolling in beiden Panel-Providern); eine
         // offene Oberfläche hat die Meldung also spätestens nach 60 Sekunden.
 
+    }
+
+    /**
+     * Dieselbe Meldung noch einmal per Mail — an die, die das eingeschaltet
+     * haben.
+     *
+     * Hier und nirgends sonst, aus demselben Grund, aus dem der ganze
+     * Empfängerkreis hier liegt: es gibt genau einen Weg zur Glocke, und
+     * damit gibt es auch genau einen zur Mail. Eine zweite Stelle, die
+     * Mails verschickt, müsste die Regel „wer darf was erfahren" ein zweites
+     * Mal kennen.
+     *
+     * **Der Versand läuft nach der Antwort** (defer). Ein SMTP-Handshake
+     * dauert eine bis zwei Sekunden; synchron hinge die daran, die das
+     * Ereignis ausgelöst hat — beim gemeldeten Anliegen also der Kunde, der
+     * gerade auf „Absenden" gedrückt hat. Eine Warteschlange bräuchte einen
+     * Worker, den es hier nicht gibt (siehe README).
+     *
+     * Fehler beim Versand werden protokolliert und sonst verschluckt. Das
+     * ist Absicht: eine Meldung an der Glocke darf nicht daran scheitern,
+     * dass ein Mailserver gerade nicht erreichbar ist. Wer wissen will,
+     * warum keine Mail ankam, findet die Zeile im Protokoll.
+     *
+     * @param  Collection<int, User>  $empfaenger
+     * @param  array<string, mixed>  $daten
+     */
+    private static function perMailNachreichen(Collection $empfaenger, array $daten): void
+    {
+        $ziele = $empfaenger->filter(fn (User $nutzer) => $nutzer->bekommtMailMeldungen());
+
+        if ($ziele->isEmpty()) {
+            return;
+        }
+
+        $titel = (string) ($daten['title'] ?? 'Neue Meldung im Ticketsystem');
+        $text = $daten['body'] ?? null;
+
+        // Der Knopf aus der Meldung. Er zeigt schon in das richtige Panel —
+        // eine Meldung nach außen trägt eine /kunde-Adresse, eine nach innen
+        // die interne (siehe urlIntern/urlKunde). Hier ist also nichts zu
+        // entscheiden, nur zu übernehmen.
+        $url = $daten['actions'][0]['url'] ?? null;
+
+        defer(function () use ($ziele, $titel, $text, $url) {
+            foreach ($ziele as $nutzer) {
+                try {
+                    Mail::to($nutzer->email)->send(new Glockenmeldung($titel, $text, $url));
+                } catch (\Throwable $fehler) {
+                    Log::warning('Meldung konnte nicht per Mail zugestellt werden.', [
+                        'empfaenger' => $nutzer->email,
+                        'titel' => $titel,
+                        'fehler' => $fehler->getMessage(),
+                    ]);
+                }
+            }
+        });
     }
 
     /** @return Collection<int, User> */

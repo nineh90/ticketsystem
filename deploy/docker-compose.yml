@@ -55,7 +55,20 @@ services:
       LOG_STACK: single
       LOG_LEVEL: warning
 
-      MAIL_MAILER: log
+      # Mailversand. Bleibt auf "log", solange in deploy/.env auf dem Server
+      # kein MAIL_MAILER steht — dann landet jede Mail nur im Protokoll und
+      # niemand bekommt etwas. Sobald die Strato-Daten dort eingetragen sind,
+      # schaltet allein das den Versand scharf; hier ist nichts zu ändern.
+      #
+      # Die Zugangsdaten stehen ausdrücklich NICHT in dieser Datei — sie liegt
+      # im Repository. Sie gehören nach /docker/ticketsystem/deploy/.env,
+      # genau wie APP_KEY und DB_PASSWORD.
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SCHEME: ${MAIL_SCHEME:-tls}
       MAIL_FROM_ADDRESS: ticketsystem@nils-digital.de
 
       TICKET_API_TOKEN: ${TICKET_API_TOKEN:-}

@@ -285,11 +285,32 @@ unter „Sie sind am Zug". Voreingestellt ist das bei *Warten auf Kunde*.
 
 ## Was noch offen ist
 
-- **Mailversand.** `MAIL_MAILER` steht auf `log`. Deshalb ist auch
-  „Passwort vergessen" nicht aktiv — der Knopf verschickt sonst eine Mail, die
-  nirgends ankommt. Bis dahin setzt ein Admin ein vergessenes Passwort in der
-  Nutzerverwaltung neu. Sobald Strato-SMTP hinterlegt ist:
-  `->passwordReset()` im `AdminPanelProvider` einkommentieren.
+- **Mailversand.** `MAIL_MAILER` steht auf `log`, es geht also nichts hinaus.
+  Die Anwendung ist vorbereitet: Meldungen gehen als Mail hinaus, sobald an
+  einem Zugang *E-Mail bei Meldungen* gesetzt ist **und** Zugangsdaten
+  hinterlegt sind.
+
+  **Scharf geschaltet wird ausschließlich über `/docker/ticketsystem/deploy/.env`
+  auf dem Server** — dieselbe Datei, in der APP_KEY und DB_PASSWORD stehen.
+  Die `docker-compose.yml` liest die Werte von dort und fällt ohne sie auf
+  `log` zurück; in ihr steht nie ein Passwort, sie liegt im Repository.
+
+  ```
+  MAIL_MAILER=smtp
+  MAIL_HOST=smtp.strato.de
+  MAIL_PORT=587
+  MAIL_USERNAME=ticketsystem@nils-digital.de
+  MAIL_PASSWORD=…
+  MAIL_SCHEME=tls
+  ```
+
+  Danach `docker compose up -d` in `/docker/ticketsystem/deploy`. Ein Deploy
+  über Push tut dasselbe.
+
+  Ebenfalls noch aus: „Passwort vergessen" in beiden Panels — der Knopf
+  verschickt sonst eine Mail, die nirgends ankommt. Bis dahin setzt ein Admin
+  ein vergessenes Passwort in der Nutzerverwaltung neu. Sobald der Versand
+  steht: `->passwordReset()` in den Panel-Providern einkommentieren.
 - **n8n-Anbindung.** Die Schnittstelle steht und ist geprüft, es gibt nur noch
   keinen Workflow. Siehe `docs/n8n.md`.
 - **Kontaktdaten im Kundenbereich.** `config/kontakt.php` liest

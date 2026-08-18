@@ -300,6 +300,35 @@ Filaments `Notification` nur ihre eigenen Felder kennt und alles andere
 wegwirft. Beim Zurücklesen übergeht `Notification::fromArray()` den
 zusätzlichen Schlüssel.
 
+## Meldungen per Mail
+
+Jede Meldung, die an der Glocke landet, kann zusätzlich als Mail hinausgehen.
+Der Schalter sitzt **je Zugang** (*Verwaltung → Nutzer → E-Mail bei
+Meldungen*), Vorgabe aus — der Versand wird stufenweise eingeführt: erst ein
+Zugang, dann Kevin, viel später ein Kunde.
+
+Angeschlossen ist er an `Benachrichtigung::zustellen()`, also an derselben
+einen Stelle, durch die jeder Empfängerkreis läuft. Eine zweite Stelle, die
+Mails verschickt, müsste die Regel „wer darf was erfahren" ein zweites Mal
+kennen.
+
+**Kundenzugänge bekommen nie eine Mail**, gleich was am Schalter steht
+(`User::bekommtMailMeldungen`). Ihre Adressen hat niemand bestätigt — sie
+stammen daher, dass wir sie beim Anlegen eingetippt haben. Ein versehentlich
+gesetzter Haken wäre sonst der Weg, auf dem ein Tickettitel an eine geratene
+oder geteilte Adresse geht. Die Zeile fällt, wenn der Versand nach außen
+drankommt, dann aber zusammen mit einer bestätigten Adresse.
+
+Der Versand läuft **nach der Antwort** (`defer()`). Ein SMTP-Handshake dauert
+ein bis zwei Sekunden; synchron hinge die daran, die das Ereignis ausgelöst
+hat — beim gemeldeten Anliegen also der Kunde. Eine Warteschlange bräuchte
+einen Worker, den es hier nicht gibt. Scheitert der Versand, steht das im
+Protokoll und die Glocke bleibt trotzdem stehen.
+
+**Ausprobieren ohne Mailserver:** `MAIL_MAILER=log` (die Vorgabe) schreibt
+jede Mail vollständig nach `storage/logs/laravel.log` — Betreff, Text, Link.
+Es geht nichts hinaus.
+
 ## Zugang
 
 Ein Konto allein reicht nicht. `User::canAccessPanel()` verlangt zusätzlich

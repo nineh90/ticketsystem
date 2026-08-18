@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'rolle', 'panel_zugang', 'aktiv', 'customer_id', 'kontakt_id', 'stammdaten_pflegen'])]
+#[Fillable(['name', 'email', 'password', 'rolle', 'panel_zugang', 'aktiv', 'customer_id', 'kontakt_id', 'stammdaten_pflegen', 'mail_benachrichtigungen'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -46,6 +46,7 @@ class User extends Authenticatable implements FilamentUser
             'rolle' => Rolle::class,
             'panel_zugang' => 'boolean',
             'aktiv' => 'boolean',
+            'mail_benachrichtigungen' => 'boolean',
             'passwort_wechseln' => 'boolean',
             'stammdaten_pflegen' => 'boolean',
             'dashboard_gesehen_at' => 'datetime',
@@ -123,6 +124,28 @@ class User extends Authenticatable implements FilamentUser
     public function istAdmin(): bool
     {
         return $this->rolle === Rolle::Admin;
+    }
+
+    /**
+     * Bekommt dieser Zugang Meldungen zusätzlich per Mail?
+     *
+     * Drei Bedingungen, und die dritte ist die, um die es hier eigentlich
+     * geht: **Kundenzugänge nie**, gleich was am Schalter steht. Ihre
+     * Adressen hat niemand bestätigt — sie stammen daher, dass wir sie beim
+     * Anlegen eingetippt haben (siehe README, „Adressen und Mail"). Ein
+     * versehentlich gesetzter Haken wäre sonst genau der Weg, auf dem der
+     * Titel eines Tickets an eine geratene oder geteilte Adresse geht.
+     *
+     * Die Zeile fällt, wenn der Versand nach außen drankommt — dann aber
+     * zusammen mit einer bestätigten Adresse und einer Mail, die nur einen
+     * Hinweis trägt und keinen Inhalt. Bis dahin ist sie die Sperre.
+     */
+    public function bekommtMailMeldungen(): bool
+    {
+        return $this->aktiv
+            && ! $this->istKunde()
+            && (bool) $this->mail_benachrichtigungen
+            && filled($this->email);
     }
 
     public function istKunde(): bool
