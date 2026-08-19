@@ -57,6 +57,27 @@ else
     warn '! podman nicht gefunden — es wird angenommen, dass Postgres anderweitig läuft.'
 fi
 
+# --- Postfach für die Entwicklung --------------------------------------
+#
+# Mailpit nimmt lokal jede Mail entgegen und zeigt sie unter
+# http://localhost:8025 an — nichts verlässt den Rechner. Das ist der
+# Unterschied zu MAIL_MAILER=log: dort steht die Mail als Rohtext im
+# Protokoll, hier sieht man sie so, wie sie im Postfach ankommt.
+#
+# Ohne den Container ist es kein Beinbruch: dann scheitert der Versand, die
+# Warnung landet im Protokoll und die Glocke bleibt trotzdem stehen.
+if command -v podman >/dev/null; then
+    if ! podman ps --format '{{.Names}}' | grep -qx ticketsystem-mailpit; then
+        blau '→ Mailpit starten …'
+        podman start ticketsystem-mailpit >/dev/null 2>&1 || podman run -d \
+            --name ticketsystem-mailpit \
+            -p 1025:1025 -p 8025:8025 \
+            --restart unless-stopped \
+            docker.io/axllent/mailpit:latest >/dev/null 2>&1 \
+            || warn '! Mailpit ließ sich nicht starten — Mails scheitern dann nur, sonst nichts.'
+    fi
+fi
+
 # --- Abhängigkeiten ----------------------------------------------------
 
 [ -d vendor ]       || { blau '→ composer install …'; composer install; }
@@ -89,6 +110,7 @@ Ohne Manifest startet die App zwar, liefert aber keine Stile aus.'
 
 blau ''
 blau '  Ticketsystem läuft auf http://localhost:8000'
+blau '  Postfach (Mailpit)     http://localhost:8025'
 blau ''
 
 # Mehrere Arbeiter, sonst beantwortet der eingebaute Server nur eine Anfrage

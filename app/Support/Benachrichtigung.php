@@ -6,6 +6,7 @@ use App\Enums\Rolle;
 use App\Filament\Kunde\Resources\Anliegen\AnliegenResource;
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Mail\Glockenmeldung;
+use App\Models\Customer;
 use App\Models\Ticket;
 use App\Models\User;
 use Filament\Actions\Action;
@@ -43,7 +44,7 @@ class Benachrichtigung
      */
     public static function nachInnen(Ticket $ticket, Notification $meldung): void
     {
-        self::zustellen(self::innenkreis($ticket), $meldung, Herkunft::ticket($ticket));
+        self::zustellen(self::innenkreis($ticket), $meldung, Herkunft::ticket($ticket), $ticket->customer);
     }
 
     /**
@@ -56,7 +57,7 @@ class Benachrichtigung
      */
     public static function nachAussen(Ticket $ticket, Notification $meldung): void
     {
-        self::zustellen(self::aussenkreis($ticket), $meldung, Herkunft::ticket($ticket));
+        self::zustellen(self::aussenkreis($ticket), $meldung, Herkunft::ticket($ticket), $ticket->customer);
     }
 
     /**
@@ -70,7 +71,7 @@ class Benachrichtigung
      */
     public static function anZustaendige(int $customerId, Notification $meldung): void
     {
-        self::zustellen(self::zustaendige($customerId), $meldung, Herkunft::kunde($customerId));
+        self::zustellen(self::zustaendige($customerId), $meldung, Herkunft::kunde($customerId), Customer::find($customerId));
     }
 
     /**
@@ -125,9 +126,13 @@ class Benachrichtigung
      *
      * @param  Collection<int, User>  $empfaenger
      */
-    public static function an(Collection $empfaenger, Notification $meldung, ?string $herkunft = null): void
-    {
-        self::zustellen($empfaenger, $meldung, $herkunft);
+    public static function an(
+        Collection $empfaenger,
+        Notification $meldung,
+        ?string $herkunft = null,
+        ?Customer $kunde = null,
+    ): void {
+        self::zustellen($empfaenger, $meldung, $herkunft, $kunde);
     }
 
     /**
@@ -182,8 +187,12 @@ class Benachrichtigung
      *
      * @param  Collection<int, User>  $empfaenger
      */
-    private static function zustellen(Collection $empfaenger, Notification $meldung, ?string $herkunft = null): void
-    {
+    private static function zustellen(
+        Collection $empfaenger,
+        Notification $meldung,
+        ?string $herkunft = null,
+        ?Customer $kunde = null,
+    ): void {
         // Die Herkunft wird der fertigen Meldung untergemischt statt über
         // Filament gesetzt: dessen Notification kennt nur ihre eigenen Felder,
         // und getDatabaseMessage() wirft alles andere weg. Beim Zurücklesen
@@ -199,7 +208,7 @@ class Benachrichtigung
             $nutzer->notifyNow(new DatabaseNotification($daten));
         }
 
-        self::perMailNachreichen($empfaenger, $daten);
+        self::perMailNachreichen($empfaenger, $daten, $kunde);
 
         // Filaments DatabaseNotificationsSent wird hier bewusst NICHT
         // ausgelöst. Das Ereignis ist ein ShouldBroadcast und landet damit
@@ -235,7 +244,7 @@ class Benachrichtigung
      * @param  Collection<int, User>  $empfaenger
      * @param  array<string, mixed>  $daten
      */
-    private static function perMailNachreichen(Collection $empfaenger, array $daten): void
+    private static function perMailNachreichen(Collection $empfaenger, array $daten, ?Customer $kunde = null): void
     {
         $ziele = $empfaenger->filter(fn (User $nutzer) => $nutzer->bekommtMailMeldungen());
 
@@ -252,10 +261,22 @@ class Benachrichtigung
         // entscheiden, nur zu übernehmen.
         $url = $daten['actions'][0]['url'] ?? null;
 
-        defer(function () use ($ziele, $titel, $text, $url) {
+        // Die Farbe der Meldung wandert mit: sie färbt den Streifen über der
+        // Mail, so wie sie an der Glocke den Punkt am Rand färbt.
+        $farbe = $daten['color'] ?? null;
+
+        // Das Logo hier auflösen und nicht erst im Versand: danach laeuft
+        // alles ausserhalb der Anfrage, und eine Datenbankabfrage dort
+        // waere eine, die niemand mehr sieht, wenn sie schiefgeht.
+        $logo = $kunde?->logoUrl();
+        $kundenName = $kunde?->name;
+
+        defer(function () use ($ziele, $titel, $text, $url, $farbe, $logo, $kundenName) {
             foreach ($ziele as $nutzer) {
                 try {
-                    Mail::to($nutzer->email)->send(new Glockenmeldung($titel, $text, $url));
+                    Mail::to($nutzer->email)->send(
+                        new Glockenmeldung($titel, $text, $url, $farbe, $logo, $kundenName),
+                    );
                 } catch (\Throwable $fehler) {
                     Log::warning('Meldung konnte nicht per Mail zugestellt werden.', [
                         'empfaenger' => $nutzer->email,
