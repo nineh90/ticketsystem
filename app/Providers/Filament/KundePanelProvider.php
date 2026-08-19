@@ -6,6 +6,7 @@ use App\Filament\Auth\Anmeldung;
 use App\Filament\AvatarProviders\InitialenAvatar;
 use App\Filament\Kunde\Pages\Profil;
 use App\Filament\Kunde\Pages\Uebersicht;
+use App\Filament\Kunde\Widgets\BenachrichtigungenEinrichten;
 use App\Filament\Kunde\Widgets\MeineProjekte;
 use App\Filament\Kunde\Widgets\StandDerDinge;
 use App\Filament\Kunde\Widgets\Willkommen;
@@ -123,6 +124,10 @@ class KundePanelProvider extends PanelProvider
             ->widgets([
                 // Ganz oben: Logo, Begrüßung, Firmenname.
                 Willkommen::class,
+                // Die Frage nach Benachrichtigungen — nur solange sie offen
+                // ist. Sie verschwindet, sobald der Kunde geantwortet hat,
+                // auch wenn die Antwort "nein" war.
+                BenachrichtigungenEinrichten::class,
                 StandDerDinge::class,
                 MeineProjekte::class,
             ])

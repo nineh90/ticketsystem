@@ -17,7 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'rolle', 'panel_zugang', 'aktiv', 'customer_id', 'kontakt_id', 'stammdaten_pflegen', 'mail_benachrichtigungen', 'mail_ereignisse'])]
+#[Fillable(['name', 'email', 'password', 'rolle', 'panel_zugang', 'aktiv', 'customer_id', 'kontakt_id', 'stammdaten_pflegen', 'mail_benachrichtigungen', 'mail_ereignisse',
+    'benachrichtigungs_email'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -49,6 +50,8 @@ class User extends Authenticatable implements FilamentUser
             'aktiv' => 'boolean',
             'mail_benachrichtigungen' => 'boolean',
             'mail_ereignisse' => 'array',
+            'benachrichtigungs_email_bestaetigt_at' => 'datetime',
+            'benachrichtigungen_gefragt_at' => 'datetime',
             'passwort_wechseln' => 'boolean',
             'stammdaten_pflegen' => 'boolean',
             'dashboard_gesehen_at' => 'datetime',
@@ -145,15 +148,59 @@ class User extends Authenticatable implements FilamentUser
     public function bekommtMailMeldungen(?MailEreignis $ereignis = null): bool
     {
         $grundsaetzlich = $this->aktiv
-            && ! $this->istKunde()
             && (bool) $this->mail_benachrichtigungen
-            && filled($this->email);
+            && filled($this->mailZieladresse());
+
+        // Für einen Kundenzugang zusätzlich: die Adresse muss bestätigt sein.
+        // Das ist die eigentliche Sperre nach außen — nicht die Rolle, sondern
+        // der Beleg, dass hinter der Adresse jemand sitzt, der sie liest.
+        if ($this->istKunde() && $this->benachrichtigungs_email_bestaetigt_at === null) {
+            return false;
+        }
 
         if (! $grundsaetzlich || $ereignis === null) {
             return $grundsaetzlich;
         }
 
         return $this->willMailZu($ereignis);
+    }
+
+    /**
+     * Wohin die Mail geht.
+     *
+     * Für einen Kundenzugang die Adresse, die er selbst genannt und bestätigt
+     * hat — nicht die, mit der er sich anmeldet. Die haben wir beim Anlegen
+     * eingetippt; sie ist manchmal geraten und manchmal ein geteiltes
+     * Postfach. Intern gibt es diese Unterscheidung nicht: dort ist die
+     * Anmeldeadresse die Arbeitsadresse.
+     */
+    public function mailZieladresse(): ?string
+    {
+        return $this->istKunde()
+            ? $this->benachrichtigungs_email
+            : $this->email;
+    }
+
+    /**
+     * Hat dieser Kunde die Frage nach Benachrichtigungen schon gesehen?
+     *
+     * Ohne diesen Merker ließe sich "will nicht" nicht von "hat noch nie
+     * hingeschaut" unterscheiden — und der Hinweis in seinem Bereich stünde
+     * für immer da, auch bei jemandem, der sich bewusst dagegen entschieden
+     * hat.
+     */
+    public function mussNochEntscheiden(): bool
+    {
+        return $this->istKunde() && $this->benachrichtigungen_gefragt_at === null;
+    }
+
+    /** Wartet eine genannte Adresse noch auf ihre Bestätigung? */
+    public function wartetAufAdressbestaetigung(): bool
+    {
+        return $this->istKunde()
+            && (bool) $this->mail_benachrichtigungen
+            && filled($this->benachrichtigungs_email)
+            && $this->benachrichtigungs_email_bestaetigt_at === null;
     }
 
     /**

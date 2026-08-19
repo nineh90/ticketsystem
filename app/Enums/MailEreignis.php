@@ -91,6 +91,48 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
     }
 
     /**
+     * Wie das Ereignis im Kundenbereich heißt.
+     *
+     * Andere Worte als getLabel(), und zwar aus demselben Grund, aus dem der
+     * Kundenbereich überhaupt eigene Texte hat: "Stadienwechsel an den Kunden"
+     * ist unsere Sicht auf die Sache. Er liest "wenn sich etwas an Ihrem
+     * Anliegen tut".
+     */
+    public function getKundenLabel(): string
+    {
+        return match ($this) {
+            self::AntwortAnKunde => 'Wenn wir Ihnen antworten',
+            self::StandAnKunde => 'Wenn sich der Stand ändert',
+            default => $this->getLabel(),
+        };
+    }
+
+    public function getKundenDescription(): string
+    {
+        return match ($this) {
+            self::AntwortAnKunde => 'Sobald jemand von uns etwas unter Ihr Anliegen schreibt.',
+            self::StandAnKunde => 'Zum Beispiel wenn es erledigt ist oder wir etwas von Ihnen brauchen.',
+            default => $this->getDescription(),
+        };
+    }
+
+    /**
+     * Worüber ein Kunde überhaupt benachrichtigt werden kann.
+     *
+     * Nur, was nach außen geht. Alles andere ist Betrieb — dass ein Kunde
+     * etwas gemeldet hat, muss man ihm nicht mailen, er war es selbst.
+     *
+     * @return array<int, self>
+     */
+    public static function fuerKunden(): array
+    {
+        return array_values(array_filter(
+            self::cases(),
+            fn (self $fall) => ! $fall->nachInnen(),
+        ));
+    }
+
+    /**
      * Die Auswahl, die ein interner Zugang standardmäßig bekommt.
      *
      * Alles, was hereinkommt — und nichts von dem, was hinausgeht. Ein

@@ -5,13 +5,17 @@ namespace App\Filament\Kunde\Pages;
 use App\Enums\MailEreignis;
 use App\Models\Customer;
 use App\Models\Kontakt;
+use App\Support\Adressbestaetigung;
 use App\Support\Benachrichtigung;
 use Filament\Actions\Action;
 use Filament\Auth\Pages\EditProfile;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use SensitiveParameter;
 
@@ -157,6 +161,34 @@ class Profil extends EditProfile
                         ->helperText('Für Rückfragen, bei denen ein Anruf schneller ist als drei Nachrichten.'),
                 ]),
 
+            Section::make('Benachrichtigungen')
+                ->description('Wir schreiben Ihnen nur, wenn Sie das möchten — und nur worüber Sie es möchten.')
+                ->schema([
+                    Toggle::make('mail_benachrichtigungen')
+                        ->label('Ja, informieren Sie mich per E-Mail')
+                        ->live()
+                        ->helperText('Jederzeit hier wieder abschaltbar.'),
+
+                    TextInput::make('benachrichtigungs_email')
+                        ->label('An diese Adresse')
+                        ->email()
+                        ->maxLength(255)
+                        ->required(fn (Get $get) => (bool) $get('mail_benachrichtigungen'))
+                        ->visible(fn (Get $get) => (bool) $get('mail_benachrichtigungen'))
+                        ->helperText('Darf eine andere sein als die, mit der Sie sich anmelden. Wir schicken einmal einen Bestätigungslink dorthin — erst danach bekommen Sie Post.'),
+
+                    CheckboxList::make('mail_ereignisse')
+                        ->label('Worüber')
+                        ->options(collect(MailEreignis::fuerKunden())
+                            ->mapWithKeys(fn (MailEreignis $e) => [$e->value => $e->getKundenLabel()])
+                            ->all())
+                        ->descriptions(collect(MailEreignis::fuerKunden())
+                            ->mapWithKeys(fn (MailEreignis $e) => [$e->value => $e->getKundenDescription()])
+                            ->all())
+                        ->default(array_map(fn (MailEreignis $e) => $e->value, MailEreignis::fuerKunden()))
+                        ->visible(fn (Get $get) => (bool) $get('mail_benachrichtigungen')),
+                ]),
+
             Section::make('Passwort ändern')
                 ->description('Leer lassen, wenn Ihr Passwort so bleiben soll.')
                 ->schema([
@@ -267,6 +299,33 @@ class Profil extends EditProfile
                         ->helperText('Ändern über "Bearbeiten".'),
                 ]),
 
+            Section::make('Benachrichtigungen')
+                ->description('Ob und worüber wir Ihnen schreiben.')
+                ->columns(2)
+                ->schema([
+                    TextEntry::make('anzeige_benachrichtigungen')
+                        ->label('Status')
+                        ->state(fn () => $this->benachrichtigungsStand())
+                        ->badge()
+                        ->color(fn () => match (true) {
+                            $nutzer->bekommtMailMeldungen() => 'success',
+                            $nutzer->wartetAufAdressbestaetigung() => 'warning',
+                            default => 'gray',
+                        }),
+
+                    TextEntry::make('anzeige_benachrichtigungs_email')
+                        ->label('An diese Adresse')
+                        ->state($nutzer->benachrichtigungs_email)
+                        ->placeholder('keine hinterlegt'),
+
+                    TextEntry::make('anzeige_benachrichtigungs_themen')
+                        ->label('Worüber')
+                        ->state(fn () => $this->gewaehlteThemen())
+                        ->placeholder('—')
+                        ->columnSpanFull()
+                        ->visible(fn () => (bool) $nutzer->mail_benachrichtigungen),
+                ]),
+
             Section::make('Ihr Unternehmen')
                 ->description($this->darfStammdaten()
                     ? 'Diese Angaben verwenden wir für Rechnungen und Schriftverkehr.'
@@ -304,6 +363,33 @@ class Profil extends EditProfile
                         ->placeholder('nicht hinterlegt'),
                 ]),
         ]);
+    }
+
+    /** Der Stand in einem Wort — für die Ansicht. */
+    private function benachrichtigungsStand(): string
+    {
+        $nutzer = $this->getUser();
+
+        return match (true) {
+            $nutzer->bekommtMailMeldungen() => 'Eingeschaltet',
+            $nutzer->wartetAufAdressbestaetigung() => 'Wartet auf Ihre Bestätigung',
+            default => 'Aus',
+        };
+    }
+
+    /** Die gewählten Themen in Worten. */
+    private function gewaehlteThemen(): ?string
+    {
+        $gewaehlt = $this->getUser()->mail_ereignisse;
+
+        $faelle = collect(MailEreignis::fuerKunden())
+            ->when($gewaehlt !== null, fn ($f) => $f->filter(
+                fn (MailEreignis $e) => in_array($e->value, $gewaehlt, true),
+            ));
+
+        return $faelle->isEmpty()
+            ? null
+            : $faelle->map(fn (MailEreignis $e) => $e->getKundenLabel())->implode(' · ');
     }
 
     /**
@@ -408,6 +494,10 @@ class Profil extends EditProfile
 
         $data['kontakt_telefon'] = $this->getUser()->kontakt?->telefon;
 
+        // Noch keine Adresse genannt? Dann die Anmeldeadresse vorschlagen —
+        // sie ist die naheliegende, und ändern kann er sie im selben Feld.
+        $data['benachrichtigungs_email'] ??= $this->getUser()->email;
+
         return $data;
     }
 
@@ -438,6 +528,7 @@ class Profil extends EditProfile
     {
         $this->kontaktSpeichern();
         $this->kundendatenSpeichern();
+        $this->benachrichtigungenNachziehen();
 
         // Zurück in die Ansicht. Wer gespeichert hat, will sehen, dass es
         // angekommen ist — und nicht wieder vor demselben Formular stehen.
@@ -503,6 +594,50 @@ class Profil extends EditProfile
             'name' => $nutzer->name,
             'email' => $nutzer->email,
         ]);
+    }
+
+    /**
+     * Was nach dem Speichern mit der Benachrichtigungsadresse passiert.
+     *
+     * Drei Fälle, und der mittlere ist der, um den es geht:
+     *
+     *  - Adresse geändert: die alte Bestätigung ist wertlos, sie fällt weg
+     *    und wir schicken eine neue Anfrage. Sonst bekäme eine Adresse Post,
+     *    die nie jemand belegt hat.
+     *  - Abgeschaltet: die Bestätigung bleibt stehen. Wer später wieder
+     *    einschaltet, muss dieselbe Adresse nicht erneut belegen.
+     *  - Eingeschaltet, Adresse unverändert und schon bestätigt: nichts tun.
+     *
+     * Dass er die Frage gesehen hat, halten wir in jedem Fall fest — sonst
+     * stünde der Hinweis in seinem Bereich auch bei jemandem, der sich
+     * bewusst dagegen entschieden hat.
+     */
+    private function benachrichtigungenNachziehen(): void
+    {
+        $nutzer = $this->getUser();
+
+        if (! $nutzer->istKunde()) {
+            return;
+        }
+
+        $neu = ['benachrichtigungen_gefragt_at' => $nutzer->benachrichtigungen_gefragt_at ?? now()];
+
+        if ($nutzer->wasChanged('benachrichtigungs_email')) {
+            $neu['benachrichtigungs_email_bestaetigt_at'] = null;
+        }
+
+        $nutzer->forceFill($neu)->save();
+
+        if ($nutzer->wartetAufAdressbestaetigung()) {
+            Adressbestaetigung::anfordern($nutzer);
+
+            Notification::make()
+                ->title('Bitte bestätigen Sie Ihre Adresse')
+                ->body('Wir haben Ihnen einen Link an '.$nutzer->benachrichtigungs_email.' geschickt. Erst danach schreiben wir Ihnen.')
+                ->info()
+                ->persistent()
+                ->send();
+        }
     }
 
     private function kundendatenSpeichern(): void

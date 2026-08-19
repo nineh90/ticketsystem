@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AbmeldenController;
 use App\Http\Controllers\AnhangController;
+use App\Http\Controllers\BenachrichtigungBestaetigenController;
 use App\Http\Controllers\DokumentController;
 use Illuminate\Support\Facades\Route;
 
@@ -77,3 +78,17 @@ Route::middleware(['auth'])
 Route::middleware(['auth:kunde'])
     ->get('/kunde/dokument/{dokument}', DokumentController::class)
     ->name('kunde.dokument.zeigen');
+
+/*
+ * Der Klick aus der Bestätigungsmail für Benachrichtigungen.
+ *
+ * Ausdrücklich OHNE Anmeldung: der Kunde öffnet die Mail meistens auf dem
+ * Telefon, wo er nicht angemeldet ist. Die Sicherheit hängt an der Signatur
+ * ("signed") und zusätzlich an einer Prüfsumme über die eingetragene Adresse
+ * — ändert er sie, wird ein alter Link wertlos, obwohl seine Signatur noch
+ * gälte. Genau der Fall, den man sonst übersieht: jemand vertippt sich,
+ * korrigiert es, und der erste Link bestätigt danach trotzdem.
+ */
+Route::middleware(['signed'])
+    ->get('/kunde/benachrichtigungen/bestaetigen/{nutzer}/{pruefsumme}', BenachrichtigungBestaetigenController::class)
+    ->name('kunde.benachrichtigungen.bestaetigen');

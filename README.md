@@ -331,12 +331,28 @@ Gleichheitsoperator, und jedes `select distinct users.*` im System bricht ab,
 sobald eine json-Spalte an der Tabelle hängt — betroffen wären sämtliche
 Mitarbeiter-Auswahlen.
 
-**Kundenzugänge bekommen nie eine Mail**, gleich was am Schalter steht
-(`User::bekommtMailMeldungen`). Ihre Adressen hat niemand bestätigt — sie
-stammen daher, dass wir sie beim Anlegen eingetippt haben. Ein versehentlich
-gesetzter Haken wäre sonst der Weg, auf dem ein Tickettitel an eine geratene
-oder geteilte Adresse geht. Die Zeile fällt, wenn der Versand nach außen
-drankommt, dann aber zusammen mit einer bestätigten Adresse.
+### Kunden: erst bestätigen, dann schreiben
+
+Ein Kundenzugang bekommt Mail **nur an eine Adresse, die er selbst genannt und
+bestätigt hat** — nicht an die, mit der er sich anmeldet. Die haben wir beim
+Anlegen eingetippt; sie ist manchmal geraten, manchmal ein geteiltes Postfach,
+und niemand hat je geprüft, ob jemand sie liest.
+
+Der Weg: auf der Übersicht steht die Frage (`BenachrichtigungenEinrichten`,
+verschwindet nach der Antwort — auch bei „nein"). Unter *Mein Konto* nennt er
+Adresse und Themen, bekommt einen signierten Link, und erst dessen Klick setzt
+`benachrichtigungs_email_bestaetigt_at`. Ohne diesen Zeitstempel geht nichts
+hinaus, gleich was am Schalter steht.
+
+**Der Link trägt eine Prüfsumme über die Adresse.** Ändert der Kunde sie, wird
+ein alter Link wertlos, obwohl seine Signatur noch gälte — sonst bestätigte
+ein vertippter erster Versuch nachträglich eine Adresse, die gar nicht mehr
+eingetragen ist. Die Bestätigungsmail ist die einzige, die an eine
+unbestätigte Adresse geht, und deshalb die einzige ohne jeden Inhalt.
+
+Worüber, wählt er selbst: `MailEreignis::fuerKunden()` — unsere Antwort und
+der Stadienwechsel. Alles andere ist Betrieb; dass er selbst etwas gemeldet
+hat, muss man ihm nicht mailen.
 
 Der Versand läuft **nach der Antwort** (`defer()`). Ein SMTP-Handshake dauert
 ein bis zwei Sekunden; synchron hinge die daran, die das Ereignis ausgelöst

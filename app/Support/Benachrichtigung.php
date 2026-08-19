@@ -278,15 +278,25 @@ class Benachrichtigung
         $logo = $kunde?->logoUrl();
         $kundenName = $kunde?->name;
 
-        defer(function () use ($ziele, $titel, $text, $url, $farbe, $logo, $kundenName) {
-            foreach ($ziele as $nutzer) {
+        // Die Zieladressen jetzt auflösen, nicht erst im Versand: danach
+        // läuft alles außerhalb der Anfrage. Für einen Kundenzugang ist das
+        // die von ihm bestätigte Adresse, intern die Anmeldeadresse
+        // (User::mailZieladresse).
+        $adressen = $ziele->map(fn (User $nutzer) => $nutzer->mailZieladresse())->filter()->values();
+
+        if ($adressen->isEmpty()) {
+            return;
+        }
+
+        defer(function () use ($adressen, $titel, $text, $url, $farbe, $logo, $kundenName) {
+            foreach ($adressen as $adresse) {
                 try {
-                    Mail::to($nutzer->email)->send(
+                    Mail::to($adresse)->send(
                         new Glockenmeldung($titel, $text, $url, $farbe, $logo, $kundenName),
                     );
                 } catch (\Throwable $fehler) {
                     Log::warning('Meldung konnte nicht per Mail zugestellt werden.', [
-                        'empfaenger' => $nutzer->email,
+                        'empfaenger' => $adresse,
                         'titel' => $titel,
                         'fehler' => $fehler->getMessage(),
                     ]);
