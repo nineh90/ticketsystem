@@ -260,8 +260,11 @@ der Knopf schaltet das Ziehen an, danach *Reihenfolge fertig*. Neue Punkte
 hängen sich von selbst hinten an.
 
 *Aus Vorlage* legt den üblichen Satz Punkte auf einen Schlag an — die
-Vorlagen (Website, App, Betreuung) stehen in `config/meilensteine.php` und
-werden dort geändert. Die Website-Vorlage ist der Zeitstrahl aus dem
+Vorlagen (Website, App, Betreuung) stehen unter *Maschinenraum →
+Reiseplan-Vorlagen* und werden **dort** geändert, ohne Deploy. Bis zum
+19.08.2026 lagen sie in `config/meilensteine.php`; der Umzug hatte genau
+diesen Grund: die Texte stehen wörtlich beim Kunden, und wer sie ändern
+will, soll dafür keinen Entwickler brauchen. Die Website-Vorlage ist der Zeitstrahl aus dem
 KE!N-EINZELFALL-Projekt, Texte inklusive. Angehängt wird immer hinten;
 nichts wird ersetzt oder gelöscht. Was schon dasteht, ist in der Auswahl
 abgehakt und mit *steht schon da* markiert, auch wenn es etwas anders heißt

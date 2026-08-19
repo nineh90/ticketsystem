@@ -204,6 +204,35 @@ class MesseTest extends TestCase
         $this->assertStringContainsString($kennung, $nachher);
     }
 
+    /**
+     * Der zweite Weg in den Kalender: ein fertiges Google-Formular.
+     *
+     * Eine .ics laedt der Browser herunter, und danach muss man sie noch
+     * oeffnen — ein Schritt zu viel fuer jemanden, dessen Kalender ohnehin
+     * bei Google liegt. Geprueft wird vor allem die Zeit: sie geht wie in
+     * der Datei als UTC hinaus, sonst steht der Termin beim Leser
+     * verschoben.
+     */
+    public function test_google_link_traegt_die_zeiten_in_utc(): void
+    {
+        $treffen = Treffen::factory()->eingeladen()->create([
+            'beginnt_am' => '2026-08-20 14:00:00',
+            'dauer_minuten' => 60,
+            'titel' => 'Abnahme, Teil 2',
+        ]);
+
+        $url = Kalender::googleUrl($treffen);
+
+        // 14:00 Ortszeit im August (Sommerzeit, +2) sind 12:00 UTC.
+        $this->assertStringContainsString('dates=20260820T120000Z%2F20260820T130000Z', $url);
+        $this->assertStringStartsWith('https://calendar.google.com/calendar/render?', $url);
+
+        // Der Titel wandert unmaskiert hinein und wird von http_build_query
+        // kodiert — anders als in der Datei, wo Komma und Semikolon eine
+        // Bedeutung haben.
+        $this->assertStringContainsString('Abnahme%2C+Teil+2', $url);
+    }
+
     public function test_abgesagtes_treffen_geht_als_absage_in_den_kalender(): void
     {
         $treffen = Treffen::factory()->eingeladen()->abgesagt()->create();

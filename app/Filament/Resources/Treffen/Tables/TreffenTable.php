@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Treffen\Tables;
 
 use App\Models\Treffen;
+use App\Support\Kalender;
 use App\Support\Messe;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -108,9 +109,23 @@ class TreffenTable
                     ->openUrlInNewTab()
                     ->visible(fn (Treffen $record) => filled($record->url) && ! $record->istAbgesagt()),
 
-                Action::make('kalender')
+                // Google zuerst: wir haben unsere Kalender dort, und ein
+                // Klick schlaegt eine heruntergeladene Datei, die man erst
+                // noch oeffnen muss.
+                Action::make('googleKalender')
                     ->label('Kalender')
                     ->icon('heroicon-o-calendar-days')
+                    ->color('gray')
+                    ->url(fn (Treffen $record) => Kalender::googleUrl($record))
+                    ->openUrlInNewTab()
+                    ->visible(fn (Treffen $record) => ! $record->istAbgesagt()),
+
+                // Die Datei bleibt daneben — sie traegt eine Kennung und
+                // ersetzt beim Verschieben den alten Eintrag, was der
+                // Google-Link nicht kann.
+                Action::make('kalenderDatei')
+                    ->label('.ics')
+                    ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
                     ->url(fn (Treffen $record) => route('treffen.kalender', $record)),
 

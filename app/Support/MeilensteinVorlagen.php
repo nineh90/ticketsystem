@@ -3,11 +3,21 @@
 namespace App\Support;
 
 use App\Models\Project;
+use App\Models\ReiseplanVorlage;
 use Illuminate\Support\Collection;
 
 /**
- * Die Meilenstein-Vorlagen aus config/meilensteine.php, aufbereitet für das
- * Formular hinter "Aus Vorlage".
+ * Die Reiseplan-Vorlagen, aufbereitet für das Formular hinter "Aus Vorlage".
+ *
+ * Sie standen bis zum 19.08.2026 in config/meilensteine.php und liegen
+ * seitdem in der Datenbank (Maschinenraum → Reiseplan-Vorlagen). Der Grund
+ * für den Umzug: es ist die Stelle, an der am häufigsten etwas geändert
+ * wird, und jede Änderung kostete einen Deploy. Texte, die beim Kunden
+ * stehen, sollen ohne Entwickler zu ändern sein.
+ *
+ * Diese Klasse blieb dabei, wie sie war — dieselben vier Methoden, nur eine
+ * andere Quelle. Das ist der Grund, warum der Umzug an einer Stelle stattfand
+ * und nicht in jedem Aufrufer.
  *
  * Der Kern ist nicht das Auslesen der Konfiguration, sondern die Frage: was
  * von der Vorlage steht bei diesem Projekt schon da? Ohne diese Antwort legt
@@ -22,18 +32,22 @@ class MeilensteinVorlagen
     /** @return array<string, string> Schlüssel => Anzeigename, für ein Auswahlfeld. */
     public static function auswahl(): array
     {
-        return collect(self::alle())
-            ->map(fn (array $vorlage, string $schluessel): string => $vorlage['name'] ?? $schluessel)
+        return ReiseplanVorlage::query()
+            ->inReihenfolge()
+            ->pluck('name', 'schluessel')
             ->all();
     }
 
+    /**
+     * Welche Vorlage vorausgewählt ist.
+     *
+     * Rückfall auf die erste, wenn keine als Vorgabe markiert ist: ein
+     * Auswahlfeld ohne Vorauswahl sieht aus, als wäre nichts geladen.
+     */
     public static function vorgabe(): ?string
     {
-        $vorgabe = config('meilensteine.vorgabe');
-
-        return array_key_exists($vorgabe, self::alle())
-            ? $vorgabe
-            : array_key_first(self::alle());
+        return ReiseplanVorlage::query()->where('ist_vorgabe', true)->value('schluessel')
+            ?? ReiseplanVorlage::query()->inReihenfolge()->value('schluessel');
     }
 
     /**
@@ -43,12 +57,19 @@ class MeilensteinVorlagen
      */
     public static function punkte(?string $schluessel): Collection
     {
-        $punkte = self::alle()[$schluessel]['punkte'] ?? [];
+        if (blank($schluessel)) {
+            return collect();
+        }
 
-        return collect($punkte)
-            ->map(fn (array $punkt): array => [
-                'titel' => (string) ($punkt['titel'] ?? ''),
-                'beschreibung' => $punkt['beschreibung'] ?? null,
+        $vorlage = ReiseplanVorlage::query()
+            ->where('schluessel', $schluessel)
+            ->with('punkte')
+            ->first();
+
+        return collect($vorlage?->punkte ?? [])
+            ->map(fn ($punkt): array => [
+                'titel' => (string) $punkt->titel,
+                'beschreibung' => $punkt->beschreibung,
             ])
             ->filter(fn (array $punkt): bool => filled($punkt['titel']))
             ->values();
@@ -104,11 +125,5 @@ class MeilensteinVorlagen
         $titel = str($titel)->lower()->ascii()->toString();
 
         return (string) preg_replace('/[^a-z0-9]/', '', $titel);
-    }
-
-    /** @return array<string, array{name?: string, punkte?: array<int, array<string, string|null>>}> */
-    private static function alle(): array
-    {
-        return (array) config('meilensteine.vorlagen', []);
     }
 }

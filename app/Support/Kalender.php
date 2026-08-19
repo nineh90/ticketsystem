@@ -87,6 +87,38 @@ class Kalender
         return 'treffen-'.$treffen->beginnt_am->format('Y-m-d-Hi').'.ics';
     }
 
+    /**
+     * Derselbe Termin als fertiges Google-Formular.
+     *
+     * Der Grund für diesen zweiten Weg ist ein Schritt zu viel: eine .ics
+     * lädt der Browser herunter, und danach muss man sie noch öffnen. Wer
+     * seinen Kalender ohnehin bei Google hat — bei uns beide —, ist mit
+     * einem Klick fertig.
+     *
+     * **Der Preis steht in der Kehrseite:** dieser Link trägt keine Kennung.
+     * Google legt bei jedem Klick einen neuen Eintrag an; verschiebt sich das
+     * Treffen, hat man zwei und muss den alten selbst löschen. Die .ics
+     * behält ihre Kennung und ersetzt den alten Eintrag — deshalb bleibt sie
+     * daneben stehen und ist nicht bloß eine Altlast.
+     */
+    public static function googleUrl(Treffen $treffen): string
+    {
+        $schiff = (string) config('kontakt.schiff');
+
+        return 'https://calendar.google.com/calendar/render?'.http_build_query([
+            'action' => 'TEMPLATE',
+            'text' => $treffen->titel.' · '.$schiff,
+            // Dasselbe Format wie in der Datei, ebenfalls in UTC: Google
+            // liest das Z am Ende und rechnet in die Zeitzone des Lesers.
+            'dates' => self::zeit($treffen->beginnt_am).'/'.self::zeit($treffen->endetAm()),
+            'details' => collect([
+                $treffen->notiz,
+                $treffen->url ? 'An Bord gehen: '.$treffen->url : null,
+            ])->filter()->join("\n\n"),
+            'location' => (string) $treffen->url,
+        ]);
+    }
+
     /** Ortszeit → UTC in der Schreibweise, die der Standard verlangt. */
     private static function zeit(\DateTimeInterface $zeitpunkt): string
     {

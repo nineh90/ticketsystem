@@ -103,13 +103,32 @@
                             </x-filament::button>
                         @endif
 
+                        {{-- Beide Wege, weil wir den Kalender des Kunden
+                             nicht kennen. Google zuerst, weil es der
+                             haeufigste ist und ein Klick genuegt; die Datei
+                             daneben fuer Outlook, Apple und alles andere.
+
+                             Sie ist nicht bloss die Rueckfallebene: sie
+                             traegt eine Kennung und ersetzt beim Verschieben
+                             den alten Eintrag, was der Google-Link nicht
+                             kann. --}}
                         <x-filament::button
                             tag="a"
                             color="gray"
                             icon="heroicon-o-calendar-days"
+                            target="_blank"
+                            :href="\App\Support\Kalender::googleUrl($naechstes)"
+                        >
+                            Google Kalender
+                        </x-filament::button>
+
+                        <x-filament::button
+                            tag="a"
+                            color="gray"
+                            icon="heroicon-o-arrow-down-tray"
                             :href="route('kunde.treffen.kalender', $naechstes)"
                         >
-                            In meinen Kalender
+                            Kalenderdatei
                         </x-filament::button>
                     </div>
                 @endunless
@@ -133,7 +152,9 @@
                             </span>
 
                             <a
-                                href="{{ route('kunde.treffen.kalender', $eintrag) }}"
+                                href="{{ \App\Support\Kalender::googleUrl($eintrag) }}"
+                                target="_blank"
+                                rel="noopener"
                                 class="text-xs text-primary-600 hover:underline dark:text-primary-400"
                             >
                                 Kalender

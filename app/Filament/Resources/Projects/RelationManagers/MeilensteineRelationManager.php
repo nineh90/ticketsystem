@@ -35,11 +35,14 @@ class MeilensteineRelationManager extends RelationManager
 {
     protected static string $relationship = 'meilensteine';
 
-    protected static ?string $title = 'Meilensteine';
+    // "Reiseplan" wie beim Kunden — ein Wort fuer dieselbe Sache auf
+    // beiden Seiten. Klasse und Modell heissen weiter Meilenstein: das
+    // ist die Bauart, und die aendert sich nicht mit der Beschriftung.
+    protected static ?string $title = 'Reiseplan';
 
-    protected static ?string $modelLabel = 'Meilenstein';
+    protected static ?string $modelLabel = 'Etappe';
 
-    protected static ?string $pluralModelLabel = 'Meilensteine';
+    protected static ?string $pluralModelLabel = 'Etappen';
 
     protected static string|\BackedEnum|null $icon = 'heroicon-o-flag';
 
@@ -49,7 +52,7 @@ class MeilensteineRelationManager extends RelationManager
             ->columns(2)
             ->components([
                 TextInput::make('titel')
-                    ->label('Meilenstein')
+                    ->label('Etappe')
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull()
@@ -89,7 +92,7 @@ class MeilensteineRelationManager extends RelationManager
             ->description('Woraus sich der Fortschrittsbalken im Kundenbereich rechnet: erledigte durch alle kundensichtbaren.')
             ->columns([
                 TextColumn::make('titel')
-                    ->label('Meilenstein')
+                    ->label('Etappe')
                     ->weight('medium')
                     ->description(fn (Meilenstein $record) => $record->beschreibung
                         ? str($record->beschreibung)->squish()->limit(80)->toString()
@@ -132,7 +135,7 @@ class MeilensteineRelationManager extends RelationManager
                 ->color($isReordering ? 'primary' : 'gray'))
             ->headerActions([
                 $this->vorlageAnwenden(),
-                CreateAction::make()->label('Meilenstein anlegen'),
+                CreateAction::make()->label('Etappe anlegen'),
             ])
             ->recordActions([
                 // Der häufigste Handgriff überhaupt: einen Punkt abhaken.
@@ -151,7 +154,7 @@ class MeilensteineRelationManager extends RelationManager
             ])
             ->toolbarActions([])
             ->emptyStateIcon('heroicon-o-flag')
-            ->emptyStateHeading('Noch keine Meilensteine')
+            ->emptyStateHeading('Noch kein Reiseplan')
             ->emptyStateDescription('Drei bis sechs Punkte genügen. Sie beantworten die Frage „wie weit seid ihr?", bevor sie gestellt wird.')
             ->emptyStateActions([
                 $this->vorlageAnwenden()->button()->color('primary'),
@@ -177,7 +180,7 @@ class MeilensteineRelationManager extends RelationManager
             ->label('Aus Vorlage')
             ->icon('heroicon-o-clipboard-document-list')
             ->color('gray')
-            ->modalHeading('Meilensteine aus einer Vorlage anlegen')
+            ->modalHeading('Reiseplan aus einer Vorlage anlegen')
             ->modalDescription('Ausgewählte Punkte werden hinten angehängt. Nichts wird ersetzt oder gelöscht — was schon dasteht, bleibt.')
             ->modalSubmitActionLabel('Anlegen')
             ->schema([
@@ -225,7 +228,7 @@ class MeilensteineRelationManager extends RelationManager
 
                 Notification::make()
                     ->success()
-                    ->title($punkte->count() === 1 ? 'Ein Meilenstein angelegt' : $punkte->count().' Meilensteine angelegt')
+                    ->title($punkte->count() === 1 ? 'Eine Etappe angelegt' : $punkte->count().' Etappen angelegt')
                     ->body('Termine und Erledigt-Haken trägst du jetzt ein, die Reihenfolge lässt sich ziehen.')
                     ->send();
             });

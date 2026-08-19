@@ -65,12 +65,17 @@
                                 </x-filament::button>
                             @endif
 
+                            {{-- Google und nicht die Datei: unsere Kalender
+                                 liegen dort, und ein Klick schlaegt einen
+                                 Download, den man erst noch oeffnen muss.
+                                 Die .ics gibt es weiter auf der Messe. --}}
                             <x-filament::button
                                 tag="a"
                                 color="gray"
                                 size="sm"
                                 icon="heroicon-o-calendar-days"
-                                :href="route('treffen.kalender', $eintrag)"
+                                target="_blank"
+                                :href="\App\Support\Kalender::googleUrl($eintrag)"
                             >
                                 Kalender
                             </x-filament::button>

@@ -630,7 +630,7 @@ class KundenakteTest extends TestCase
         // beim Anlegen und darf danach nichts mehr zu sagen haben. Jeder
         // Kunde bekommt seinen eigenen Zeitstrahl — umbenannt, umsortiert,
         // mit eigenen Terminen und einzeln verborgen. Nichts davon hängt
-        // hinterher noch an config/meilensteine.php.
+        // hinterher noch an der Vorlage.
         $projekt = Project::factory()->create();
 
         Livewire::actingAs($this->admin())
