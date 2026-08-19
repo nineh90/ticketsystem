@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Mail\Adressbestaetigung as Mailfassung;
+use App\Mail\Willkommensmail as Willkommen;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -67,6 +68,33 @@ class Adressbestaetigung
                 'pruefsumme' => self::pruefsumme($nutzer->benachrichtigungs_email),
             ],
         );
+    }
+
+    /**
+     * Die erste Mail an die frisch bestätigte Adresse.
+     *
+     * Nur, wenn er dem Versand überhaupt zugestimmt hat — bekommtMailMeldungen
+     * prüft das mit. Jemand kann zwischen Anfordern und Klicken abgeschaltet
+     * haben, und dann wäre eine Begrüßung genau die Mail, die er nicht wollte.
+     */
+    public static function willkommenSchicken(User $nutzer): void
+    {
+        if (! $nutzer->bekommtMailMeldungen()) {
+            return;
+        }
+
+        $ziel = $nutzer->mailZieladresse();
+
+        defer(function () use ($nutzer, $ziel) {
+            try {
+                Mail::to($ziel)->send(new Willkommen($nutzer));
+            } catch (\Throwable $fehler) {
+                Log::warning('Begrüßungsmail konnte nicht zugestellt werden.', [
+                    'empfaenger' => $ziel,
+                    'fehler' => $fehler->getMessage(),
+                ]);
+            }
+        });
     }
 
     /** Passt der Link noch zu der Adresse, die gerade eingetragen ist? */

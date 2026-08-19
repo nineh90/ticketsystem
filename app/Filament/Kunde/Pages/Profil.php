@@ -175,7 +175,12 @@ class Profil extends EditProfile
                         ->maxLength(255)
                         ->required(fn (Get $get) => (bool) $get('mail_benachrichtigungen'))
                         ->visible(fn (Get $get) => (bool) $get('mail_benachrichtigungen'))
-                        ->helperText('Darf eine andere sein als die, mit der Sie sich anmelden. Wir schicken einmal einen Bestätigungslink dorthin — erst danach bekommen Sie Post.'),
+                        // Der Hinweis ist der Kern des Ganzen: eine Adresse,
+                        // auf die niemand zugreift, sieht bis zum
+                        // Bestätigungsklick genauso aus wie eine richtige —
+                        // und danach wartet jemand wochenlang auf Post, die
+                        // nie kommt.
+                        ->helperText('Bitte eine Adresse, die Sie tatsächlich abrufen können — wir schicken einen Bestätigungslink dorthin, und ohne den Klick darin bekommen Sie keine Post. Sie darf eine andere sein als die, mit der Sie sich anmelden.'),
 
                     CheckboxList::make('mail_ereignisse')
                         ->label('Worüber')

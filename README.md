@@ -350,6 +350,17 @@ ein vertippter erster Versuch nachträglich eine Adresse, die gar nicht mehr
 eingetragen ist. Die Bestätigungsmail ist die einzige, die an eine
 unbestätigte Adresse geht, und deshalb die einzige ohne jeden Inhalt.
 
+An beiden Stellen, an denen er die Adresse zu sehen bekommt, steht derselbe
+Hinweis: **sie muss abrufbar sein.** Eine Adresse, auf die niemand zugreift,
+sieht bis zum Bestätigungsklick genauso aus wie eine richtige — und danach
+wartet jemand wochenlang auf Post, die nie kommt.
+
+Nach dem Klick folgt eine **Begrüßungsmail** (`Willkommensmail`), sofern er dem
+Versand zugestimmt hat. Sie ist keine Höflichkeit: sie beweist, dass der Weg
+funktioniert, und nennt die gewählten Themen — die Gelegenheit, an der er
+merkt, dass er etwas Falsches angehakt hat. Nur beim ersten Klick, weil
+Mailprogramme Adressen manchmal von sich aus vorladen.
+
 Worüber, wählt er selbst: `MailEreignis::fuerKunden()` — unsere Antwort und
 der Stadienwechsel. Alles andere ist Betrieb; dass er selbst etwas gemeldet
 hat, muss man ihm nicht mailen.

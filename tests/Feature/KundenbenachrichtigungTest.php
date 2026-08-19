@@ -8,6 +8,7 @@ use App\Filament\Kunde\Pages\Profil;
 use App\Filament\Kunde\Widgets\BenachrichtigungenEinrichten;
 use App\Mail\Adressbestaetigung as Bestaetigungsmail;
 use App\Mail\Glockenmeldung;
+use App\Mail\Willkommensmail;
 use App\Models\Customer;
 use App\Models\User;
 use App\Support\Adressbestaetigung;
@@ -143,6 +144,67 @@ class KundenbenachrichtigungTest extends TestCase
 
         $this->assertNotNull($zugang->fresh()->benachrichtigungs_email_bestaetigt_at);
         $this->assertTrue($zugang->fresh()->bekommtMailMeldungen());
+    }
+
+    public function test_nach_der_bestaetigung_folgt_eine_begruessung(): void
+    {
+        // Sie ist keine Hoeflichkeit: sie beweist dem Kunden, dass der Weg
+        // funktioniert. Ohne sie bleibt es nach dem Klick still, und er weiss
+        // bis zum ersten Ereignis nicht, ob es geklappt hat.
+        Mail::fake();
+
+        $zugang = $this->zugang([
+            'mail_benachrichtigungen' => true,
+            'benachrichtigungs_email' => 'ich@example.org',
+            'mail_ereignisse' => [MailEreignis::StandAnKunde->value],
+        ]);
+
+        $this->get(Adressbestaetigung::url($zugang))->assertOk();
+        defer()->invoke();
+
+        Mail::assertSent(
+            Willkommensmail::class,
+            fn (Willkommensmail $mail) => $mail->hasTo('ich@example.org'),
+        );
+    }
+
+    public function test_zweimal_klicken_begruesst_nur_einmal(): void
+    {
+        // Mailprogramme laden Adressen manchmal von sich aus vor.
+        Mail::fake();
+
+        $zugang = $this->zugang([
+            'mail_benachrichtigungen' => true,
+            'benachrichtigungs_email' => 'ich@example.org',
+        ]);
+
+        $link = Adressbestaetigung::url($zugang);
+        $this->get($link)->assertOk();
+        $this->get($link)->assertOk();
+        defer()->invoke();
+
+        Mail::assertSent(Willkommensmail::class, 1);
+    }
+
+    public function test_wer_zwischendurch_abschaltet_wird_nicht_begruesst(): void
+    {
+        // Zwischen Anfordern und Klicken kann jemand es sich anders
+        // ueberlegt haben — dann waere die Begruessung genau die Mail, die er
+        // nicht wollte.
+        Mail::fake();
+
+        $zugang = $this->zugang([
+            'mail_benachrichtigungen' => true,
+            'benachrichtigungs_email' => 'ich@example.org',
+        ]);
+
+        $link = Adressbestaetigung::url($zugang);
+        $zugang->forceFill(['mail_benachrichtigungen' => false])->save();
+
+        $this->get($link)->assertOk();
+        defer()->invoke();
+
+        Mail::assertNotSent(Willkommensmail::class);
     }
 
     public function test_ein_link_zur_alten_adresse_bestaetigt_die_neue_nicht(): void

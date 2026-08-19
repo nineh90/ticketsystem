@@ -32,10 +32,15 @@ class BenachrichtigungBestaetigenController extends Controller
             ]);
         }
 
+        // Nur beim ersten Klick begrüßen. Wer den Link zweimal öffnet — was
+        // vorkommt, Mailprogramme laden Adressen manchmal von sich aus vor —
+        // soll nicht zweimal begrüßt werden.
         if ($nutzer->benachrichtigungs_email_bestaetigt_at === null) {
             $nutzer->forceFill([
                 'benachrichtigungs_email_bestaetigt_at' => now(),
             ])->save();
+
+            Adressbestaetigung::willkommenSchicken($nutzer->fresh());
         }
 
         return view('kunde.bestaetigt', [

@@ -29,6 +29,12 @@
                 Sie sagen uns, an welche Adresse und worüber.
             </p>
 
+            <p class="mt-2 text-sm text-gray-400">
+                Wichtig: Es muss eine Adresse sein, die Sie <strong>tatsächlich abrufen
+                können</strong> — wir schicken einen Bestätigungslink dorthin, und erst
+                Ihr Klick darin schaltet es frei.
+            </p>
+
             <p class="mt-2 text-xs text-gray-500">
                 Ohne Ihre Zustimmung schicken wir Ihnen nichts. Sie können das jederzeit
                 wieder abschalten.
