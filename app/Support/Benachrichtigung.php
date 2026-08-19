@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\MailEreignis;
 use App\Enums\Rolle;
 use App\Filament\Kunde\Resources\Anliegen\AnliegenResource;
 use App\Filament\Resources\Tickets\TicketResource;
@@ -42,9 +43,9 @@ class Benachrichtigung
      * die Einzigen sind, die reagieren können — ein Kundenanliegen in einem
      * Projekt ohne zugeordneten Mitarbeiter würde sonst niemanden erreichen.
      */
-    public static function nachInnen(Ticket $ticket, Notification $meldung): void
+    public static function nachInnen(Ticket $ticket, Notification $meldung, MailEreignis $ereignis): void
     {
-        self::zustellen(self::innenkreis($ticket), $meldung, Herkunft::ticket($ticket), $ticket->customer);
+        self::zustellen(self::innenkreis($ticket), $meldung, Herkunft::ticket($ticket), $ticket->customer, $ereignis);
     }
 
     /**
@@ -55,9 +56,9 @@ class Benachrichtigung
      * verschwindet zwar aus seiner Liste, eine Benachrichtigung darüber wäre
      * aber trotzdem noch bei ihm gelandet — mit dem Projektnamen im Text.
      */
-    public static function nachAussen(Ticket $ticket, Notification $meldung): void
+    public static function nachAussen(Ticket $ticket, Notification $meldung, MailEreignis $ereignis): void
     {
-        self::zustellen(self::aussenkreis($ticket), $meldung, Herkunft::ticket($ticket), $ticket->customer);
+        self::zustellen(self::aussenkreis($ticket), $meldung, Herkunft::ticket($ticket), $ticket->customer, $ereignis);
     }
 
     /**
@@ -69,9 +70,9 @@ class Benachrichtigung
      * Fall ist der Grund für die Methode: eine stille Änderung an
      * Stammdaten fällt erst auf, wenn die nächste Rechnung zurückkommt.
      */
-    public static function anZustaendige(int $customerId, Notification $meldung): void
+    public static function anZustaendige(int $customerId, Notification $meldung, MailEreignis $ereignis): void
     {
-        self::zustellen(self::zustaendige($customerId), $meldung, Herkunft::kunde($customerId), Customer::find($customerId));
+        self::zustellen(self::zustaendige($customerId), $meldung, Herkunft::kunde($customerId), Customer::find($customerId), $ereignis);
     }
 
     /**
@@ -131,8 +132,9 @@ class Benachrichtigung
         Notification $meldung,
         ?string $herkunft = null,
         ?Customer $kunde = null,
+        ?MailEreignis $ereignis = null,
     ): void {
-        self::zustellen($empfaenger, $meldung, $herkunft, $kunde);
+        self::zustellen($empfaenger, $meldung, $herkunft, $kunde, $ereignis);
     }
 
     /**
@@ -192,6 +194,7 @@ class Benachrichtigung
         Notification $meldung,
         ?string $herkunft = null,
         ?Customer $kunde = null,
+        ?MailEreignis $ereignis = null,
     ): void {
         // Die Herkunft wird der fertigen Meldung untergemischt statt über
         // Filament gesetzt: dessen Notification kennt nur ihre eigenen Felder,
@@ -208,7 +211,7 @@ class Benachrichtigung
             $nutzer->notifyNow(new DatabaseNotification($daten));
         }
 
-        self::perMailNachreichen($empfaenger, $daten, $kunde);
+        self::perMailNachreichen($empfaenger, $daten, $kunde, $ereignis);
 
         // Filaments DatabaseNotificationsSent wird hier bewusst NICHT
         // ausgelöst. Das Ereignis ist ein ShouldBroadcast und landet damit
@@ -244,9 +247,13 @@ class Benachrichtigung
      * @param  Collection<int, User>  $empfaenger
      * @param  array<string, mixed>  $daten
      */
-    private static function perMailNachreichen(Collection $empfaenger, array $daten, ?Customer $kunde = null): void
-    {
-        $ziele = $empfaenger->filter(fn (User $nutzer) => $nutzer->bekommtMailMeldungen());
+    private static function perMailNachreichen(
+        Collection $empfaenger,
+        array $daten,
+        ?Customer $kunde = null,
+        ?MailEreignis $ereignis = null,
+    ): void {
+        $ziele = $empfaenger->filter(fn (User $nutzer) => $nutzer->bekommtMailMeldungen($ereignis));
 
         if ($ziele->isEmpty()) {
             return;

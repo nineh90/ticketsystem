@@ -2,6 +2,7 @@
 
 namespace App\Filament\Kunde\Pages;
 
+use App\Enums\MailEreignis;
 use App\Models\Customer;
 use App\Models\Kontakt;
 use App\Support\Benachrichtigung;
@@ -541,6 +542,7 @@ class Profil extends EditProfile
                 ->title($kunde->name.' hat Stammdaten geändert')
                 ->body($this->getUser()->name.' hat '.implode(', ', $geaendert).' angepasst.')
                 ->icon('heroicon-o-pencil-square'),
+            MailEreignis::Stammdaten,
         );
     }
 

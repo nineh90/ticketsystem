@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Enums\MailEreignis;
 use App\Filament\Kunde\Pages\Nachrichten as KundenNachrichten;
 use App\Filament\Pages\Nachrichten as InterneNachrichten;
 use App\Models\Nachricht;
@@ -110,6 +111,10 @@ class NachrichtObserver
             // Damit die Meldung verstummt, sobald jemand den Verlauf öffnet —
             // und nicht erst, wenn er sie zusätzlich in der Glocke wegklickt.
             Herkunft::unterhaltung($nachricht->unterhaltung_id),
+            // Der Kunde nur beim Kundenverlauf — ein interner Faden gehoert
+            // keinem, und sein Logo in der Mail waere eine falsche Fährte.
+            $nachricht->unterhaltung?->customer,
+            MailEreignis::Nachricht,
         );
     }
 }

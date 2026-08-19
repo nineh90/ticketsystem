@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Enums\MailEreignis;
 use App\Models\Comment;
 use App\Support\Benachrichtigung;
 use Filament\Notifications\Notification;
@@ -46,6 +47,7 @@ class CommentObserver
                     ->actions([
                         Benachrichtigung::knopf('Ansehen', Benachrichtigung::urlIntern($ticket)),
                     ]),
+                MailEreignis::Antwort,
             );
 
             return;
@@ -61,6 +63,7 @@ class CommentObserver
                 ->actions([
                     Benachrichtigung::knopf('Ansehen', Benachrichtigung::urlKunde($ticket)),
                 ]),
+            MailEreignis::AntwortAnKunde,
         );
     }
 }

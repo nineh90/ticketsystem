@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\MailEreignis;
 use App\Enums\Quelle;
 use App\Enums\Rolle;
 use App\Filament\Kunde\Pages\Nachrichten as KundenNachrichten;
@@ -253,6 +254,7 @@ class GlockeTest extends TestCase
         Benachrichtigung::anZustaendige(
             $kunde->getKey(),
             Notification::make()->title('Stammdaten geändert'),
+            MailEreignis::Stammdaten,
         );
 
         $this->assertSame(1, $admin->unreadNotifications()->count());

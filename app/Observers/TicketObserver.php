@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Enums\MailEreignis;
 use App\Models\Ticket;
 use App\Models\TicketStatus;
 use App\Support\Benachrichtigung;
@@ -37,6 +38,7 @@ class TicketObserver
                 ->actions([
                     Benachrichtigung::knopf('Ansehen', Benachrichtigung::urlIntern($ticket)),
                 ]),
+            MailEreignis::Anliegen,
         );
     }
 
@@ -69,6 +71,7 @@ class TicketObserver
                     ->actions([
                         Benachrichtigung::knopf('Ansehen', Benachrichtigung::urlKunde($ticket)),
                     ]),
+                MailEreignis::StandAnKunde,
             );
 
             return;
@@ -85,6 +88,7 @@ class TicketObserver
                     ->actions([
                         Benachrichtigung::knopf('Ansehen', Benachrichtigung::urlKunde($ticket)),
                     ]),
+                MailEreignis::StandAnKunde,
             );
         }
 

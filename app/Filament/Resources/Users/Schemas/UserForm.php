@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Enums\MailEreignis;
 use App\Enums\Rolle;
 use App\Models\User;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
 
@@ -109,7 +112,31 @@ class UserForm
                         Toggle::make('mail_benachrichtigungen')
                             ->label('E-Mail bei Meldungen')
                             ->visible(fn (?User $record) => ! ($record?->istKunde() ?? false))
-                            ->helperText('Schickt jede Meldung der Glocke zusätzlich per Mail. Ohne hinterlegten Mailversand passiert nichts — dann steht sie nur im Protokoll.'),
+                            // live, weil die Auswahl darunter daran hängt.
+                            ->live()
+                            ->helperText('Zusätzlich zur Glocke. Ohne hinterlegten Mailversand passiert nichts — dann steht die Mail nur im Protokoll.'),
+
+                        // Worüber. Ohne diese Auswahl wäre der Versand alles
+                        // oder nichts, und wer täglich fünf Mails bekommt,
+                        // von denen ihn zwei angehen, übergeht nach einer
+                        // Woche alle fünf.
+                        CheckboxList::make('mail_ereignisse')
+                            ->label('Und zwar worüber')
+                            ->options(MailEreignis::class)
+                            ->descriptions(collect(MailEreignis::cases())
+                                ->mapWithKeys(fn (MailEreignis $e) => [$e->value => $e->getDescription()])
+                                ->all())
+                            ->columns(2)
+                            ->columnSpanFull()
+                            ->bulkToggleable()
+                            // Vorgabe für einen neuen Zugang: alles, was
+                            // hereinkommt. Über das, was wir selbst nach
+                            // außen schicken, braucht niemand eine Mail — er
+                            // war es meistens selbst.
+                            ->default(MailEreignis::vorgabeIntern())
+                            ->visible(fn (Get $get, ?User $record) => $get('mail_benachrichtigungen')
+                                && ! ($record?->istKunde() ?? false))
+                            ->helperText('Nichts angehakt heißt: keine Mail. Die letzten beiden gehen an Kunden und bleiben ohne Wirkung, solange Kundenzugänge keine Mail bekommen.'),
                     ]),
 
                 Section::make('Zuständigkeit')

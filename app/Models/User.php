@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MailEreignis;
 use App\Enums\Rolle;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'rolle', 'panel_zugang', 'aktiv', 'customer_id', 'kontakt_id', 'stammdaten_pflegen', 'mail_benachrichtigungen'])]
+#[Fillable(['name', 'email', 'password', 'rolle', 'panel_zugang', 'aktiv', 'customer_id', 'kontakt_id', 'stammdaten_pflegen', 'mail_benachrichtigungen', 'mail_ereignisse'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -47,6 +48,7 @@ class User extends Authenticatable implements FilamentUser
             'panel_zugang' => 'boolean',
             'aktiv' => 'boolean',
             'mail_benachrichtigungen' => 'boolean',
+            'mail_ereignisse' => 'array',
             'passwort_wechseln' => 'boolean',
             'stammdaten_pflegen' => 'boolean',
             'dashboard_gesehen_at' => 'datetime',
@@ -140,12 +142,38 @@ class User extends Authenticatable implements FilamentUser
      * zusammen mit einer bestätigten Adresse und einer Mail, die nur einen
      * Hinweis trägt und keinen Inhalt. Bis dahin ist sie die Sperre.
      */
-    public function bekommtMailMeldungen(): bool
+    public function bekommtMailMeldungen(?MailEreignis $ereignis = null): bool
     {
-        return $this->aktiv
+        $grundsaetzlich = $this->aktiv
             && ! $this->istKunde()
             && (bool) $this->mail_benachrichtigungen
             && filled($this->email);
+
+        if (! $grundsaetzlich || $ereignis === null) {
+            return $grundsaetzlich;
+        }
+
+        return $this->willMailZu($ereignis);
+    }
+
+    /**
+     * Steht dieses Ereignis in seiner Auswahl?
+     *
+     * **null heißt alles.** Wer die Auswahl nie angefasst hat, bekommt jedes
+     * Ereignis — auch solche, die es beim Anlegen seines Zugangs noch nicht
+     * gab. Eine beim Einführen festgeschriebene Liste schlösse jeden künftigen
+     * Typ stillschweigend aus, und das fiele niemandem auf.
+     *
+     * Eine leere Liste heißt dagegen wirklich nichts: sie entsteht nur, wenn
+     * jemand bewusst alle Haken entfernt hat.
+     */
+    public function willMailZu(MailEreignis $ereignis): bool
+    {
+        if ($this->mail_ereignisse === null) {
+            return true;
+        }
+
+        return in_array($ereignis->value, $this->mail_ereignisse, true);
     }
 
     public function istKunde(): bool

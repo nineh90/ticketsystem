@@ -3,6 +3,7 @@
 namespace App\Filament\Kunde\Resources\Dokumente\Pages;
 
 use App\Enums\DokumentStand;
+use App\Enums\MailEreignis;
 use App\Filament\Kunde\Resources\Dokumente\DokumentResource;
 use App\Filament\Resources\Customers\CustomerResource;
 use App\Models\Dokument;
@@ -168,7 +169,7 @@ class ViewDokument extends ViewRecord
         // ein eigenes icon() davor würde dabei überschrieben.
         $angenommen ? $meldung->success() : $meldung->warning();
 
-        Benachrichtigung::anZustaendige($dokument->customer_id, $meldung);
+        Benachrichtigung::anZustaendige($dokument->customer_id, $meldung, MailEreignis::Angebot);
     }
 
     public function infolist(Schema $schema): Schema

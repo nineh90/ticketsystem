@@ -312,6 +312,25 @@ einen Stelle, durch die jeder Empfängerkreis läuft. Eine zweite Stelle, die
 Mails verschickt, müsste die Regel „wer darf was erfahren" ein zweites Mal
 kennen.
 
+Der Schalter allein sagt nur *ob*. **Worüber**, steht daneben als Auswahl
+(`users.mail_ereignisse`, die Fälle in `MailEreignis`): neues Anliegen,
+Antwort eines Kunden, neue Nachricht, geänderte Stammdaten, Antwort auf ein
+Angebot — dazu zwei, die nach außen gehen und heute ohne Wirkung sind. Ohne
+diese Auswahl wäre der Versand alles oder nichts, und wer täglich fünf Mails
+bekommt, von denen ihn zwei angehen, übergeht nach einer Woche alle fünf.
+
+**Leer ist nicht dasselbe wie nicht gesetzt.** Ist nichts gespeichert (`null`),
+kommt alles durch — auch Ereignisse, die es beim Anlegen des Zugangs noch
+nicht gab. Eine beim Einführen festgeschriebene Liste schlösse jeden künftigen
+Typ stillschweigend aus, und das fiele niemandem auf. Eine leere Liste
+entsteht dagegen nur, wenn jemand bewusst alle Haken entfernt hat, und heißt
+dann wirklich nichts.
+
+Die Spalte ist **jsonb, nicht json**: für `json` kennt Postgres keinen
+Gleichheitsoperator, und jedes `select distinct users.*` im System bricht ab,
+sobald eine json-Spalte an der Tabelle hängt — betroffen wären sämtliche
+Mitarbeiter-Auswahlen.
+
 **Kundenzugänge bekommen nie eine Mail**, gleich was am Schalter steht
 (`User::bekommtMailMeldungen`). Ihre Adressen hat niemand bestätigt — sie
 stammen daher, dass wir sie beim Anlegen eingetippt haben. Ein versehentlich
