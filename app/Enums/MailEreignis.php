@@ -18,10 +18,10 @@ use Filament\Support\Contracts\HasLabel;
  * tatsächlich gibt. Kommt einer dazu, gehört er hierhin — und dann fällt beim
  * Schreiben auf, dass jemand entscheiden muss, wer ihn bekommt.
  *
- * Die beiden letzten gehen nach außen und haben heute keine Wirkung:
- * Kundenzugänge bekommen grundsätzlich keine Mail (siehe
- * User::bekommtMailMeldungen). Sie stehen trotzdem schon da, damit die
- * Kundenstufe später eine Freigabe ist und kein Umbau.
+ * Die letzten drei gehen nach außen (siehe nachInnen()). Ob sie ankommen,
+ * entscheidet der Kunde selbst: erst nach einer von ihm bestätigten Adresse
+ * und seiner Themenauswahl geht überhaupt etwas hinaus — siehe
+ * User::bekommtMailMeldungen.
  */
 enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
 {
@@ -46,6 +46,12 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
     /** Ein Ticket hat das Stadium gewechselt — geht an den Kunden. */
     case StandAnKunde = 'stand-an-kunde';
 
+    /** Ein Treffen steht an oder wurde verschoben — geht an den Kunden. */
+    case Treffen = 'treffen';
+
+    /** Ein Treffen, bei dem ich selbst dabei bin. Bleibt intern. */
+    case TreffenCrew = 'treffen-crew';
+
     public function getLabel(): string
     {
         return match ($this) {
@@ -56,6 +62,8 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
             self::Angebot => 'Antwort auf ein Angebot',
             self::AntwortAnKunde => 'Unsere Antwort an den Kunden',
             self::StandAnKunde => 'Stadienwechsel an den Kunden',
+            self::Treffen => 'Treffen an den Kunden',
+            self::TreffenCrew => 'Meine Treffen',
         };
     }
 
@@ -69,6 +77,8 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
             self::Angebot => 'Angenommen oder abgelehnt — mit Betrag.',
             self::AntwortAnKunde => 'Geht nach außen. Ohne Wirkung, solange Kundenzugänge keine Mail bekommen.',
             self::StandAnKunde => 'Geht nach außen. Ohne Wirkung, solange Kundenzugänge keine Mail bekommen.',
+            self::Treffen => 'Geht nach außen. Einladung zu einem Treffen und jede Änderung daran.',
+            self::TreffenCrew => 'Du wirst zu einem Treffen dazugenommen, oder eines deiner Treffen verschiebt sich.',
         };
     }
 
@@ -81,13 +91,14 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
             self::Stammdaten => 'heroicon-o-identification',
             self::Angebot => 'heroicon-o-document-check',
             self::AntwortAnKunde, self::StandAnKunde => 'heroicon-o-arrow-up-right',
+            self::Treffen, self::TreffenCrew => 'heroicon-o-video-camera',
         };
     }
 
     /** Kommt dieses Ereignis von außen zu uns? */
     public function nachInnen(): bool
     {
-        return ! in_array($this, [self::AntwortAnKunde, self::StandAnKunde], true);
+        return ! in_array($this, [self::AntwortAnKunde, self::StandAnKunde, self::Treffen], true);
     }
 
     /**
@@ -103,6 +114,7 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
         return match ($this) {
             self::AntwortAnKunde => 'Wenn wir Ihnen antworten',
             self::StandAnKunde => 'Wenn sich der Stand ändert',
+            self::Treffen => 'Wenn ein Treffen ansteht',
             default => $this->getLabel(),
         };
     }
@@ -112,6 +124,7 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
         return match ($this) {
             self::AntwortAnKunde => 'Sobald jemand von uns etwas unter Ihr Anliegen schreibt.',
             self::StandAnKunde => 'Zum Beispiel wenn es erledigt ist oder wir etwas von Ihnen brauchen.',
+            self::Treffen => 'Eine Einladung an Bord — und Bescheid, wenn sich der Termin ändert.',
             default => $this->getDescription(),
         };
     }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Customers\Tables;
 
+use App\Enums\Betreuung;
 use App\Support\Sichtbarkeit;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -63,6 +64,9 @@ class CustomersTable
                 TextColumn::make('betreuung')
                     ->label('Betreuung')
                     ->badge()
+                    // "Vor Anker" ist ein hübsches Wort, bei dem ein Neuer
+                    // sonst raten müsste, ob es pausiert oder beendet heißt.
+                    ->tooltip(fn (?Betreuung $state) => $state?->beschreibung())
                     ->sortable(),
 
                 // Der Hauptkontakt statt der früheren Spalte

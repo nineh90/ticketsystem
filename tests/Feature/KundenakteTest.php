@@ -319,8 +319,12 @@ class KundenakteTest extends TestCase
         Livewire::test(Willkommen::class)
             ->assertOk()
             ->assertSee('kunden-logos/verein.png', escape: false)
-            ->assertSee('Guten Tag, Tatjana')
-            ->assertSee('KE!N EINZELFALL e.V.');
+            ->assertSee('Moin, Tatjana')
+            ->assertSee('KE!N EINZELFALL e.V.')
+            // Unser Name steht neben dem des Kunden. Sein Logo ist auf dieser
+            // Seite das größte Bild — ohne diese Zeile läse sich der Bereich
+            // wie seiner allein.
+            ->assertSee('An Bord von Nils-Digital');
     }
 
     public function test_ohne_logo_bleibt_die_begruessung_stehen(): void

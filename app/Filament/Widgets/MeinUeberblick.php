@@ -54,7 +54,7 @@ class MeinUeberblick extends StatsOverviewWidget
         if (Sichtbarkeit::ohneProjekte($nutzer)) {
             return [
                 Stat::make('Keine Zuordnung', '—')
-                    ->description('Ein Administrator muss dich unter Verwaltung → Nutzer einem Kunden oder einzelnen Projekten zuordnen. Bis dahin siehst du keine Kunden, Projekte oder Tickets.')
+                    ->description('Ein Administrator muss dich unter Maschinenraum → Crew einem Kunden oder einzelnen Projekten zuordnen. Bis dahin siehst du keine Kunden, Projekte oder Tickets.')
                     ->descriptionIcon('heroicon-m-information-circle')
                     ->color('warning'),
             ];

@@ -8,6 +8,7 @@ use App\Filament\Resources\Customers\Pages\ListCustomers;
 use App\Filament\Resources\Customers\Pages\ViewCustomer;
 use App\Filament\Resources\Customers\RelationManagers\DokumenteRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\KontakteRelationManager;
+use App\Filament\Resources\Customers\RelationManagers\MesseRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\ProjectsRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\ZugaengeRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\ZugangsdatenRelationManager;
@@ -27,7 +28,7 @@ class CustomerResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice2;
 
-    protected static ?string $navigationLabel = 'Kunden';
+    protected static ?string $navigationLabel = 'Passagiere';
 
     protected static ?string $modelLabel = 'Kunde';
 
@@ -67,6 +68,10 @@ class CustomerResource extends Resource
             // und sieht sie danach selten wieder. Die Dokumente stehen weit
             // vorn, weil sie das Einzige sind, das laufend dazukommt.
             DokumenteRelationManager::class,
+            // Die Messe direkt hinter den Dokumenten: beides ist laufendes
+            // Geschäft, und ein Termin ist das, wonach man am häufigsten
+            // sucht ("wann sprechen wir noch mal?").
+            MesseRelationManager::class,
             KontakteRelationManager::class,
             ZugangsdatenRelationManager::class,
             ZugaengeRelationManager::class,

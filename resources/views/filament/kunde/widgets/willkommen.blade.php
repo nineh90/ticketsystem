@@ -29,14 +29,24 @@
 
         <div class="min-w-0">
             <p class="truncate text-xl font-bold tracking-tight text-gray-950 dark:text-white">
-                Guten Tag, {{ $this->getVorname() }}
+                Moin, {{ $this->getVorname() }}
             </p>
 
-            @if ($kunde)
-                <p class="truncate text-sm text-gray-500 dark:text-gray-400">
-                    {{ $kunde->name }}
-                </p>
-            @endif
+            {{--
+                Unser Name steht hier bewusst neben dem des Kunden. Das
+                größte Bild auf dieser Seite ist sein Logo; ohne diese Zeile
+                läse sich der Bereich wie seiner allein. "An Bord von
+                Nils-Digital" sagt in vier Wörtern, wessen Schiff das ist —
+                und der Firmenname dahinter, wer gerade darauf steht.
+
+                Sind beide gleich, steht der Name nur einmal da: unser
+                eigenes Konto ist als Kunde angelegt (zum Ausprobieren), und
+                "An Bord von Nils-Digital · Nils-Digital" liest sich wie ein
+                Fehler — was es auch wäre.
+            --}}
+            <p class="truncate text-sm text-gray-500 dark:text-gray-400">
+                An Bord von {{ $this->getReederei() }}@if ($kunde && $kunde->name !== $this->getReederei()) <span class="text-gray-400 dark:text-gray-600">·</span> {{ $kunde->name }}@endif
+            </p>
         </div>
     </div>
 </x-filament-widgets::widget>

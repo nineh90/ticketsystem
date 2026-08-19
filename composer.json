@@ -2,9 +2,10 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "nils-digital/ticketsystem",
     "type": "project",
-    "description": "Internes Ticket- und Projektsystem von Nils-Digital.",
+    "description": "ND-Deck — das interne System von Nils-Digital.",
     "keywords": [
         "ticketsystem",
+        "nd-deck",
         "nils-digital"
     ],
     "license": "proprietary",

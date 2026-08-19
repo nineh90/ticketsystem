@@ -182,16 +182,21 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * Hat dieser Kunde die Frage nach Benachrichtigungen schon gesehen?
+     * Hat dieser Zugang die Frage nach Benachrichtigungen schon gesehen?
      *
      * Ohne diesen Merker ließe sich "will nicht" nicht von "hat noch nie
-     * hingeschaut" unterscheiden — und der Hinweis in seinem Bereich stünde
-     * für immer da, auch bei jemandem, der sich bewusst dagegen entschieden
-     * hat.
+     * hingeschaut" unterscheiden — und der Hinweis stünde für immer da, auch
+     * bei jemandem, der sich bewusst dagegen entschieden hat.
+     *
+     * Gilt für innen wie außen. Bis dahin war die Frage eine, die wir dem
+     * Kunden stellen und für uns selbst im Formular unter Crew beantworten —
+     * also an der Stelle, an der ein Admin für jemand anderen entscheidet,
+     * welche Mails der bekommt. Wer seine Mails nicht selbst gewählt hat,
+     * schaltet sie beim ersten Ärger ganz ab.
      */
     public function mussNochEntscheiden(): bool
     {
-        return $this->istKunde() && $this->benachrichtigungen_gefragt_at === null;
+        return $this->benachrichtigungen_gefragt_at === null;
     }
 
     /** Wartet eine genannte Adresse noch auf ihre Bestätigung? */

@@ -10,6 +10,16 @@
  */
 return [
     'name' => env('KONTAKT_NAME', 'Nils-Digital'),
+
+    /*
+     * Der Name des Schiffs — steht über der Messe und im Kalendereintrag,
+     * den der Kunde bekommt.
+     *
+     * Als eigener Wert und nicht aus 'name' zusammengesetzt: "MS " davor zu
+     * hängen ist genau die Art Regel, die für den ersten Fall stimmt und
+     * beim zweiten schiefgeht.
+     */
+    'schiff' => env('KONTAKT_SCHIFF', 'MS Nils-Digital'),
     'email' => env('KONTAKT_EMAIL', 'info@nils-digital.de'),
     'telefon' => env('KONTAKT_TELEFON', null),
     'website' => env('KONTAKT_WEBSITE', 'https://nils-digital.de'),

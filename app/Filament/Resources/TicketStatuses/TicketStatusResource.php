@@ -26,7 +26,7 @@ class TicketStatusResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Ticket-Stadien';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Verwaltung';
+    protected static string|\UnitEnum|null $navigationGroup = 'Maschinenraum';
 
     protected static ?int $navigationSort = 20;
 

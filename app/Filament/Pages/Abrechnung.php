@@ -33,11 +33,11 @@ class Abrechnung extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalculator;
 
-    protected static ?string $navigationLabel = 'Abrechnung';
+    protected static ?string $navigationLabel = 'Zahlmeister';
 
-    protected static ?string $title = 'Abrechnung';
+    protected static ?string $title = 'Zahlmeister';
 
-    /** Hinter Kanban, vor der Verwaltung. */
+    /** Hinter Kanban, vor dem Maschinenraum. */
     protected static ?int $navigationSort = 46;
 
     protected string $view = 'filament.pages.abrechnung';

@@ -80,14 +80,24 @@ Abends versehentlich echte Kundendaten überschreibt.
 
 ## Nutzer anlegen
 
-Über *Verwaltung → Nutzer*. Zwei Dinge sind zu beachten:
+Über *Maschinenraum → Crew*. Zwei Dinge sind zu beachten:
 
 - **Zugang freigegeben** muss an sein, sonst kommt die Person trotz gültigem
   Konto nicht ins Dashboard.
 - **Projekte zuordnen** — Mitarbeiter sehen ausschließlich Projekte, in denen
   sie stehen. Administratoren sehen ohnehin alles.
 
-Jeder ändert Name und Passwort danach selbst unter *Profil* (oben rechts).
+Jeder ändert Name, Passwort **und seine Mail-Themen** danach selbst unter
+*Mein Zugang* (oben rechts). Beim ersten Anmelden wird er auf der Wache
+gefragt, ob er überhaupt Mail will.
+
+Die Felder im Crew-Formular bleiben trotzdem: ein frisch angelegter Zugang
+soll eingestellt sein, bevor sich jemand das erste Mal anmeldet.
+
+> Achtung bei **neuen** Ereignistypen: ist am Zugang schon eine Auswahl
+> gespeichert, sind später hinzugekommene Typen darin nicht enthalten und
+> gehen still nicht hinaus. Wer alles will, hakt sie einmal nach. Nur eine
+> nie angefasste Auswahl (`null`) lässt alles durch.
 
 Ausgeschiedene Mitarbeiter **deaktivieren statt löschen** — sonst verlieren
 ihre Tickets, Kommentare und Zeitbuchungen die Zuordnung.

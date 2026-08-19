@@ -35,7 +35,7 @@ class Nachrichten extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;
 
-    protected static ?string $navigationLabel = 'Nachrichten';
+    protected static ?string $navigationLabel = 'Funk';
 
     protected static ?string $title = 'Nachrichten';
 

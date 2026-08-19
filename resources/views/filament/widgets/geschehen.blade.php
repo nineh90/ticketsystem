@@ -96,7 +96,7 @@
                     <p class="mx-auto mt-1 max-w-md text-xs text-gray-500">
                         @if ($this->ohneZuordnung())
                             Dir ist noch kein Kunde und kein Projekt zugeordnet — deshalb ist hier nichts zu sehen.
-                            Ein Administrator ordnet dich unter <strong>Verwaltung → Nutzer</strong> zu.
+                            Ein Administrator ordnet dich unter <strong>Maschinenraum → Crew</strong> zu.
                         @elseif ($this->gefiltert())
                             {{-- Sonst suchte man den Fehler im System statt in
                                  den zwei Knöpfen direkt darüber. --}}

@@ -44,7 +44,7 @@ class Sichtbarkeit
         }
 
         return 'Dir ist noch kein Kunde und kein Projekt zugeordnet — deshalb ist hier nichts zu sehen. '
-            .'Ein Administrator ordnet dich unter Verwaltung → Nutzer zu.';
+            .'Ein Administrator ordnet dich unter Maschinenraum → Crew zu.';
     }
 
     /** Überschrift für den Leerzustand. */

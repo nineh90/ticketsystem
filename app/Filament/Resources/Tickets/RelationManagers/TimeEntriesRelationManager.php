@@ -19,6 +19,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Carbon;
 
 class TimeEntriesRelationManager extends RelationManager
 {
@@ -61,8 +62,8 @@ class TimeEntriesRelationManager extends RelationManager
                             return;
                         }
 
-                        $von = \Illuminate\Support\Carbon::parse($get('gestartet_am'));
-                        $bis = \Illuminate\Support\Carbon::parse($state);
+                        $von = Carbon::parse($get('gestartet_am'));
+                        $bis = Carbon::parse($state);
 
                         if ($bis->greaterThan($von)) {
                             $set('minuten', (int) $von->diffInMinutes($bis));

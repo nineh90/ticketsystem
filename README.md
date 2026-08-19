@@ -1,6 +1,15 @@
-# Ticketsystem Nils-Digital
+# ND-Deck
 
-Internes Ticket- und Projektsystem. Struktur: **Kunde → Projekt → Ticket**.
+Das interne System von Nils-Digital. Struktur: **Kunde → Projekt → Ticket**.
+
+Der Name ist Programm: an Bord gibt es mehrere Decks. Innen liegt die
+**Brücke** (`/`) — dort wird gesteuert. Außen das **Passagierdeck**
+(`/kunde`), auf dem unsere Kunden mitfahren. Kunden werden gesiezt und als
+Gäste angesprochen; untereinander duzen wir uns.
+
+Die Bezeichner in der Technik heißen weiterhin `ticketsystem` — Container,
+Datenbank, Traefik-Router und die n8n-Adresse. Sie umzubenennen kostet eine
+Wartungspause und bringt niemandem etwas, der sie ohnehin nie sieht.
 
 Live: <https://intern.nils-digital.de> — Push auf `main` rollt aus.
 
@@ -48,8 +57,8 @@ anders oder gar nicht.
 
 | | Adresse | Wer |
 |---|---|---|
-| Intern | `/` | Administratoren und Mitarbeiter |
-| Kundenbereich | `/kunde` | Rolle `kunde`, je einem Kunden zugeordnet |
+| Brücke (intern) | `/` | Administratoren und Mitarbeiter |
+| Passagierdeck | `/kunde` | Rolle `kunde`, je einem Kunden zugeordnet |
 
 Getrennte Guards (`web` und `kunde`, siehe `config/auth.php`): man kann in
 beiden **gleichzeitig** angemeldet sein. Ohne das müsste man sich zum Ansehen
@@ -107,6 +116,70 @@ Glocke und im Ereignisstrom unter *Betrieb*, wo "Angebote" ein eigener Filter
 ist. Es ist der einzige Ereignistyp ohne Ticket; er trägt deshalb den Kunden
 als Bezug (`Ereignis::$kontext`).
 
+## Die Messe
+
+`Kunden → der Kunde → Messe`, beim Kunden auf seiner Übersicht.
+
+Ein Termin lebte bisher in einer Mail und in zwei Kalendern. Das reicht,
+solange beide Seiten die Mail wiederfinden — und genau daran hakt es jedes
+Mal ("wie war noch mal der Link?"). Jetzt steht er dort, wo der Kunde ohnehin
+nachsieht, und trägt den Link bei sich.
+
+**Die Videokonferenz bleibt draußen.** `url` zeigt heute auf Google Meet und
+morgen auf etwas anderes; der Knopf beim Kunden heißt *An Bord gehen* und
+führt dorthin, wo das Treffen gerade stattfindet. Ein eigener Raum wäre
+später ein Adresswechsel, kein Umbau.
+
+**Der Schalter *Einladen* ist die Einladung.** Vorgabe ist aus — wie beim
+Tresor und den Dokumenten, aber aus einem anderen Grund: ein Termin entsteht
+beim Planen, oft als Bleistiftstrich. Springt der Schalter an, geht die
+Meldung hinaus (`TreffenObserver`). Danach melden nur noch zwei Dinge: ein
+verschobener Termin und eine Absage. Eine getippte Zeile in der Tagesordnung
+nicht — eine Meldung für jede Kleinigkeit ist eine, die bald übergangen wird.
+
+**Abgesagt statt gelöscht.** Ein gelöschtes Treffen verschwindet wortlos aus
+dem Bereich des Kunden, und er sitzt um zwei Uhr trotzdem davor. So bleibt es
+durchgestrichen stehen, und der Kalendereintrag geht als `STATUS:CANCELLED`
+hinaus, was ihn in fremden Kalendern wegräumt.
+
+**Wer von uns dabei ist**, steht als eigene Liste am Treffen
+(`treffen_user`). Wer dazukommt, bekommt eine Meldung — nur die Neuen, und
+nie der, der sich gerade selbst eingetragen hat (`Support\Messe::crewSetzen`).
+Die eigenen Termine stehen unter *Meine Wache*, alle unter *Brücke*.
+
+### Der Kalendereintrag
+
+`/treffen/{id}/kalender` bzw. `/kunde/treffen/{id}/kalender`, erzeugt von
+`Support\Kalender`. Er entsteht bei jedem Abruf neu — ein verschobener Termin
+ist hinter derselben Adresse sofort der richtige.
+
+Zwei Dinge daran sind nicht offensichtlich, und beide entscheiden, ob der
+Eintrag in fremden Programmen ankommt:
+
+* **Zeiten gehen als UTC hinaus.** Die Anwendung rechnet in Ortszeit; ein
+  Kalender ohne Zeitzonenangabe legt die Zeit des Lesers zugrunde. Ein Kunde
+  in Wien bekäme den Termin sonst verschoben.
+* **Die Kennung bleibt über Änderungen gleich**, die Sequenznummer wächst.
+  Daran erkennt ein Kalenderprogramm, dass ein zweiter Eintrag derselbe
+  Termin ist — sonst steht nach dem Verschieben beides drin und der Kunde
+  erscheint zur alten Zeit.
+
+### Wochenvorschau
+
+Auf der Brücke, ganz oben. Sie sammelt aus vier Quellen ein, was in den
+nächsten sieben Tagen ein Datum hat: Treffen, Meilensteine, Dokumentfristen
+und fällige Tickets (`Support\Wochenplan`).
+
+Der Gedanke: Termine sind längst da, sie liegen nur an vier Stellen. Wer
+morgens wissen will, was diese Woche liegt, macht vier Listen auf oder keine.
+
+**Jede Quelle geht durch ihr eigenes `sichtbarFuer`.** Das ist der Grund,
+warum dort nichts abgekürzt wird — eine Übersicht, die "nur schnell" direkt
+abfragt, ist die Stelle, an der ein Mitarbeiter den Kunden eines anderen zu
+sehen bekommt, und niemand zählt eine Übersicht Zeile für Zeile nach.
+Kommt eine weitere Sorte Termin dazu, bekommt sie dort eine Methode und
+taucht damit überall auf, wo die Vorschau steht.
+
 ## Abrechnung vorbereiten
 
 `/abrechnung`. Beantwortet die Frage, die vor jeder Rechnung stand und
@@ -140,6 +213,44 @@ Tätigkeitstexte der Buchungen bleiben draußen — die sind für interne Augen
 geschrieben. An die Buchungen selbst kommt ein Kundenzugang unverändert nicht
 heran (`TimeEntry::sichtbarFuer` gibt ihm `1 = 0`).
 
+## Die maritime Sprache
+
+Der Name des Systems ist **ND-Deck**, und die Bilder dazu sind nicht Zierat,
+sondern eine Aufteilung: an Bord gibt es mehrere Decks. Wir stehen auf der
+**Brücke** und fahren das Schiff, unsere Kunden sind **Passagiere**.
+
+Die Grenze ist bewusst gezogen: **der Ton trägt den Rahmen, nicht die
+Möbel.** Begrüßungen, Anmeldung, Mails und Leerzustände sind maritim.
+*Projekte*, *Tickets*, *Dokumente* und *Rechnungen* heißen weiter so, wie sie
+heißen — das sind die Wörter, die am Telefon fallen, und wer sie innen anders
+nennt, übersetzt bei jedem Anruf im Kopf.
+
+| Innen | Heißt | Weil |
+|---|---|---|
+| `/` | Meine Wache | was gerade auf dir liegt |
+| `/betrieb` | Brücke | von dort wird gesteuert |
+| Nachrichten | Funk | rein und raus, an keine Akte gebunden |
+| Kunden | Passagiere | sie fahren mit |
+| Abrechnung | Zahlmeister | führt an Bord die Kasse |
+| Verwaltung | Maschinenraum | wo die Maschine eingestellt wird |
+| Nutzer | Crew | kürzer als Mannschaft und geschlechtsneutral |
+
+Die vier Betreuungsstände am Kunden sind mitgewandert und tragen ihre
+Erklärung bei sich (`Betreuung::beschreibung()`, als Legende unter der
+Auswahl und als Tooltip an der Spalte): **Am Kai** = Interessent, **An Bord**
+= in Betreuung, **Vor Anker** = pausiert, **Von Bord** = beendet. Nur die
+Beschriftung — die Werte in der Datenbank sind unverändert.
+
+**Der Kundenbereich heißt weiter „Nils-Digital".** Der Name des Werkzeugs ist
+unsere Angelegenheit; ein Passagier kennt die Reederei. Deshalb steht in
+seiner Kopfzeile unser Logo samt Schriftzug, und auf seiner Übersicht „An
+Bord von Nils-Digital" neben seinem eigenen Firmennamen.
+
+Die Bezeichner in der Technik heißen weiterhin `ticketsystem` — Container,
+Datenbank, Traefik-Router, `/docker/ticketsystem` und die n8n-Adresse. Sie
+umzubenennen kostet eine Wartungspause, ein neues Backup-Ziel und einen
+angepassten n8n-Aufruf, und bringt niemandem etwas, der sie nie sieht.
+
 ## Zwei Einstiegsseiten statt eines Dashboards
 
 Intern gibt es zwei Startseiten, und die Trennlinie ist eine Frage: kann ich
@@ -147,8 +258,8 @@ daran etwas tun?
 
 | | Adresse | Was darauf steht |
 |---|---|---|
-| Mein Bereich | `/` | Meine Zahlen, meine Uhr, ungelesene Nachrichten, meine Tickets, wartende Kundenanliegen |
-| Betrieb | `/betrieb` | Zahlen des Betriebs, alle laufenden Uhren, Geschehen, offene Tickets je Kunde, erfasste Zeit je Kunde |
+| Meine Wache | `/` | Meine Zahlen, meine Uhr, meine Treffen, ungelesene Nachrichten, meine Tickets, wartende Kundenanliegen |
+| Brücke | `/betrieb` | Wochenvorschau, Zahlen des Betriebs, alle laufenden Uhren, Geschehen, offene Tickets je Kunde, erfasste Zeit je Kunde |
 
 Beide sind `Filament\Pages\Dashboard`-Ableitungen und sagen in `getWidgets()`
 selbst, welche Karten sie tragen. Im `AdminPanelProvider` steht **keine**
@@ -303,9 +414,20 @@ zusätzlichen Schlüssel.
 ## Meldungen per Mail
 
 Jede Meldung, die an der Glocke landet, kann zusätzlich als Mail hinausgehen.
-Der Schalter sitzt **je Zugang** (*Verwaltung → Nutzer → E-Mail bei
-Meldungen*), Vorgabe aus — der Versand wird stufenweise eingeführt: erst ein
-Zugang, dann Kevin, viel später ein Kunde.
+**Jeder wählt selbst, was er bekommt** — unter *Mein Zugang* (oben rechts im
+Benutzermenü). Beim ersten Anmelden steht die Frage als Karte auf der Wache
+(`MailEinrichten`): ja, nein, oder gleich selbst auswählen. Sie verschwindet
+nach der Antwort, auch bei "nein" — ein Hinweis, der nach der Entscheidung
+stehen bleibt, ist eine Aufforderung. Der Merker dafür ist
+`benachrichtigungen_gefragt_at`, dieselbe Spalte wie beim Kunden.
+
+Vorher stand die Auswahl ausschließlich unter *Maschinenraum → Crew*, also an
+der Stelle, an der einer für einen anderen entscheidet, was der zu lesen
+bekommt. Wer seine Mails nicht selbst gewählt hat, schaltet sie beim ersten
+Ärger ganz ab — und danach erreicht ihn auch das nicht mehr, was ihn wirklich
+angeht. Im Crew-Formular stehen die Felder trotzdem weiter: einen frisch
+angelegten Zugang muss man einstellen können, bevor sich jemand das erste Mal
+anmeldet.
 
 Angeschlossen ist er an `Benachrichtigung::zustellen()`, also an derselben
 einen Stelle, durch die jeder Empfängerkreis läuft. Eine zweite Stelle, die

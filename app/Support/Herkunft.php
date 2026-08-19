@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Ticket;
+use App\Models\Treffen;
 use App\Models\Unterhaltung;
 
 /**
@@ -44,5 +45,18 @@ class Herkunft
     public static function kunde(int $customerId): string
     {
         return 'kunde:'.$customerId;
+    }
+
+    /**
+     * Ein Treffen aus der Messe.
+     *
+     * Gelesen ist die Meldung, sobald der Kunde seine Übersicht öffnet — dort
+     * steht das Treffen als Karte vor ihm. Es gibt bewusst keine eigene Seite
+     * je Treffen, die man dafür aufrufen müsste: ein Termin ist eine Zeile,
+     * keine Akte.
+     */
+    public static function treffen(Treffen|int $treffen): string
+    {
+        return 'treffen:'.($treffen instanceof Treffen ? $treffen->getKey() : $treffen);
     }
 }

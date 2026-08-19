@@ -6,6 +6,7 @@ use App\Filament\Widgets\Geschehen;
 use App\Filament\Widgets\TeamUeberblick;
 use App\Filament\Widgets\TicketsVerteilung;
 use App\Filament\Widgets\WerArbeitetGerade;
+use App\Filament\Widgets\Wochenvorschau;
 use App\Filament\Widgets\ZeitenVerteilung;
 use BackedEnum;
 use Filament\Pages\Dashboard;
@@ -38,21 +39,25 @@ class Betrieb extends Dashboard
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice;
 
-    protected static ?string $title = 'Betrieb';
+    protected static ?string $title = 'Brücke';
 
-    protected static ?string $navigationLabel = 'Betrieb';
+    protected static ?string $navigationLabel = 'Brücke';
 
-    /** Direkt hinter "Mein Bereich" und noch vor allen Listen. */
+    /** Direkt hinter "Meine Wache" und noch vor allen Listen. */
     protected static ?int $navigationSort = -1;
 
     public function getSubheading(): ?string
     {
-        return 'Der Blick aufs Ganze. Was an dir hängt, steht unter Mein Bereich.';
+        return 'Der Blick aufs Ganze. Was an dir hängt, steht unter Meine Wache.';
     }
 
     public function getWidgets(): array
     {
         return [
+            // Ganz oben: was diese Woche liegt, entscheidet, was man heute
+            // tut. Sammelt Treffen, Meilensteine, Fristen und fällige
+            // Tickets ein — siehe Support\Wochenplan.
+            Wochenvorschau::class,
             TeamUeberblick::class,
             WerArbeitetGerade::class,
             Geschehen::class,

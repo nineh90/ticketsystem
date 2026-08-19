@@ -12,6 +12,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Support\Colors\Color;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -80,7 +81,7 @@ class TicketsRelationManager extends RelationManager
                 TextColumn::make('status.name')
                     ->label('Status')
                     ->badge()
-                    ->color(fn ($record) => \Filament\Support\Colors\Color::hex($record->status->farbe)),
+                    ->color(fn ($record) => Color::hex($record->status->farbe)),
 
                 TextColumn::make('prioritaet')
                     ->label('Priorität')

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\Rolle;
+use App\Filament\Resources\Users\Pages\EditUser;
 use App\Models\Customer;
 use App\Models\Project;
 use App\Models\Ticket;
@@ -10,6 +11,7 @@ use App\Models\TicketStatus;
 use App\Models\User;
 use App\Support\Sichtbarkeit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
@@ -158,8 +160,8 @@ class KundenzuordnungTest extends TestCase
         ]);
         $mitarbeiter = $this->mitarbeiter();
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Filament\Resources\Users\Pages\EditUser::class, [
+        Livewire::actingAs($admin)
+            ->test(EditUser::class, [
                 'record' => $mitarbeiter->getRouteKey(),
             ])
             ->assertSuccessful()
@@ -176,8 +178,8 @@ class KundenzuordnungTest extends TestCase
             'panel_zugang' => true,
         ]);
 
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Filament\Resources\Users\Pages\EditUser::class, [
+        Livewire::actingAs($admin)
+            ->test(EditUser::class, [
                 'record' => $admin->getRouteKey(),
             ])
             ->assertSuccessful()

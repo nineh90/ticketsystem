@@ -4,6 +4,7 @@ use App\Http\Controllers\AbmeldenController;
 use App\Http\Controllers\AnhangController;
 use App\Http\Controllers\BenachrichtigungBestaetigenController;
 use App\Http\Controllers\DokumentController;
+use App\Http\Controllers\TreffenKalenderController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -78,6 +79,26 @@ Route::middleware(['auth'])
 Route::middleware(['auth:kunde'])
     ->get('/kunde/dokument/{dokument}', DokumentController::class)
     ->name('kunde.dokument.zeigen');
+
+/*
+ * Der Kalendereintrag zu einem Treffen — die Messe.
+ *
+ * Dieselben zwei Pfade wie bei den Dokumenten und aus demselben Grund: läuft
+ * die Sitzung ab, während jemand den Termin in seinen Kalender legt,
+ * entscheidet der Pfad, an welcher Anmeldung er landet.
+ *
+ * Die Datei entsteht bei jedem Abruf neu. Wird ein Treffen verschoben, ist
+ * hinter derselben Adresse sofort der richtige Eintrag zu haben — und weil
+ * die Kennung darin gleich bleibt, ersetzt er im Kalender den alten, statt
+ * sich danebenzulegen.
+ */
+Route::middleware(['auth'])
+    ->get('/treffen/{treffen}/kalender', TreffenKalenderController::class)
+    ->name('treffen.kalender');
+
+Route::middleware(['auth:kunde'])
+    ->get('/kunde/treffen/{treffen}/kalender', TreffenKalenderController::class)
+    ->name('kunde.treffen.kalender');
 
 /*
  * Der Klick aus der Bestätigungsmail für Benachrichtigungen.

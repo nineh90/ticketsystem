@@ -2,8 +2,10 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Widgets\MailEinrichten;
 use App\Filament\Widgets\MeineNachrichten;
 use App\Filament\Widgets\MeineTickets;
+use App\Filament\Widgets\MeineTreffen;
 use App\Filament\Widgets\MeineUhr;
 use App\Filament\Widgets\MeinUeberblick;
 use App\Filament\Widgets\VonKunden;
@@ -35,23 +37,30 @@ class MeinBereich extends Dashboard
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedHome;
 
-    protected static ?string $title = 'Mein Bereich';
+    protected static ?string $title = 'Meine Wache';
 
-    protected static ?string $navigationLabel = 'Mein Bereich';
+    protected static ?string $navigationLabel = 'Meine Wache';
 
     /** Erster Punkt der Navigation — die Seite liegt auf der Wurzel. */
     protected static ?int $navigationSort = -2;
 
     public function getSubheading(): ?string
     {
-        return 'Was heute an dir hängt. Zahlen zum Ganzen stehen unter Betrieb.';
+        return 'Was heute an dir hängt. Zahlen zum Ganzen stehen auf der Brücke.';
     }
 
     public function getWidgets(): array
     {
         return [
+            // Die Frage nach Mail-Benachrichtigungen — nur solange sie offen
+            // ist. Verschwindet nach der Antwort, auch bei "nein".
+            MailEinrichten::class,
             VonKunden::class,
             MeinUeberblick::class,
+            // Meine Treffen über der Uhr: ein Termin hat eine Uhrzeit, an
+            // die man sich halten muss. Die Karte erscheint nur, wenn eins
+            // ansteht (canView).
+            MeineTreffen::class,
             MeineUhr::class,
             MeineNachrichten::class,
             MeineTickets::class,

@@ -114,7 +114,7 @@ class UserForm
                             ->visible(fn (?User $record) => ! ($record?->istKunde() ?? false))
                             // live, weil die Auswahl darunter daran hängt.
                             ->live()
-                            ->helperText('Zusätzlich zur Glocke. Ohne hinterlegten Mailversand passiert nichts — dann steht die Mail nur im Protokoll.'),
+                            ->helperText('Zusätzlich zur Glocke. Jeder ändert das danach unter "Mein Zugang" selbst — hier steht es, damit ein neuer Zugang eingestellt ist, bevor sich jemand das erste Mal anmeldet.'),
 
                         // Worüber. Ohne diese Auswahl wäre der Versand alles
                         // oder nichts, und wer täglich fünf Mails bekommt,
@@ -136,7 +136,7 @@ class UserForm
                             ->default(MailEreignis::vorgabeIntern())
                             ->visible(fn (Get $get, ?User $record) => $get('mail_benachrichtigungen')
                                 && ! ($record?->istKunde() ?? false))
-                            ->helperText('Nichts angehakt heißt: keine Mail. Die letzten beiden gehen an Kunden und bleiben ohne Wirkung, solange Kundenzugänge keine Mail bekommen.'),
+                            ->helperText('Nichts angehakt heißt: keine Mail. Die Ereignisse an Kunden bleiben hier ohne Wirkung — die wählt der Kunde unter "Mein Konto" selbst.'),
                     ]),
 
                 Section::make('Zuständigkeit')

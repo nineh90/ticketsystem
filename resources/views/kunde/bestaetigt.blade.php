@@ -40,7 +40,7 @@
 <div class="karte">
     <div class="streifen"></div>
     <div class="inhalt">
-        <div class="marke">Nils-Digital <span>· Ticketsystem</span></div>
+        <div class="marke">Nils-Digital <span>· ND-Deck</span></div>
 
         @if ($geklappt)
             <h1>Adresse bestätigt</h1>

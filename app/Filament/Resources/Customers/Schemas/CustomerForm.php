@@ -97,7 +97,11 @@ class CustomerForm
                             ->options(Betreuung::class)
                             ->default(Betreuung::Aktiv->value)
                             ->required()
-                            ->helperText('Rein intern. Der Kunde sieht das nirgends.'),
+                            // Die Legende steht am Enum und nicht hier: sie
+                            // muss sich mitändern, wenn ein Stand dazukommt
+                            // oder anders heißt. Eine zweite Aufzählung im
+                            // Formular wäre die, die als Erste veraltet.
+                            ->helperText(Betreuung::legende().'. Rein intern — der Kunde sieht das nirgends.'),
 
                         DatePicker::make('kunde_seit')
                             ->label('Kunde seit')

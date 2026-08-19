@@ -50,7 +50,7 @@
 
 {{-- Vorschautext: was viele Postfächer neben dem Betreff anreißen. Ohne ihn
      stünde dort der Anfang des Fließtextes, also meist die Ticketnummer. --}}
-<div style="display:none; max-height:0; overflow:hidden; opacity:0;">{{ $text ?: 'Neue Meldung im Ticketsystem' }}</div>
+<div style="display:none; max-height:0; overflow:hidden; opacity:0;">{{ $text ?: 'Neue Meldung an Bord' }}</div>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef3f5;">
 <tr>
@@ -78,7 +78,7 @@
                     <img src="{{ asset('logo.png') }}" width="24" height="24" alt="" style="display:block; border:0; width:24px; height:24px;">
                 </td>
                 <td valign="middle">
-                    <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#0d7f8f;">Nils-Digital</span><span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:#8aa0a8;">&nbsp;·&nbsp;Ticketsystem</span>
+                    <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#0d7f8f;">Nils-Digital</span><span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:#8aa0a8;">&nbsp;·&nbsp;ND-Deck</span>
                 </td>
             </tr></table>
         </td>
@@ -118,7 +118,7 @@
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="knopf">
             <tr>
             <td align="center" bgcolor="#00bcd4" class="knopf" style="border-radius:7px;">
-                <a href="{{ $url }}" style="display:inline-block; padding:12px 22px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:15px; font-weight:600; color:#062a31; text-decoration:none; border-radius:7px;">Im Ticketsystem ansehen</a>
+                <a href="{{ $url }}" style="display:inline-block; padding:12px 22px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:15px; font-weight:600; color:#062a31; text-decoration:none; border-radius:7px;">Ansehen</a>
             </td>
             </tr>
             </table>
@@ -134,8 +134,13 @@
         <td class="polster" style="padding:26px 30px 24px 30px;">
             <div style="height:1px; line-height:1px; font-size:0; background:#e6eef1;">&nbsp;</div>
             <p style="margin:16px 0 0 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.55; color:#8aa0a8;">
-                Diese Mail kommt, weil an deinem Zugang <strong style="color:#5b7079;">E-Mail bei Meldungen</strong> eingeschaltet ist.
-                Abschalten unter <em>Verwaltung&nbsp;→&nbsp;Nutzer</em>.
+                @if ($fuerKunden)
+                    Sie bekommen diese Mail, weil Sie sich dafür eingetragen haben.
+                    Adresse, Themen und Abschalten stehen unter <em>Mein&nbsp;Konto</em> in Ihrem Bereich.
+                @else
+                    Diese Mail kommt, weil an deinem Zugang <strong style="color:#5b7079;">E-Mail bei Meldungen</strong> eingeschaltet ist.
+                    Abschalten unter <em>Maschinenraum&nbsp;→&nbsp;Crew</em>.
+                @endif
             </p>
         </td>
         </tr>

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Rolle;
 use App\Models\Comment;
 use App\Models\Customer;
 use App\Models\Project;
@@ -162,7 +163,7 @@ class DatenmodellTest extends TestCase
     public function test_admin_sieht_alle_projekte(): void
     {
         $admin = User::factory()->create([
-            'rolle' => \App\Enums\Rolle::Admin,
+            'rolle' => Rolle::Admin,
             'panel_zugang' => true,
         ]);
 

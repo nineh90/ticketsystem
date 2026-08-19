@@ -259,7 +259,7 @@ class Benachrichtigung
             return;
         }
 
-        $titel = (string) ($daten['title'] ?? 'Neue Meldung im Ticketsystem');
+        $titel = (string) ($daten['title'] ?? 'Neue Meldung an Bord');
         $text = $daten['body'] ?? null;
 
         // Der Knopf aus der Meldung. Er zeigt schon in das richtige Panel —
@@ -282,21 +282,33 @@ class Benachrichtigung
         // läuft alles außerhalb der Anfrage. Für einen Kundenzugang ist das
         // die von ihm bestätigte Adresse, intern die Anmeldeadresse
         // (User::mailZieladresse).
-        $adressen = $ziele->map(fn (User $nutzer) => $nutzer->mailZieladresse())->filter()->values();
+        // Neben der Adresse wandert mit, ob dahinter ein Kundenzugang steht.
+        // Die Fußzeile der Mail sagt, wo man den Versand abschaltet, und die
+        // Antwort ist für beide Seiten eine andere: intern im Maschinenraum,
+        // beim Kunden unter "Mein Konto". Vorher stand dort für alle der
+        // interne Weg — ein Kunde las also eine Anleitung für eine Seite,
+        // die er gar nicht aufrufen kann.
+        $adressen = $ziele
+            ->map(fn (User $nutzer) => [
+                'adresse' => $nutzer->mailZieladresse(),
+                'kunde' => $nutzer->istKunde(),
+            ])
+            ->filter(fn (array $ziel) => filled($ziel['adresse']))
+            ->values();
 
         if ($adressen->isEmpty()) {
             return;
         }
 
         defer(function () use ($adressen, $titel, $text, $url, $farbe, $logo, $kundenName) {
-            foreach ($adressen as $adresse) {
+            foreach ($adressen as $ziel) {
                 try {
-                    Mail::to($adresse)->send(
-                        new Glockenmeldung($titel, $text, $url, $farbe, $logo, $kundenName),
+                    Mail::to($ziel['adresse'])->send(
+                        new Glockenmeldung($titel, $text, $url, $farbe, $logo, $kundenName, $ziel['kunde']),
                     );
                 } catch (\Throwable $fehler) {
                     Log::warning('Meldung konnte nicht per Mail zugestellt werden.', [
-                        'empfaenger' => $adresse,
+                        'empfaenger' => $ziel['adresse'],
                         'titel' => $titel,
                         'fehler' => $fehler->getMessage(),
                     ]);

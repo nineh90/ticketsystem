@@ -70,7 +70,9 @@ class OhneProjektzuordnungTest extends TestCase
             ->test(MeinUeberblick::class)
             ->assertSuccessful()
             ->assertSee('Keine Zuordnung')
-            ->assertSee('Verwaltung');
+            // Der Hinweis nennt den Weg, und der heißt seit der maritimen
+            // Umbenennung Maschinenraum → Crew.
+            ->assertSee('Maschinenraum');
     }
 
     public function test_kanban_erklaert_die_leere(): void

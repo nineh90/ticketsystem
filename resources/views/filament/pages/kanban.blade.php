@@ -26,7 +26,7 @@
              deren Leerzustand. --}}
         <div class="rounded-xl bg-warning-500/10 p-4 text-sm text-warning-400 ring-1 ring-warning-500/30">
             Dir ist noch kein Kunde und kein Projekt zugeordnet — deshalb ist das Brett leer.
-            Ein Administrator ordnet dich unter <strong>Verwaltung → Nutzer</strong> zu.
+            Ein Administrator ordnet dich unter <strong>Maschinenraum → Crew</strong> zu.
         </div>
     @endif
 

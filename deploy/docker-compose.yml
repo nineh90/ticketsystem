@@ -25,7 +25,7 @@ services:
       # Ohne diese Zeile faellt Laravel auf seinen Standardnamen zurueck —
       # und der stand als Absender in jeder Mail: "Laravel <info@...>".
       # Lokal war er richtig, weil die .env ihn setzt; hier fehlte er.
-      APP_NAME: Nils-Digital Ticketsystem
+      APP_NAME: ND-Deck
       APP_ENV: production
       APP_DEBUG: 'false'
       APP_URL: https://intern.nils-digital.de
@@ -87,7 +87,7 @@ services:
       # Der Name vor der Adresse. Ausdruecklich gesetzt und nicht aus
       # APP_NAME abgeleitet: was im Postfach des Empfaengers steht, soll
       # nicht daran haengen, wie die Anwendung intern heisst.
-      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Nils-Digital Ticketsystem}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Nils-Digital}
 
       TICKET_API_TOKEN: ${TICKET_API_TOKEN:-}
 

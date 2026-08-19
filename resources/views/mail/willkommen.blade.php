@@ -32,18 +32,18 @@
                     <img src="{{ asset('logo.png') }}" width="24" height="24" alt="" style="display:block; border:0; width:24px; height:24px;">
                 </td>
                 <td valign="middle">
-                    <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#0d7f8f;">Nils-Digital</span><span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:#8aa0a8;">&nbsp;·&nbsp;Ticketsystem</span>
+                    <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#0d7f8f;">Nils-Digital</span><span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:#8aa0a8;">&nbsp;·&nbsp;ND-Deck</span>
                 </td>
             </tr></table>
         </td></tr>
 
         <tr><td class="polster" style="padding:18px 30px 0 30px;">
-            <h1 class="titel" style="margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:21px; line-height:1.3; font-weight:700; color:#12212a;">Das hat geklappt</h1>
+            <h1 class="titel" style="margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:21px; line-height:1.3; font-weight:700; color:#12212a;">Willkommen an Bord</h1>
         </td></tr>
 
         <tr><td class="polster" style="padding:12px 30px 0 30px;">
             <p style="margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:16px; line-height:1.55; color:#3d525c;">
-                Hallo {{ $name }}, Ihre Adresse <strong style="color:#12212a;">{{ $adresse }}</strong>
+                Moin {{ $name }}, Ihre Adresse <strong style="color:#12212a;">{{ $adresse }}</strong>
                 ist bestätigt. Diese Mail ist der Beweis, dass der Weg funktioniert — ab jetzt
                 hören Sie von uns, wenn sich bei Ihren Anliegen etwas tut.
             </p>

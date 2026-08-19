@@ -92,6 +92,18 @@ class Customer extends Model
     }
 
     /**
+     * Die Treffen mit diesem Kunden — die Messe.
+     *
+     * Ungefiltert wie die Geschwister darunter: wer sie ausgibt, setzt
+     * sichtbarFuer davor. Beim Kunden passiert das an genau einer Stelle
+     * (dem Messe-Widget auf seiner Übersicht).
+     */
+    public function treffen(): HasMany
+    {
+        return $this->hasMany(Treffen::class);
+    }
+
+    /**
      * Angebote, Rechnungen und Verträge dieses Kunden.
      *
      * Ungefiltert — wie zugangsdaten(). Wer sie ausgibt, setzt sichtbarFuer

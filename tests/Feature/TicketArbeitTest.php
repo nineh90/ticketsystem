@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\Prioritaet;
 use App\Enums\Rolle;
+use App\Models\Comment;
 use App\Models\Ticket;
 use App\Models\TicketStatus;
 use App\Models\TimeEntry;
@@ -141,13 +142,13 @@ class TicketArbeitTest extends TestCase
     public function test_geloeschtes_ticket_nimmt_kommentare_und_zeiten_mit(): void
     {
         $ticket = Ticket::factory()->create();
-        \App\Models\Comment::factory()->for($ticket, 'ticket')->create();
+        Comment::factory()->for($ticket, 'ticket')->create();
         TimeEntry::factory()->for($ticket, 'ticket')->create();
 
         $id = $ticket->id;
         $ticket->delete();
 
-        $this->assertSame(0, \App\Models\Comment::where('ticket_id', $id)->count());
+        $this->assertSame(0, Comment::where('ticket_id', $id)->count());
         $this->assertSame(0, TimeEntry::where('ticket_id', $id)->count());
     }
 }

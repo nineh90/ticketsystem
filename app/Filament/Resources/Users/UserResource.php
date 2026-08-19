@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class UserResource extends Resource
 {
@@ -20,13 +21,13 @@ class UserResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
-    protected static ?string $navigationLabel = 'Nutzer';
+    protected static ?string $navigationLabel = 'Crew';
 
-    protected static ?string $modelLabel = 'Nutzer';
+    protected static ?string $modelLabel = 'Crewmitglied';
 
-    protected static ?string $pluralModelLabel = 'Nutzer';
+    protected static ?string $pluralModelLabel = 'Crew';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Verwaltung';
+    protected static string|\UnitEnum|null $navigationGroup = 'Maschinenraum';
 
     protected static ?int $navigationSort = 10;
 
@@ -35,7 +36,7 @@ class UserResource extends Resource
      * dafür UserPolicy::viewAny(). Hier steht nichts, damit es nur eine
      * Stelle gibt, an der diese Regel definiert ist.
      */
-    public static function getRecordTitle(?\Illuminate\Database\Eloquent\Model $record): ?string
+    public static function getRecordTitle(?Model $record): ?string
     {
         return $record?->name;
     }

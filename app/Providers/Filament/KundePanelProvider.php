@@ -8,6 +8,7 @@ use App\Filament\Kunde\Pages\Profil;
 use App\Filament\Kunde\Pages\Uebersicht;
 use App\Filament\Kunde\Widgets\BenachrichtigungenEinrichten;
 use App\Filament\Kunde\Widgets\MeineProjekte;
+use App\Filament\Kunde\Widgets\Messe;
 use App\Filament\Kunde\Widgets\StandDerDinge;
 use App\Filament\Kunde\Widgets\Willkommen;
 use App\Http\Middleware\PasswortWechseln;
@@ -78,6 +79,14 @@ class KundePanelProvider extends PanelProvider
             // ->passwordReset() bleibt aus, solange MAIL_MAILER auf "log"
             // steht — genau wie im internen Panel. Vergisst ein Kunde sein
             // Passwort, setzt es ein Admin unter Kunden → Zugänge neu.
+
+            // Bleibt "Nils-Digital", während das interne Panel "ND-Deck"
+            // heißt. Der Name des Werkzeugs ist unsere Angelegenheit; ein
+            // Passagier kennt die Reederei, nicht den Namen der Software.
+            //
+            // Damit steht unser Logo samt Schriftzug auf jeder Seite des
+            // Kundenbereichs in der Kopfzeile — auch dort, wo daneben das
+            // Logo des Kunden selbst erscheint (Willkommen-Widget).
             ->brandName('Nils-Digital')
             ->brandLogo(fn () => view('filament.marke'))
             ->favicon('/favicon-32x32.png')
@@ -128,6 +137,10 @@ class KundePanelProvider extends PanelProvider
                 // ist. Sie verschwindet, sobald der Kunde geantwortet hat,
                 // auch wenn die Antwort "nein" war.
                 BenachrichtigungenEinrichten::class,
+                // Die Messe steht über den Zahlen: ein Termin ist
+                // zeitkritisch, die Anliegen-Zahlen sind morgen dieselben.
+                // Die Karte erscheint nur, wenn etwas ansteht.
+                Messe::class,
                 StandDerDinge::class,
                 MeineProjekte::class,
             ])

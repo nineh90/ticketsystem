@@ -5,8 +5,11 @@ namespace App\Filament\Auth;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Auth\Pages\Login;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -35,6 +38,49 @@ class Anmeldung extends Login
      * solange es sich um einen gewöhnlichen Fehlschlag handelt.
      */
     private ?string $andererBereich = null;
+
+    /**
+     * Die Begrüßung — der einzige Ort, an dem ein "Willkommen" hingehört.
+     *
+     * Auf der Übersicht stünde es bei jedem Aufruf und wäre nach einer Woche
+     * Tapete; hier steht es genau einmal je Sitzung, nämlich in dem Moment,
+     * in dem jemand tatsächlich an Bord kommt.
+     *
+     * Die beiden Bereiche sind zwei Decks desselben Schiffs: der Kunde
+     * kommt an Bord, wir gehen auf die Brücke. Welches, entscheidet das
+     * Panel — dieselbe Klasse bedient beide Anmeldungen.
+     */
+    public function getHeading(): string|Htmlable|null
+    {
+        if (! $this->istKundenbereich()) {
+            return 'Willkommen auf der Brücke';
+        }
+
+        // Der Firmenname darf nicht umbrechen. Ohne das trennte der Browser
+        // ihn am Bindestrich — "Willkommen an Bord von Nils-" / "Digital",
+        // und ein zerrissener Name ist das Erste, was ein neuer Kunde sieht.
+        return new HtmlString(
+            'Willkommen an Bord von <span style="white-space: nowrap">'
+            .e(config('kontakt.name'))
+            .'</span>'
+        );
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return $this->istKundenbereich()
+            ? 'Schön, dass Sie da sind. Bitte melden Sie sich an.'
+            : 'Moin. Bitte melde dich an.';
+    }
+
+    /**
+     * Kunden werden gesiezt, wir untereinander nicht — deshalb hängt an
+     * dieser einen Frage jede Formulierung auf der Seite.
+     */
+    private function istKundenbereich(): bool
+    {
+        return Filament::getCurrentPanel()?->getId() === 'kunde';
+    }
 
     protected function isUserAllowedToAccessPanel(Authenticatable $user): bool
     {

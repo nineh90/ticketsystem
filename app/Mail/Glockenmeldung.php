@@ -51,6 +51,14 @@ class Glockenmeldung extends Mailable
          */
         public ?string $kundenLogo = null,
         public ?string $kundenName = null,
+        /**
+         * Ob der Empfänger ein Kundenzugang ist.
+         *
+         * Steuert einzig die Fußzeile: wo man den Versand wieder abschaltet,
+         * ist innen und außen eine andere Seite. Alles darüber — Betreff,
+         * Text, Knopf — ist für beide dasselbe, weil es dieselbe Meldung ist.
+         */
+        public bool $fuerKunden = false,
     ) {}
 
     public function envelope(): Envelope

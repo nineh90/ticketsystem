@@ -26,11 +26,42 @@ enum Betreuung: string implements HasColor, HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Interessent => 'Interessent',
-            self::Aktiv => 'In Betreuung',
-            self::Ruhend => 'Ruhend',
-            self::Beendet => 'Beendet',
+            self::Interessent => 'Am Kai',
+            self::Aktiv => 'An Bord',
+            self::Ruhend => 'Vor Anker',
+            self::Beendet => 'Von Bord',
         };
+    }
+
+    /**
+     * Was der Stand bedeutet — als Kurzhinweis am Formular und als Tooltip
+     * an der Spalte.
+     *
+     * Ohne sie wäre "Vor Anker" ein hübsches Wort, bei dem jeder Neue raten
+     * müsste, ob es pausiert oder beendet heißt. Ein Bild, das man erklären
+     * muss, ist nur dann brauchbar, wenn die Erklärung danebensteht.
+     */
+    public function beschreibung(): string
+    {
+        return match ($this) {
+            self::Interessent => 'Interessent — der Kontakt steht, an Bord ist er noch nicht.',
+            self::Aktiv => 'In Betreuung. Fährt mit.',
+            self::Ruhend => 'Pausiert. Die Verbindung besteht, sie bewegt sich gerade nur nicht.',
+            self::Beendet => 'Beendet. Von Bord gegangen.',
+        };
+    }
+
+    /**
+     * Alle vier in einer Zeile, als Legende unter der Auswahl.
+     *
+     * Die alten Wörter stehen bewusst als Übersetzung dabei: wer "Ruhend"
+     * im Kopf hat, findet damit sofort wieder, was er sucht.
+     */
+    public static function legende(): string
+    {
+        return collect(self::cases())
+            ->map(fn (self $stand) => $stand->getLabel().' = '.str($stand->beschreibung())->before(' —')->before('.')->toString())
+            ->join(' · ');
     }
 
     public function getColor(): string

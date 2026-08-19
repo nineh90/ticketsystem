@@ -30,9 +30,23 @@ class Willkommen extends Widget
         return auth()->user()?->customer;
     }
 
-    /** Nur der Vorname — "Guten Tag, Frau Belmar" wäre steif, der volle Name lang. */
+    /** Nur der Vorname — "Moin, Frau Belmar" wäre steif, der volle Name lang. */
     public function getVorname(): string
     {
         return str(auth()->user()->name)->before(' ')->toString();
+    }
+
+    /**
+     * Unser Name in der Unterzeile — aus der Konfiguration, nicht fest
+     * eingetippt.
+     *
+     * Er steht hier ein zweites Mal, obwohl er schon in der Kopfzeile des
+     * Panels prangt: das Logo des Kunden ist auf dieser Seite das größte
+     * Bild, und ohne diese Zeile läse sich der Bereich wie seiner allein.
+     * Er ist bei uns an Bord, und das darf dastehen.
+     */
+    public function getReederei(): string
+    {
+        return (string) config('kontakt.name');
     }
 }

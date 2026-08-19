@@ -6,6 +6,7 @@ use App\Filament\Auth\Anmeldung;
 use App\Filament\AvatarProviders\InitialenAvatar;
 use App\Filament\Pages\Betrieb;
 use App\Filament\Pages\MeinBereich;
+use App\Filament\Pages\Profil;
 use App\Http\Middleware\PasswortWechseln;
 use App\Http\Middleware\SicherheitsHeader;
 use Filament\Actions\Action;
@@ -42,14 +43,25 @@ class AdminPanelProvider extends PanelProvider
             // Eigene Profilseite: jeder ändert Name und Passwort selbst.
             // Ohne sie müsste ein Admin jedes Passwort vergeben — es ginge
             // also durch fremde Hände und wäre nie nur dem Nutzer bekannt.
-            ->profile(isSimple: false)
+            //
+            // Seit dem 19.08. eine eigene Klasse statt Filaments Vorlage:
+            // dort wählt jeder auch seine Mail-Themen selbst. Vorher stand
+            // das ausschließlich unter Maschinenraum → Crew, also an der
+            // Stelle, an der einer für einen anderen entscheidet.
+            ->profile(Profil::class, isSimple: false)
             // ->passwordReset() bleibt aus, solange MAIL_MAILER auf "log"
             // steht: der Knopf verschickt eine Mail, die nirgends ankommt,
             // und der Nutzer wartet auf etwas, das nie kommt. Sobald der
             // Strato-SMTP hinterlegt ist, hier einkommentieren. Bis dahin
             // setzt ein Admin ein vergessenes Passwort in der
             // Nutzerverwaltung neu.
-            ->brandName('Nils-Digital')
+
+            // "ND-Deck" statt "Nils-Digital": das hier ist das Werkzeug, und
+            // wer damit arbeitet, weiß, in wessen Betrieb er sitzt. Der Name
+            // steht damit auch im Browser-Titel jeder Seite.
+            // Der Kundenbereich bleibt bei "Nils-Digital" — siehe
+            // KundePanelProvider.
+            ->brandName('ND-Deck')
             // Die Glocke. Sie kam mit dem Kundenbereich: bis dahin entstand
             // jede Änderung durch jemanden, der ohnehin gerade davorsaß.
             // Ein Kundenanliegen entsteht dagegen, während niemand hinschaut,
@@ -59,7 +71,7 @@ class AdminPanelProvider extends PanelProvider
             // ihn, damit sie nicht auseinanderlaufen.
             ->databaseNotificationsPolling(config('benachrichtigungen.glocke_takt'))
             // Logo UND Schriftzug: Filament zeigt sonst nur eines von beiden.
-            ->brandLogo(fn () => view('filament.marke'))
+            ->brandLogo(fn () => view('filament.marke-intern'))
             // Bewusst ein wurzelrelativer Pfad statt asset(): Provider
             // laufen VOR der Middleware, trustProxies hat dort also noch
             // nicht gegriffen, und asset() baute die Adresse mit http://

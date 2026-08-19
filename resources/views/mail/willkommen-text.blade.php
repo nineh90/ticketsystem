@@ -1,8 +1,8 @@
-NILS-DIGITAL · TICKETSYSTEM
+NILS-DIGITAL · ND-DECK
 
-Das hat geklappt
+Willkommen an Bord
 
-Hallo {{ $name }}, Ihre Adresse {{ $adresse }} ist bestätigt. Diese Mail ist
+Moin {{ $name }}, Ihre Adresse {{ $adresse }} ist bestätigt. Diese Mail ist
 der Beweis, dass der Weg funktioniert — ab jetzt hören Sie von uns, wenn sich
 bei Ihren Anliegen etwas tut.
 @if ($themen !== [])

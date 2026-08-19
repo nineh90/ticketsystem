@@ -144,7 +144,7 @@ class Unterhaltung extends Model
         if (! $this->istIntern()) {
             // Der Kunde sieht auf seiner Seite nicht seinen eigenen Namen,
             // sondern uns — und zwar unter dem Namen, unter dem er uns kennt.
-            // config('app.name') wäre "Nils-Digital Ticketsystem" und damit
+            // config('app.name') wäre "ND-Deck" und damit
             // der Name eines Werkzeugs, nicht der eines Ansprechpartners.
             return $nutzer->istKunde()
                 ? config('kontakt.name')
