@@ -91,8 +91,8 @@ class ZeitenVerteilung extends ChartWidget
     public function getHeading(): ?string
     {
         return $this->alsAdmin()
-            ? 'Erfasste Zeit je Kunde'
-            : 'Erfasste Zeit je Projekt';
+            ? 'Logbuch je Kunde'
+            : 'Logbuch je Projekt';
     }
 
     /** @return array<string, string> */

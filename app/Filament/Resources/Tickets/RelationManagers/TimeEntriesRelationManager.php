@@ -27,7 +27,13 @@ class TimeEntriesRelationManager extends RelationManager
 
     protected static string $relationship = 'timeEntries';
 
-    protected static ?string $title = 'Zeiten';
+    // "Logbuch" und nicht "Zeiten": an Bord steht darin, wer wann wie
+    // lange was gemacht hat. Das ist keine Metapher, das ist die Sache
+    // selbst — und es beschreibt sie besser als "Zeiterfassung".
+    //
+    // Kunden sehen davon nichts (TimeEntry::sichtbarFuer gibt ihnen
+    // 1 = 0), das Wort bleibt also unter uns.
+    protected static ?string $title = 'Logbuch';
 
     /** Siehe CommentsRelationManager: sonst fehlen Start, Stopp und Nachtrag. */
     public function isReadOnly(): bool
@@ -135,7 +141,7 @@ class TimeEntriesRelationManager extends RelationManager
             ->defaultSort('gestartet_am', 'desc')
             ->headerActions([
                 Action::make('starten')
-                    ->label('Zeit starten')
+                    ->label('Uhr starten')
                     ->icon('heroicon-o-play')
                     ->color('primary')
                     // Ausgeblendet nur dann, wenn die eigene Uhr schon an
@@ -188,7 +194,7 @@ class TimeEntriesRelationManager extends RelationManager
                         ]);
 
                         Notification::make()
-                            ->title('Zeiterfassung läuft')
+                            ->title('Die Uhr läuft')
                             ->body($vorher === null
                                 ? null
                                 : $vorher->ticket?->kennung().' beendet mit '
@@ -198,7 +204,7 @@ class TimeEntriesRelationManager extends RelationManager
                     }),
 
                 Action::make('stoppen')
-                    ->label('Zeit stoppen')
+                    ->label('Uhr stoppen')
                     ->icon('heroicon-o-stop')
                     ->color('warning')
                     ->visible(fn () => $this->laufendeZeit() !== null)
@@ -224,7 +230,7 @@ class TimeEntriesRelationManager extends RelationManager
                     }),
 
                 CreateAction::make()
-                    ->label('Zeit nachtragen')
+                    ->label('Nachtragen')
                     ->icon('heroicon-o-plus')
                     ->color('gray')
                     ->mutateDataUsing(function (array $data): array {

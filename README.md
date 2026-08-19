@@ -245,6 +245,7 @@ nennt, übersetzt bei jedem Anruf im Kopf.
 | Kunden | Passagiere | sie fahren mit |
 | Abrechnung | Zahlmeister | führt an Bord die Kasse |
 | Kanban | Deck | „das Deck schrubben" heißt Tickets abarbeiten |
+| Zeiterfassung | Logbuch | an Bord steht darin, wer wann wie lange was gemacht hat |
 | Verwaltung | Maschinenraum | wo die Maschine eingestellt wird |
 | Nutzer | Crew | kürzer als Mannschaft und geschlechtsneutral |
 
@@ -253,6 +254,17 @@ Erklärung bei sich (`Betreuung::beschreibung()`, als Legende unter der
 Auswahl und als Tooltip an der Spalte): **Am Kai** = Interessent, **An Bord**
 = in Betreuung, **Vor Anker** = pausiert, **Von Bord** = beendet. Nur die
 Beschriftung — die Werte in der Datenbank sind unverändert.
+
+**Beim Passagier heißt der Zeitstrahl „Ihr Reiseplan"**, seine Punkte sind
+*Etappen*. Intern bleibt der Reiter am Projekt *Meilensteine*: dort planen
+wir, dort steht auch die Vorlagenverwaltung. Der Kunde liest nicht unsere
+Planung, sondern wohin die Fahrt geht.
+
+**„Logbuch" ist der Ort, „erfasste Zeit" die Zahl darin.** Deshalb heißt der
+Reiter am Ticket Logbuch und das Diagramm „Logbuch je Kunde", die Kennzahl
+darunter aber weiter „Erfasste Zeit" — eine Menge ist kein Ort. Kunden sehen
+davon ohnehin nichts (`TimeEntry::sichtbarFuer` gibt ihnen `1 = 0`), das Wort
+bleibt unter uns.
 
 **Der Kundenbereich heißt weiter „Nils-Digital".** Der Name des Werkzeugs ist
 unsere Angelegenheit; ein Passagier kennt die Reederei. Deshalb steht in

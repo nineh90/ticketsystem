@@ -233,7 +233,7 @@ class DashboardTest extends TestCase
         Livewire::actingAs($admin)
             ->test(ZeitenVerteilung::class)
             ->assertSuccessful()
-            ->assertSee('Erfasste Zeit je Kunde')
+            ->assertSee('Logbuch je Kunde')
             ->assertSee('Vielarbeiter')
             ->assertSee('Wenigarbeiter')
             ->assertDontSee('Ohnezeit');
@@ -273,7 +273,7 @@ class DashboardTest extends TestCase
         Livewire::actingAs($mitarbeiter)
             ->test(ZeitenVerteilung::class)
             ->assertSuccessful()
-            ->assertSee('Erfasste Zeit je Projekt')
+            ->assertSee('Logbuch je Projekt')
             ->assertSee('Mein Projekt')
             ->assertDontSee('Fremdes Projekt');
 

@@ -197,7 +197,7 @@ class KachelnFuehrenZurListeTest extends TestCase
             ->values()
             ->all();
 
-        $this->assertSame(['Meine Zeit diese Woche', 'Zeit heute'], $ohneAdresse);
+        $this->assertSame(['Mein Logbuch diese Woche', 'Zeit heute'], $ohneAdresse);
     }
 
     public function test_kachel_ohne_zuordnung_verlinkt_nicht_ins_leere(): void

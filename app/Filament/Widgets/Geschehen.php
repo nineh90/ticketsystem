@@ -127,7 +127,7 @@ class Geschehen extends Widget
             'alles' => 'Alles',
             Ereignis::KOMMENTAR => 'Kommentare',
             Ereignis::AENDERUNG => 'Änderungen',
-            Ereignis::ZEIT => 'Zeiten',
+            Ereignis::ZEIT => 'Logbuch',
             Ereignis::ANHANG => 'Anhänge',
             Ereignis::DOKUMENT => 'Angebote',
         ];

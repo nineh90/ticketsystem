@@ -327,7 +327,7 @@ class Ereignisstrom
                 ticket: $ticket,
                 nutzer: $nutzer,
                 was: $quelle->laeuft()
-                    ? 'hat die Zeiterfassung gestartet'
+                    ? 'hat die Uhr gestartet'
                     : 'hat Zeit erfasst: '.self::alsStunden((int) $quelle->minuten),
                 zeilen: array_filter([$quelle->beschreibung]),
             ),

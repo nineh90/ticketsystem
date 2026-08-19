@@ -29,7 +29,7 @@ class KundeZeitverlauf extends ChartWidget
 
     protected static ?int $sort = 2;
 
-    protected ?string $heading = 'Erfasste Zeit je Monat';
+    protected ?string $heading = 'Logbuch je Monat';
 
     protected ?string $description = 'Die letzten zwölf Monate.';
 

@@ -97,8 +97,12 @@ class ViewProjekt extends ViewRecord
                 ])
                 ->visible(fn () => filled($this->record->kunden_info)),
 
-            Section::make('Der Weg dorthin')
-                ->description('Die Schritte bis zur fertigen Fassung.')
+            // "Reiseplan" und nicht "Meilensteine": das Wort steht beim
+            // Passagier, und ein Passagier bekommt einen Reiseplan. Intern
+            // heißt der Reiter weiter Meilensteine — dort planen wir, hier
+            // liest jemand, wohin die Fahrt geht.
+            Section::make('Ihr Reiseplan')
+                ->description('Die Etappen bis zur fertigen Fassung.')
                 ->schema([
                     View::make('filament.kunde.meilensteine')
                         ->viewData(fn () => [

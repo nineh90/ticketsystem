@@ -11,7 +11,7 @@
         heading="Läuft gerade"
         :description="$auffaellig > 0
             ? $auffaellig . ' ' . ($auffaellig === 1 ? 'Uhr läuft' : 'Uhren laufen') . ' auffällig lange — vermutlich vergessen'
-            : 'Zeiterfassungen, die in diesem Moment laufen'"
+            : 'Uhren, die in diesem Moment laufen'"
     >
         {{-- 30 Sekunden: die Dauer rechts soll mitlaufen, ohne dass jemand
              neu lädt. Häufiger wäre Unfug — die Anzeige geht in Minuten. --}}

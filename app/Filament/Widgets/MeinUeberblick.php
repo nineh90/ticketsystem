@@ -107,7 +107,7 @@ class MeinUeberblick extends StatsOverviewWidget
             // eigene Liste, sie hängen an den Tickets. Eine Kachel, die
             // irgendwohin führt, weil die beiden daneben es auch tun, ist
             // schlechter als eine, die stehen bleibt.
-            Stat::make('Meine Zeit diese Woche', Dauer::alsStunden((int) $minutenDieseWoche))
+            Stat::make('Mein Logbuch diese Woche', Dauer::alsStunden((int) $minutenDieseWoche))
                 ->description('seit Montag erfasst')
                 ->descriptionIcon('heroicon-m-clock')
                 ->color('primary'),

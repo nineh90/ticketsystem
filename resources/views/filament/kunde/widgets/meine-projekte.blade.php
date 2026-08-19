@@ -84,7 +84,7 @@
                             <div class="mt-4">
                                 <div class="flex items-baseline justify-between text-xs">
                                     <span class="text-gray-500 dark:text-gray-400">
-                                        {{ $projekt->meilensteine_erledigt }} von {{ $projekt->meilensteine_gesamt }} Schritten
+                                        {{ $projekt->meilensteine_erledigt }} von {{ $projekt->meilensteine_gesamt }} Etappen
                                     </span>
                                     <span class="font-medium tabular-nums text-gray-700 dark:text-gray-200">
                                         {{ $anteil }} %

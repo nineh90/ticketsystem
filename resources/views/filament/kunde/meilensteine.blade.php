@@ -1,7 +1,7 @@
 {{--
-    Der Zeitstrahl eines Projekts.
+    Der Reiseplan eines Projekts — die Etappen, die der Kunde sieht.
 
-    Senkrecht und nicht waagerecht: die Schritte haben ungleich lange Namen
+    Senkrecht und nicht waagerecht: die Etappen haben ungleich lange Namen
     und teils eine Erklärung darunter. Waagerecht nebeneinander wären das
     fünf verschieden hohe Spalten, die auf einem Telefon ohnehin umbrechen.
 
@@ -17,7 +17,7 @@
     <div class="mb-5">
         <div class="flex items-baseline justify-between text-sm">
             <span class="text-gray-500 dark:text-gray-400">
-                {{ $meilensteine->whereNotNull('erledigt_at')->count() }} von {{ $meilensteine->count() }} Schritten erledigt
+                {{ $meilensteine->whereNotNull('erledigt_at')->count() }} von {{ $meilensteine->count() }} Etappen geschafft
             </span>
             <span class="font-semibold tabular-nums text-gray-950 dark:text-white">
                 {{ $anteil }} %

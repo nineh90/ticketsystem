@@ -5,7 +5,7 @@
     Tabellenkopf ERSETZT in Filament den eingebauten — samt Überschrift und
     samt der Knöpfe "Zeit starten", "Zeit stoppen" und "Zeit nachtragen"
     (vendor/filament/tables/resources/views/index.blade.php: @if ($header)).
-    Ohne die Zeilen unten wäre die Zeiterfassung von hier aus nicht mehr zu
+    Ohne die Zeilen unten wäre das Logbuch von hier aus nicht mehr zu
     bedienen. Deshalb steht hier beides: erst die laufenden Uhren, darunter
     der gewohnte Kopf.
 
