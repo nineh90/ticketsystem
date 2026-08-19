@@ -244,6 +244,7 @@ nennt, übersetzt bei jedem Anruf im Kopf.
 | Nachrichten | Funk | rein und raus, an keine Akte gebunden |
 | Kunden | Passagiere | sie fahren mit |
 | Abrechnung | Zahlmeister | führt an Bord die Kasse |
+| Kanban | Deck | „das Deck schrubben" heißt Tickets abarbeiten |
 | Verwaltung | Maschinenraum | wo die Maschine eingestellt wird |
 | Nutzer | Crew | kürzer als Mannschaft und geschlechtsneutral |
 
@@ -318,7 +319,7 @@ Die Ticketliste hält Filter, Suche und Sortierung über die Sitzung
 (`persistFiltersInSession()` und Geschwister in `TicketsTable`), den aktiven
 Reiter hält `ListTickets` selbst. Wer nach „Kunde: Landhaus, Reiter: Meine" ein
 Ticket öffnet und über die Navigation zurückkommt, findet seinen Stand wieder.
-Dasselbe gilt für die Vorauswahl im Kanban.
+Dasselbe gilt für die Vorauswahl auf dem Deck.
 
 Die Sitzung, nicht die Adresse: ein Filter, der in der URL klebt, wandert in
 Lesezeichen und weitergeschickte Links.
@@ -358,7 +359,13 @@ Daraus folgt, was sonst weh täte:
 umschrieben zu werden — aus „Grüße" würde „grusse". Die n8n-Schnittstelle gibt
 dieselbe Adresse zurück (`docs/n8n.md`), weil sie von dort in Mails wandert.
 
-## Kanban
+## Das Deck
+
+Angezeigt heißt das Kanban-Brett **Deck** — der Name kam aus dem Gebrauch
+("ich geh mal das Deck schrubben" heißt Tickets abarbeiten). Klasse und
+Adresse bleiben `Kanban` und `/kanban`: das ist die Bauart, und die ändert
+sich nicht mit der Beschriftung. Genauso wie bei *Brücke* (`Betrieb`) und
+*Meine Wache* (`MeinBereich`).
 
 Das Brett ist so hoch wie der Bildschirm und keinen Pixel höher; jede Spalte
 scrollt für sich. Vorher wuchs es mit der längsten Spalte — bei

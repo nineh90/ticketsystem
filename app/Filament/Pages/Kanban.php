@@ -29,9 +29,22 @@ class Kanban extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedViewColumns;
 
-    protected static ?string $navigationLabel = 'Kanban';
+    /**
+     * "Deck" und nicht "Kanban".
+     *
+     * Der Name kam aus dem Gebrauch: "ich geh mal das Deck schrubben" heisst
+     * Tickets abarbeiten. Ein Wort, das im Betrieb von selbst entsteht, ist
+     * das bessere — "Kanban" beschreibt die Bauart des Bretts und nicht das,
+     * was man daran tut.
+     *
+     * Die Klasse heisst weiter Kanban und die Adresse bleibt /kanban: das ist
+     * die Bauart, und die aendert sich nicht mit der Beschriftung. Genauso
+     * steht es bei Betrieb (angezeigt als "Bruecke") und MeinBereich
+     * ("Meine Wache").
+     */
+    protected static ?string $navigationLabel = 'Deck';
 
-    protected static ?string $title = 'Kanban';
+    protected static ?string $title = 'Deck';
 
     protected static ?int $navigationSort = 45;
 
