@@ -89,10 +89,14 @@ class Wochenplan
                 zeitpunkt: $treffen->beginnt_am,
                 titel: $treffen->titel,
                 kunde: $treffen->customer?->name,
-                url: $treffen->customer_id
-                    ? CustomerResource::getUrl('view', ['record' => $treffen->customer_id])
-                    : null,
-                zusatz: $treffen->kunden_sichtbar ? null : 'noch nicht eingeladen',
+                // Ohne Kunden führt der Weg auf die Messe — eine Akte gibt
+                // es dafür nicht.
+                url: Messe::urlIntern($treffen),
+                zusatz: match (true) {
+                    $treffen->istIntern() => 'nur wir',
+                    ! $treffen->kunden_sichtbar => 'noch nicht eingeladen',
+                    default => null,
+                },
             ));
     }
 

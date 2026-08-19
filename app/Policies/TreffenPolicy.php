@@ -18,8 +18,20 @@ class TreffenPolicy
     public function view(User $user, Treffen $treffen): bool
     {
         if ($user->istKunde()) {
-            return $treffen->kunden_sichtbar
+            // Ein internes Treffen hat keine customer_id. Der Vergleich
+            // trifft auf null nie zu, der Fall ist damit dicht — die
+            // ausdrückliche Prüfung steht trotzdem da, weil "ergibt sich von
+            // selbst" die Begründung ist, die eine spätere Änderung aushebelt.
+            return ! $treffen->istIntern()
+                && $treffen->kunden_sichtbar
                 && $treffen->customer_id === $user->customer_id;
+        }
+
+        // Ein internes Treffen gehört seiner Crew — und Administratoren, die
+        // ohnehin alles sehen.
+        if ($treffen->istIntern()) {
+            return $user->istAdmin()
+                || $treffen->crew()->whereKey($user->getKey())->exists();
         }
 
         return $user->can('view', $treffen->customer);
@@ -37,7 +49,13 @@ class TreffenPolicy
 
     public function update(User $user, Treffen $treffen): bool
     {
-        return ! $user->istKunde() && $user->can('view', $treffen->customer);
+        if ($user->istKunde()) {
+            return false;
+        }
+
+        return $treffen->istIntern()
+            ? $this->view($user, $treffen)
+            : $user->can('view', $treffen->customer);
     }
 
     public function delete(User $user, Treffen $treffen): bool

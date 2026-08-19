@@ -4,12 +4,15 @@ namespace Tests\Feature;
 
 use App\Enums\Rolle;
 use App\Filament\Kunde\Widgets\Messe as MesseWidget;
+use App\Filament\Resources\Treffen\Pages\ListTreffen;
+use App\Filament\Resources\Treffen\TreffenResource;
 use App\Filament\Widgets\MeineTreffen;
 use App\Models\Customer;
 use App\Models\Treffen;
 use App\Models\User;
 use App\Support\Kalender;
 use App\Support\Messe;
+use App\Support\Wochenplan;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -454,5 +457,189 @@ class MesseTest extends TestCase
         Livewire::test(MeineTreffen::class)
             ->assertOk()
             ->assertDontSee('Meine Treffen');
+    }
+
+    // ------------------------------------------------- Treffen ohne Kunden
+
+    /**
+     * Der Fall, um den es geht: eine Team-Besprechung darf bei keinem Kunden
+     * auftauchen. Er ergibt sich aus dem Vergleich auf customer_id von
+     * selbst — und steht trotzdem als Test da, weil "ergibt sich von selbst"
+     * die Begründung ist, die eine spätere Änderung aushebelt.
+     */
+    public function test_interne_treffen_bleiben_intern(): void
+    {
+        $kunde = Customer::factory()->create();
+        $zugang = $this->kundenzugang($kunde);
+
+        // Ausdrücklich mit gesetztem Freigabe-Schalter: auch der darf ein
+        // Treffen ohne Kunden nicht nach außen tragen.
+        Treffen::factory()->create([
+            'customer_id' => null,
+            'kunden_sichtbar' => true,
+            'titel' => 'Wochenplanung',
+        ]);
+
+        $this->assertSame(0, Treffen::query()->sichtbarFuer($zugang)->count());
+    }
+
+    public function test_admin_sieht_interne_treffen(): void
+    {
+        $admin = User::factory()->create(['rolle' => Rolle::Admin, 'panel_zugang' => true]);
+
+        Treffen::factory()->create(['customer_id' => null, 'titel' => 'Retro']);
+
+        $this->assertSame(1, Treffen::query()->sichtbarFuer($admin)->count());
+    }
+
+    /** Ohne die Crew-Regel wäre eine Besprechung für den unsichtbar, der darin sitzt. */
+    public function test_mitarbeiter_sieht_interne_treffen_nur_wenn_er_dabei_ist(): void
+    {
+        $kevin = $this->mitarbeiter();
+        $nils = $this->mitarbeiter('Nils');
+
+        $meins = Treffen::factory()->create(['customer_id' => null, 'titel' => 'Mit mir']);
+        $meins->crew()->attach($kevin);
+
+        $ohneMich = Treffen::factory()->create(['customer_id' => null, 'titel' => 'Ohne mich']);
+        $ohneMich->crew()->attach($nils);
+
+        $sichtbar = Treffen::query()->sichtbarFuer($kevin)->pluck('titel');
+
+        $this->assertContains('Mit mir', $sichtbar);
+        $this->assertNotContains('Ohne mich', $sichtbar);
+    }
+
+    public function test_kunde_kommt_nicht_an_den_kalender_eines_internen_treffens(): void
+    {
+        $kunde = Customer::factory()->create();
+        $zugang = $this->kundenzugang($kunde);
+
+        $treffen = Treffen::factory()->create([
+            'customer_id' => null,
+            'kunden_sichtbar' => true,
+        ]);
+
+        $this->actingAs($zugang, 'kunde')
+            ->get(route('kunde.treffen.kalender', $treffen))
+            ->assertForbidden();
+    }
+
+    /** Ein internes Treffen hat keinen Kunden, den man benachrichtigen könnte. */
+    public function test_internes_treffen_meldet_sich_bei_keinem_kunden(): void
+    {
+        $kunde = Customer::factory()->create();
+        $zugang = $this->kundenzugang($kunde);
+
+        Treffen::factory()->create(['customer_id' => null, 'kunden_sichtbar' => true]);
+
+        $this->assertSame(0, $zugang->fresh()->notifications()->count());
+    }
+
+    public function test_interne_treffen_stehen_in_der_wochenvorschau(): void
+    {
+        $kevin = $this->mitarbeiter();
+
+        $treffen = Treffen::factory()->create([
+            'customer_id' => null,
+            'titel' => 'Wochenplanung',
+            'beginnt_am' => now()->addDays(2),
+        ]);
+        $treffen->crew()->attach($kevin);
+
+        $termine = Wochenplan::fuer($kevin);
+
+        $this->assertSame(1, $termine->count());
+        $this->assertSame('nur wir', $termine->first()->zusatz);
+    }
+
+    // ------------------------------------------------ Anlegen ueber die Seite
+
+    /**
+     * Der Weg durch die Oberflaeche, nicht nur durchs Modell.
+     *
+     * Der Grund fuer diesen Test ist ein Fehler, der genau hier steckte und
+     * durch keinen Modelltest aufgefallen waere: Filament loest die
+     * Parameter einer Closure ueber ihren **Namen** auf. Die Formulardaten
+     * heissen $data — mit $daten scheiterte das Anlegen mit einer
+     * BindingResolutionException, und zwar an beiden Stellen, an denen man
+     * ein Treffen ansetzt.
+     */
+    public function test_treffen_ohne_kunden_ueber_die_seite_anlegen(): void
+    {
+        $nils = $this->mitarbeiter('Nils');
+        $kevin = $this->mitarbeiter('Kevin');
+
+        $this->actingAs($nils);
+        Filament::setCurrentPanel('admin');
+
+        Livewire::test(ListTreffen::class)
+            ->callAction('create', data: [
+                'titel' => 'Wochenplanung',
+                'customer_id' => null,
+                'beginnt_am' => now()->addDays(2)->setTime(9, 0)->format('Y-m-d H:i:s'),
+                'dauer_minuten' => 30,
+                'crew_ids' => [$nils->getKey(), $kevin->getKey()],
+            ])
+            ->assertHasNoActionErrors();
+
+        $treffen = Treffen::query()->where('titel', 'Wochenplanung')->firstOrFail();
+
+        $this->assertTrue($treffen->istIntern());
+        $this->assertSame($nils->getKey(), $treffen->erstellt_von);
+        $this->assertEqualsCanonicalizing(
+            [$nils->getKey(), $kevin->getKey()],
+            $treffen->crew()->pluck('users.id')->all(),
+        );
+
+        // Kevin wurde dazugenommen und erfaehrt es; Nils hat das Formular
+        // selbst ausgefuellt und bekommt nichts.
+        $this->assertSame(1, $kevin->fresh()->notifications()->count());
+        $this->assertSame(0, $nils->fresh()->notifications()->count());
+    }
+
+    public function test_treffen_mit_kunden_ueber_die_seite_anlegen(): void
+    {
+        $nils = $this->mitarbeiter('Nils');
+        $kunde = Customer::factory()->create();
+        $zugang = $this->kundenzugang($kunde);
+
+        // Ohne Zuordnung steht der Kunde gar nicht erst in seiner Auswahl —
+        // die Liste kommt aus Customer::sichtbarFuer. Das ist richtig so und
+        // war der Grund, warum dieser Test beim ersten Lauf abgewiesen wurde.
+        $kunde->mitarbeiter()->attach($nils);
+
+        $this->actingAs($nils);
+        Filament::setCurrentPanel('admin');
+
+        Livewire::test(ListTreffen::class)
+            ->callAction('create', data: [
+                'titel' => 'Quartalsgespraech',
+                'customer_id' => $kunde->getKey(),
+                'beginnt_am' => now()->addDays(3)->setTime(14, 0)->format('Y-m-d H:i:s'),
+                'dauer_minuten' => 45,
+                'kunden_sichtbar' => true,
+                'crew_ids' => [$nils->getKey()],
+            ])
+            ->assertHasNoActionErrors();
+
+        $treffen = Treffen::query()->where('titel', 'Quartalsgespraech')->firstOrFail();
+
+        $this->assertFalse($treffen->istIntern());
+        $this->assertTrue($treffen->kunden_sichtbar);
+
+        // Freigegeben heisst eingeladen.
+        $this->assertSame(1, $zugang->fresh()->notifications()->count());
+    }
+
+    /** Der Kundenzugang hat auf dieser Seite nichts verloren. */
+    public function test_kunde_kommt_nicht_auf_die_messe_seite(): void
+    {
+        $zugang = $this->kundenzugang(Customer::factory()->create());
+
+        $this->actingAs($zugang, 'kunde');
+        Filament::setCurrentPanel('kunde');
+
+        $this->assertFalse(TreffenResource::canAccess());
     }
 }

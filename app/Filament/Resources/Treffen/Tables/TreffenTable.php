@@ -1,64 +1,35 @@
 <?php
 
-namespace App\Filament\Resources\Customers\RelationManagers;
+namespace App\Filament\Resources\Treffen\Tables;
 
-use App\Filament\Formulare\Treffenformular;
 use App\Models\Treffen;
 use App\Support\Messe;
 use Filament\Actions\Action;
-use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
-use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 
 /**
- * Die Messe — Treffen mit diesem Kunden.
+ * Die Liste aller Treffen.
  *
- * An Bord ist die Messe der Raum, in dem man zusammenkommt. Hier steht, wann
- * das als Nächstes ist und wo: die Videokonferenz bleibt bei Google Meet
- * oder wo auch immer, die Adresse dorthin steht am Treffen.
- *
- * Der Termin lebte bisher in einer Mail und in zwei Kalendern. Das reicht,
- * solange beide Seiten die Mail wiederfinden — und genau daran hakt es jedes
- * Mal.
+ * Vorgabe ist "was noch kommt", aufsteigend — ein Kalender, der mit dem
+ * ältesten Termin aufmacht, beantwortet die falsche Frage. Vergangenes ist
+ * über den Filter erreichbar und nicht gelöscht: woran man im Mai gesessen
+ * hat, ist im August die Antwort auf "haben wir darüber schon gesprochen".
  */
-class MesseRelationManager extends RelationManager
+class TreffenTable
 {
-    protected static string $relationship = 'treffen';
-
-    protected static ?string $title = 'Messe';
-
-    protected static ?string $modelLabel = 'Treffen';
-
-    protected static ?string $pluralModelLabel = 'Treffen';
-
-    protected static string|\BackedEnum|null $icon = 'heroicon-o-video-camera';
-
-    public function form(Schema $schema): Schema
-    {
-        return $schema
-            ->columns(2)
-            // Dieselben Felder wie auf der Messe-Seite, nur ohne Kundenwahl:
-            // hier steht der Kunde über die Beziehung schon fest.
-            ->components(Treffenformular::felder(
-                mitKundenwahl: false,
-                customerId: $this->getOwnerRecord()->getKey(),
-            ));
-    }
-
-    public function table(Table $table): Table
+    public static function configure(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute('titel')
-            // Das nächste zuerst. Ein Kalender, der mit dem ältesten Termin
-            // aufmacht, beantwortet die falsche Frage.
-            ->defaultSort('beginnt_am', 'desc')
+            ->defaultSort('beginnt_am')
             ->columns([
                 TextColumn::make('beginnt_am')
                     ->label('Wann')
@@ -77,14 +48,19 @@ class MesseRelationManager extends RelationManager
                 TextColumn::make('titel')
                     ->label('Worum')
                     ->weight('medium')
+                    ->searchable()
                     ->description(fn (Treffen $record) => $record->project?->name)
                     ->wrap(),
 
-                TextColumn::make('dauer_minuten')
-                    ->label('Dauer')
-                    ->suffix(' Min.')
-                    ->alignEnd()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                // Der Platzhalter ist hier die Information: kein Kunde heißt
+                // Team-Besprechung, nicht "fehlt noch".
+                TextColumn::make('customer.name')
+                    ->label('Mit')
+                    ->placeholder('nur wir')
+                    ->badge()
+                    ->color(fn (Treffen $record) => $record->istIntern() ? 'gray' : 'primary')
+                    ->searchable()
+                    ->sortable(),
 
                 TextColumn::make('crew.name')
                     ->label('Dabei')
@@ -92,36 +68,36 @@ class MesseRelationManager extends RelationManager
                     ->separator(',')
                     ->placeholder('niemand'),
 
+                TextColumn::make('dauer_minuten')
+                    ->label('Dauer')
+                    ->suffix(' Min.')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 IconColumn::make('kunden_sichtbar')
                     ->label('Eingeladen')
-                    ->boolean(),
-
-                TextColumn::make('erstellerIn.name')
-                    ->label('Angelegt von')
+                    ->boolean()
+                    // Ohne Kunden gibt es niemanden einzuladen — ein Kreuz
+                    // dort läse sich wie ein Versäumnis.
                     ->placeholder('—')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->state(fn (Treffen $record) => $record->istIntern() ? null : $record->kunden_sichtbar),
             ])
-            ->headerActions([
-                CreateAction::make()
-                    ->label('Treffen ansetzen')
-                    ->mutateDataUsing(function (array $data): array {
-                        $data['erstellt_von'] = auth()->id();
+            ->filters([
+                Filter::make('bevorstehend')
+                    ->label('Nur was noch kommt')
+                    ->default()
+                    ->query(fn (Builder $query) => $query->bevorstehend()),
 
-                        return $data;
-                    })
-                    // Die Crew wird nach dem Anlegen gesetzt und nicht über
-                    // Filaments ->relationship(): nur so weiß Messe, WER neu
-                    // dazugekommen ist, und meldet sich nur bei denen.
-                    ->using(function (array $data, MesseRelationManager $livewire): Treffen {
-                        $crew = Arr::pull($data, 'crew_ids', []);
-
-                        /** @var Treffen $treffen */
-                        $treffen = $livewire->getRelationship()->create($data);
-
-                        Messe::crewSetzen($treffen, $crew);
-
-                        return $treffen;
-                    }),
+                TernaryFilter::make('customer_id')
+                    ->label('Art')
+                    ->placeholder('Alle')
+                    ->trueLabel('Mit Kunden')
+                    ->falseLabel('Nur intern')
+                    ->queries(
+                        true: fn (Builder $q) => $q->whereNotNull('customer_id'),
+                        false: fn (Builder $q) => $q->whereNull('customer_id'),
+                        blank: fn (Builder $q) => $q,
+                    ),
             ])
             ->recordActions([
                 Action::make('anBord')
@@ -156,12 +132,9 @@ class MesseRelationManager extends RelationManager
                     }),
 
                 /*
-                 * Absagen statt löschen.
-                 *
-                 * Ein gelöschtes Treffen verschwindet wortlos aus dem Bereich
-                 * des Kunden — und er sitzt um zwei Uhr trotzdem davor. So
-                 * bleibt es stehen, ist durchgestrichen, und er bekommt
-                 * darüber eine Meldung.
+                 * Absagen statt löschen — bei einem Kundentermin verschwindet
+                 * er sonst wortlos aus dessen Bereich, und der Kunde sitzt um
+                 * zwei Uhr trotzdem davor.
                  */
                 Action::make('absagen')
                     ->label('Absagen')
@@ -169,16 +142,13 @@ class MesseRelationManager extends RelationManager
                     ->color('warning')
                     ->requiresConfirmation()
                     ->modalHeading('Treffen absagen')
-                    ->modalDescription('Der Kunde bekommt eine Meldung. Der Termin bleibt bei ihm stehen, durchgestrichen.')
+                    ->modalDescription('Alle Beteiligten bekommen eine Meldung. Der Termin bleibt stehen, durchgestrichen.')
                     ->modalSubmitActionLabel('Absagen')
                     ->visible(fn (Treffen $record) => ! $record->istAbgesagt() && ! $record->istVorbei())
                     ->action(function (Treffen $record): void {
                         $record->update(['abgesagt_at' => now()]);
 
-                        Notification::make()
-                            ->title('Treffen abgesagt')
-                            ->success()
-                            ->send();
+                        Notification::make()->title('Treffen abgesagt')->success()->send();
                     }),
 
                 Action::make('wiederAnsetzen')
@@ -190,8 +160,8 @@ class MesseRelationManager extends RelationManager
 
                 DeleteAction::make()->label('Löschen'),
             ])
-            ->emptyStateHeading('Noch kein Treffen')
-            ->emptyStateDescription('Setze eins an — der Kunde sieht es dann auf seiner Übersicht, mit Link und Kalendereintrag.')
+            ->emptyStateHeading('Nichts angesetzt')
+            ->emptyStateDescription('Setze ein Treffen an — mit einem Kunden oder nur für uns.')
             ->emptyStateIcon('heroicon-o-video-camera');
     }
 }

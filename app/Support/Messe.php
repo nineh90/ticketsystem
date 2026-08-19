@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Enums\MailEreignis;
 use App\Filament\Resources\Customers\CustomerResource;
+use App\Filament\Resources\Treffen\TreffenResource;
 use App\Models\Treffen;
 use App\Models\User;
 use Filament\Notifications\Notification;
@@ -79,7 +80,7 @@ class Messe
             $empfaenger,
             Notification::make()
                 ->title($anlass.': '.$treffen->titel)
-                ->body(self::wann($treffen).' · '.($treffen->customer?->name ?? 'ohne Kunde'))
+                ->body(self::wann($treffen).' · '.($treffen->customer?->name ?? 'nur wir'))
                 ->icon('heroicon-o-video-camera')
                 ->color($farbe)
                 ->actions([
@@ -102,13 +103,18 @@ class Messe
     }
 
     /**
-     * Die Kundenakte, Reiter Messe.
+     * Wohin der Knopf einer Meldung führt.
      *
-     * Es gibt keine eigene Seite je Treffen — der Termin steht in der Akte
-     * des Kunden, und dorthin führt der Knopf.
+     * Es gibt keine eigene Seite je Treffen — ein Termin ist eine Zeile,
+     * keine Akte. Bei einem Kundentermin ist die Akte der richtige Ort, bei
+     * einer Team-Besprechung gibt es keine: dann führt er auf die Messe.
      */
     public static function urlIntern(Treffen $treffen): string
     {
+        if ($treffen->istIntern()) {
+            return TreffenResource::getUrl('index', panel: 'admin');
+        }
+
         return CustomerResource::getUrl(
             'view',
             ['record' => $treffen->customer_id],

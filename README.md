@@ -142,6 +142,18 @@ dem Bereich des Kunden, und er sitzt um zwei Uhr trotzdem davor. So bleibt es
 durchgestrichen stehen, und der Kalendereintrag geht als `STATUS:CANCELLED`
 hinaus, was ihn in fremden Kalendern wegräumt.
 
+**Ein Treffen braucht keinen Kunden.** Wochenplanung, Retro, ein Gespräch zu
+zweit: auf der Seite *Messe* (`/messe`, im Menü) bleibt die Kundenwahl leer,
+und der Termin ist dann rein intern. Der Reiter an der Kundenakte bleibt
+daneben bestehen — wer dort steht, will ein Treffen mit genau diesem Kunden
+ansetzen, und der Umweg über eine Liste aller Termine wäre einer zu viel.
+Beide benutzen dieselben Felder (`Filament\Formulare\Treffenformular`).
+
+Wer ein internes Treffen sieht, steht wie überall in `sichtbarFuer`: der
+Administrator alles, ein Mitarbeiter die Treffen seiner Kunden plus jedes
+interne, bei dem er selbst in der Crew steht. Für Kunden gibt es sie nicht —
+der Vergleich auf `customer_id` trifft auf `null` nie zu.
+
 **Wer von uns dabei ist**, steht als eigene Liste am Treffen
 (`treffen_user`). Wer dazukommt, bekommt eine Meldung — nur die Neuen, und
 nie der, der sich gerade selbst eingetragen hat (`Support\Messe::crewSetzen`).
@@ -513,7 +525,7 @@ php artisan tinker --execute='
   ]);'
 ```
 
-## Drei Dinge, die beim Ändern leicht kaputtgehen
+## Vier Dinge, die beim Ändern leicht kaputtgehen
 
 **Sicherheits-Header.** `SicherheitsHeader` steht in `bootstrap/app.php` *und*
 in der Middleware-Liste des `AdminPanelProvider`. Beides ist nötig: Filament
@@ -529,6 +541,16 @@ sonst in der `jobs`-Tabelle und kommen nie an. In den Tests fällt das nicht
 auf, weil `phpunit.xml` die Warteschlange auf `sync` stellt; deshalb prüft
 `KundenbereichTest::test_benachrichtigung_kommt_auch_ohne_worker_an()` genau
 diesen Fall mit `database`.
+
+**Closure-Parameter in Filament heißen englisch.** Filament reicht seine
+Werte **benannt** hinein (`HasData::data()` übergibt `['data' => …]`) und
+löst sie über den Parameternamen auf. Ein `function (array $daten)` in
+`mutateDataUsing()`, `using()` oder `mutateRecordDataUsing()` bricht deshalb
+zur Laufzeit ab — und zwar erst beim Speichern, also nachdem jemand das
+Formular ausgefüllt hat. Genau so stand es im Zugangsdaten-Tresor am Projekt
+und ist monatelang niemandem aufgefallen, weil kein Test durch die
+Oberfläche ging. Wer eine solche Aktion baut, schreibt **einen Test, der sie
+aufruft** — ein Modelltest findet das nie.
 
 **CSP und Alpine.** Die Policy erlaubt `unsafe-eval`, weil Livewire und Alpine
 sonst wortlos aufhören zu arbeiten (Knöpfe reagieren einfach nicht). Das ist

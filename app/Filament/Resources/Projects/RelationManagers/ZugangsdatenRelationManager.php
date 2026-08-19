@@ -90,12 +90,20 @@ class ZugangsdatenRelationManager extends RelationManager
                     // Auswahl zu stellen hieße, einen Eintrag beim falschen
                     // Kunden ablegen zu können — und damit im falschen
                     // Kundenbereich.
-                    ->mutateDataUsing(function (array $daten): array {
+                    // Der Parameter MUSS $data heissen: Filament reicht ihn
+                    // benannt hinein (HasData::data() uebergibt ['data' =>
+                    // ...]) und loest ihn ueber den Namen auf. Mit einem
+                    // deutschen Namen scheitert der Aufruf zur Laufzeit mit
+                    // einer BindingResolutionException — und zwar erst beim
+                    // Speichern, also nachdem jemand das Formular ausgefuellt
+                    // hat. Genau so stand es hier und ist niemandem
+                    // aufgefallen, weil kein Test durch die Oberflaeche ging.
+                    ->mutateDataUsing(function (array $data): array {
                         /** @var Project $projekt */
                         $projekt = $this->getOwnerRecord();
-                        $daten['customer_id'] = $projekt->customer_id;
+                        $data['customer_id'] = $projekt->customer_id;
 
-                        return $daten;
+                        return $data;
                     }),
             ])
             ->recordActions([

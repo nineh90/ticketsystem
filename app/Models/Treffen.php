@@ -152,13 +152,28 @@ class Treffen extends Model
         return $query->whereNull('abgesagt_at');
     }
 
+    /** Ein Termin, der nur uns betrifft — Team-Besprechung, Retro, Planung. */
+    public function istIntern(): bool
+    {
+        return $this->customer_id === null;
+    }
+
     /**
      * Wer welches Treffen sieht.
      *
-     * Dieselbe Regel wie überall sonst, an genau einer Stelle je Modell —
-     * ein Kundenzugang sieht seine freigegebenen Treffen, intern gilt die
-     * Sichtbarkeit des Kunden. Ein abgesagtes Treffen bleibt dabei drin: der
-     * Kunde soll die Absage sehen und nicht bloß ein verschwundenes Treffen.
+     * Dieselbe Regel wie überall sonst, an genau einer Stelle je Modell.
+     * Drei Fälle:
+     *
+     * - **Kundenzugang:** seine freigegebenen Treffen. Interne Termine haben
+     *   keine customer_id, fallen also von selbst heraus — der Vergleich
+     *   trifft auf null nie zu.
+     * - **Administrator:** alles, wie überall.
+     * - **Mitarbeiter:** die Treffen seiner Kunden, dazu jedes interne, bei
+     *   dem er selbst in der Crew steht. Ohne den zweiten Teil wäre eine
+     *   Team-Besprechung für ihn unsichtbar, obwohl er darin sitzt.
+     *
+     * Ein abgesagtes Treffen bleibt drin: der Kunde soll die Absage sehen
+     * und nicht bloß ein verschwundenes Treffen.
      */
     public function scopeSichtbarFuer(Builder $query, User $nutzer): Builder
     {
@@ -168,9 +183,14 @@ class Treffen extends Model
                 ->where('customer_id', $nutzer->customer_id);
         }
 
-        return $query->whereHas(
-            'customer',
-            fn (Builder $q) => $q->sichtbarFuer($nutzer),
-        );
+        if ($nutzer->istAdmin()) {
+            return $query;
+        }
+
+        return $query->where(fn (Builder $q) => $q
+            ->whereHas('customer', fn (Builder $k) => $k->sichtbarFuer($nutzer))
+            ->orWhere(fn (Builder $i) => $i
+                ->whereNull('customer_id')
+                ->whereHas('crew', fn (Builder $c) => $c->whereKey($nutzer->getKey()))));
     }
 }

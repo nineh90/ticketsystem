@@ -1181,4 +1181,45 @@ class KundenakteTest extends TestCase
 
         $this->assertTrue($customer->hauptkontakt()->is($aktiv));
     }
+
+    /**
+     * Einen Projektzugang tatsaechlich anlegen — durch die Oberflaeche.
+     *
+     * Der Test kam nach einem Fehler dazu, den kein Modelltest gefunden
+     * haette: Filament reicht die Formulardaten **benannt** in die Closure
+     * (HasData::data() uebergibt ['data' => ...]) und loest sie ueber den
+     * Parameternamen auf. Der hiess $daten, und damit brach das Anlegen zur
+     * Laufzeit ab — erst beim Speichern, also nachdem jemand das Formular
+     * ausgefuellt hatte.
+     *
+     * Geprueft wird zugleich die Fachregel dahinter: der Kunde ergibt sich
+     * aus dem Projekt und steht nicht zur Auswahl. Ohne sie liesse sich ein
+     * Zugang beim falschen Kunden ablegen — und damit im falschen
+     * Kundenbereich.
+     */
+    public function test_projektzugang_landet_beim_kunden_des_projekts(): void
+    {
+        $admin = $this->admin();
+        $projekt = Project::factory()->for(Customer::factory(), 'customer')->create();
+
+        $this->actingAs($admin);
+        Filament::setCurrentPanel('admin');
+
+        Livewire::test(ProjektZugangsdatenRelationManager::class, [
+            'ownerRecord' => $projekt,
+            'pageClass' => EditProject::class,
+        ])
+            ->callAction(TestAction::make('create')->table(), data: [
+                'bezeichnung' => 'Hoster-Login',
+                'benutzername' => 'test',
+                'passwort' => 'geheim123',
+            ])
+            ->assertHasNoActionErrors();
+
+        $this->assertDatabaseHas('zugangsdaten', [
+            'bezeichnung' => 'Hoster-Login',
+            'project_id' => $projekt->getKey(),
+            'customer_id' => $projekt->customer_id,
+        ]);
+    }
 }
