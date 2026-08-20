@@ -2,24 +2,25 @@
 
 namespace App\Observers;
 
-use App\Enums\MailEreignis;
-use App\Filament\Kunde\Pages\Uebersicht;
 use App\Models\Treffen;
-use App\Support\Benachrichtigung;
-use App\Support\Herkunft;
 use App\Support\Messe;
-use Filament\Notifications\Notification;
 
 /**
- * Sagt dem Kunden Bescheid, wenn ein Treffen ansteht oder sich ändert.
+ * Was passiert, wenn sich an einem Treffen etwas tut.
  *
- * Drei Anlässe, und alle drei sind derselbe Satz aus seiner Sicht: "an dem
- * Termin hat sich etwas getan". Deshalb eine Klasse und nicht drei Stellen —
- * ein vierter Anlass käme sonst irgendwo dazu und niemand fände die anderen.
+ * Vier Anlässe: angelegt und freigegeben (das ist die Einladung), abgesagt,
+ * verschoben. Aus Sicht des Kunden ist alles derselbe Satz — "an dem Termin
+ * hat sich etwas getan" —, deshalb eine Klasse und nicht vier Stellen; ein
+ * fünfter Anlass käme sonst irgendwo dazu und niemand fände die anderen.
  *
- * Alles hängt an kunden_sichtbar. Solange der Schalter aus ist, ist ein
- * Treffen ein Bleistiftstrich in unserem Kalender, und ein Bleistiftstrich
- * lädt niemanden ein.
+ * Die Meldung nach außen hängt an kunden_sichtbar. Solange der Schalter aus
+ * ist, ist ein Treffen ein Bleistiftstrich in unserem Kalender, und ein
+ * Bleistiftstrich lädt niemanden ein. Wen genau sie erreicht, entscheidet
+ * Messe — hier steht nur, wann sie ausgelöst wird.
+ *
+ * Nicht hier steht die Erinnerung vor dem Termin: die hat keinen Auslöser am
+ * Datensatz, sondern einen an der Uhr, und läuft deshalb über den Planer
+ * (Console\Commands\TreffenErinnern).
  */
 class TreffenObserver
 {
@@ -29,7 +30,7 @@ class TreffenObserver
             return;
         }
 
-        $this->melden($treffen, 'Sie sind eingeladen');
+        Messe::anKunden($treffen, 'Sie sind eingeladen');
     }
 
     public function updated(Treffen $treffen): void
@@ -37,9 +38,7 @@ class TreffenObserver
         // Die Absage zuerst: sie ist die Änderung, die am dringendsten
         // ankommen muss, und sie darf nicht als "verschoben" durchgehen.
         if ($treffen->wasChanged('abgesagt_at') && $treffen->istAbgesagt()) {
-            if ($treffen->kunden_sichtbar) {
-                $this->melden($treffen, 'Termin abgesagt', 'warning');
-            }
+            Messe::anKunden($treffen, 'Termin abgesagt', 'warning');
 
             // Die Crew erfährt es unabhängig von der Freigabe: ein noch
             // nicht verschickter Termin steht trotzdem in ihrem Kalender.
@@ -51,7 +50,7 @@ class TreffenObserver
         // Frisch freigegeben — das ist die eigentliche Einladung, denn beim
         // Anlegen stand der Schalter meistens noch auf aus.
         if ($treffen->wasChanged('kunden_sichtbar') && $treffen->kunden_sichtbar) {
-            $this->melden($treffen, 'Sie sind eingeladen');
+            Messe::anKunden($treffen, 'Sie sind eingeladen');
 
             return;
         }
@@ -63,38 +62,16 @@ class TreffenObserver
             return;
         }
 
+        // Ein verschobener Termin ist für die Erinnerungen ein neuer. Ohne
+        // diese Zeile behielte er seine Stempel: wer den Termin von heute auf
+        // nächste Woche legt, bekäme dann nie wieder eine Erinnerung dazu —
+        // die beiden Stufen gelten laut Datenbank als erledigt.
+        Messe::erinnerungenZuruecksetzen($treffen);
+
         // Die Crew zuerst und ohne Bedingung — auch ein interner Termin
         // steht in ihrem Kalender und muss dort umziehen.
         Messe::anCrew($treffen, null, 'Verschoben');
 
-        if ($treffen->kunden_sichtbar) {
-            $this->melden($treffen, 'Neuer Termin');
-        }
-    }
-
-    private function melden(Treffen $treffen, string $anlass, string $farbe = 'info'): void
-    {
-        $treffen->loadMissing('customer');
-
-        if ($treffen->customer === null) {
-            return;
-        }
-
-        $schiff = (string) config('kontakt.schiff');
-
-        Benachrichtigung::an(
-            Benachrichtigung::kundenzugaenge($treffen->customer_id),
-            Notification::make()
-                ->title($anlass.': '.$treffen->titel)
-                ->body(Messe::wann($treffen).' an Bord der '.$schiff)
-                ->icon('heroicon-o-video-camera')
-                ->color($farbe)
-                ->actions([
-                    Benachrichtigung::knopf('Ansehen', Uebersicht::getUrl(panel: 'kunde')),
-                ]),
-            Herkunft::treffen($treffen),
-            $treffen->customer,
-            MailEreignis::Treffen,
-        );
+        Messe::anKunden($treffen, 'Neuer Termin');
     }
 }

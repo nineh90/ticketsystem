@@ -41,6 +41,17 @@ for i in $(seq 1 30); do
     sleep 2
 done
 
+# Der Planer hält die Uhr (Erinnerungen an Treffen). Er ist nicht kritisch für
+# die Auslieferung, deshalb bricht der Deploy hier nicht ab — aber er wird
+# genannt: ein Scheduler, der stillsteht, fällt sonst monatelang niemandem auf.
+# Genau so steht der von kein-einzelfall seit Wochen als unhealthy da.
+if [ "$(docker inspect -f '{{.State.Running}}' ticketsystem-planer 2>/dev/null)" = 'true' ]; then
+    echo "→ Planer läuft."
+else
+    echo "! Der Planer läuft NICHT — Erinnerungen an Treffen gehen nicht raus." >&2
+    docker logs --tail 20 ticketsystem-planer 2>&1 | sed 's/^/    /' >&2 || true
+fi
+
 # Gegenprobe von innen: Traefik meldet auch dann noch 200, wenn die Anwendung
 # selbst gerade eine Fehlerseite ausliefert.
 if docker exec ticketsystem php artisan about --only=environment >/dev/null 2>&1; then

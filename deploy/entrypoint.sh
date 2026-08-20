@@ -32,6 +32,16 @@ for i in $(seq 1 30); do
     sleep 2
 done
 
+# Der Planer teilt sich Abbild und Einstiegsskript mit der Anwendung, aber
+# nichts von dem, was jetzt kommt. Migrationen, Seeder und Zwischenspeicher
+# erledigt der app-Container; zweimal gleichzeitig ist im besten Fall doppelt
+# und im schlimmsten ein Rennen. Er läuft außerdem als www-data (siehe
+# docker-compose.yml) und dürfte das chown am Ende gar nicht ausführen.
+if [ "${ROLLE:-app}" = 'planer' ]; then
+    echo '✓ Planer bereit — die Uhr läuft.'
+    exec "$@"
+fi
+
 # Diese beiden liefen wegen --no-scripts nicht beim Bauen nach. filament:upgrade
 # legt die publizierten Filament-Assets unter public/ ab; ohne den Aufruf lädt
 # die Oberfläche ohne Stile und ohne JavaScript.

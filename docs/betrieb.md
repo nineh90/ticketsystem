@@ -16,7 +16,8 @@ Live unter <https://intern.nils-digital.de> auf dem Hostinger-VPS
 
 Der Container heißt `ticketsystem`, hängt im Netz `n8n_default` und
 veröffentlicht **keinen Port** — Traefik aus dem n8n-Stack ist der einzige Weg
-hinein.
+hinein. Daneben läuft `ticketsystem-planer` aus demselben Abbild; er hält nur
+die Uhr und hängt an keiner Route (siehe „Der Planer").
 
 > ⚠️ `docker compose down` in `/docker/n8n` nimmt Traefik **und** Postgres mit —
 > also auch das Ticketsystem, kein-einzelfall und fahrlehrerinsarah.
@@ -47,6 +48,34 @@ ssh root@187.124.178.193 /docker/ticketsystem/deploy/deploy.sh
 Migrationen und Zwischenspeicher erledigt das Einstiegsskript beim Start des
 neuen Containers. **Kein Seeder, der Daten ersetzt** — nur die Ticket-Stadien
 über `firstOrCreate`, umbenannte Stadien bleiben also erhalten.
+
+## Der Planer
+
+Seit dem 20.08.2026 läuft neben `ticketsystem` ein zweiter Container aus
+demselben Abbild: **`ticketsystem-planer`**. Er liefert nichts aus, er hält
+nur die Uhr — `php artisan schedule:work` ruft jede Minute auf, was in
+`routes/console.php` steht.
+
+Heute steht dort genau eines: `messe:erinnern`. Der Befehl erinnert an
+Treffen, die in 24 Stunden oder in einer Stunde anfangen — an die Crew
+(interne Termine eingeschlossen) und an eingeladene Kunden.
+
+```bash
+docker logs --tail 20 ticketsystem-planer     # was er zuletzt getan hat
+docker exec ticketsystem php artisan messe:erinnern    # von Hand nachhelfen
+docker exec ticketsystem php artisan schedule:list     # was er vorhat
+```
+
+> ⚠️ **Steht er still, fällt das von selbst nicht auf.** Eine Erinnerung, die
+> nicht kommt, sieht genauso aus wie ein Tag ohne Termine. Deshalb sagt der
+> Deploy es hinterher ausdrücklich, wenn der Container nicht läuft — und
+> deshalb ist der `kein-einzelfall-scheduler` unten unter "Beobachtung am
+> Rande" mehr als eine Randnotiz: genau so sieht es aus, wenn niemand
+> hinsieht.
+
+Er läuft als `www-data` und überspringt Migrationen, Seeder und
+Zwischenspeicher (`ROLLE=planer` im Einstiegsskript) — das erledigt der
+app-Container, zweimal gleichzeitig wäre ein Rennen.
 
 ## Backup
 
@@ -345,7 +374,8 @@ unter „Sie sind am Zug". Voreingestellt ist das bei *Warten auf Kunde*.
 - **Kein Queue-Worker.** `QUEUE_CONNECTION=database`, aber nichts arbeitet die
   Warteschlange ab. Benachrichtigungen umgehen sie deshalb bewusst (siehe
   README). Wer künftig etwas in die Warteschlange legt, muss entweder einen
-  Worker einrichten oder denselben Weg gehen.
+  Worker einrichten oder denselben Weg gehen. Der Planer ist **kein** Worker:
+  er ruft nur zeitgesteuert Befehle auf und rührt die Warteschlange nicht an.
 
 ## Beobachtung am Rande
 

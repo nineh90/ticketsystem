@@ -159,6 +159,38 @@ der Vergleich auf `customer_id` trifft auf `null` nie zu.
 nie der, der sich gerade selbst eingetragen hat (`Support\Messe::crewSetzen`).
 Die eigenen Termine stehen unter *Meine Wache*, alle unter *Brücke*.
 
+### Erinnerungen
+
+Zwei Stufen, `Enums\Erinnerung`: **einen Tag vorher** ("Morgen: Abnahme") und
+**eine Stunde vorher** ("Gleich: Abnahme"). Die erste ist eine Ansage, damit
+man seinen Tag planen kann, die zweite ein Weckruf. Beide gehen an die Crew —
+interne Termine eingeschlossen — und an eingeladene Kunden.
+
+Der Anlass dafür kam aus dem Gebrauch: ein Termin meldete sich nur, wenn ihn
+jemand anfasste. Wer sich selbst eine Wochenplanung anlegt, hörte danach nie
+wieder davon, denn zum Anlegen bekommt der Anlegende bewusst keine Meldung.
+**Ist niemand in der Crew eingetragen, geht die Erinnerung an die Person, die
+den Termin angesetzt hat** — sonst wäre ausgerechnet der Termin ohne
+Beteiligte der, an den niemand erinnert wird.
+
+Drei Dinge halten das sauber:
+
+* **Zwei Stempel am Treffen** (`erinnert_24h_at`, `erinnert_1h_at`). Gesetzt
+  wird der Stempel, *bevor* die Meldung rausgeht, und zwar in einem bedingten
+  `UPDATE` — von den beiden möglichen Fehlern ist die doppelte Meldung der
+  schlimmere (`Support\Messe::faellige`).
+* **Was kurzfristig entsteht, wird nur abgehakt.** Wer um halb zwei einen
+  Termin für zwei Uhr ansetzt, weiß von ihm; die Crew hat ihre Einladung im
+  selben Moment bekommen (`Erinnerung::lohntSich`).
+* **Verschieben nimmt beide Stempel zurück.** Sonst gälte ein Termin, der von
+  heute auf nächste Woche wandert, für immer als erinnert.
+
+Ausgelöst wird das von `messe:erinnern` im Minutentakt. Dafür braucht es
+einen Dauerprozess, und der ist die einzige Stelle, an der dieses Projekt
+einen hat: der Container `ticketsystem-planer` (`docs/betrieb.md`). Steht er
+still, sieht das aus wie ein Tag ohne Termine — deshalb sagt der Deploy es
+ausdrücklich, wenn er nicht läuft.
+
 ### Der Kalendereintrag
 
 `/treffen/{id}/kalender` bzw. `/kunde/treffen/{id}/kalender`, erzeugt von

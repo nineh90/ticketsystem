@@ -20,7 +20,10 @@ services:
     container_name: ticketsystem
     restart: unless-stopped
 
-    environment:
+    # Der Anker: der Planer unten läuft mit derselben Umgebung. Zweimal
+    # gepflegt wäre sie beim nächsten neuen Wert einmal falsch — und zwar in
+    # dem Container, in den niemand hineinsieht.
+    environment: &umgebung
       TZ: Europe/Berlin
       # Ohne diese Zeile faellt Laravel auf seinen Standardnamen zurueck —
       # und der stand als Absender in jeder Mail: "Laravel <info@...>".
@@ -122,6 +125,53 @@ services:
       # auftauchen.
       - "traefik.http.middlewares.ticketsystem-noindex.headers.customresponseheaders.X-Robots-Tag=noindex, nofollow, noarchive"
       - "traefik.http.routers.ticketsystem.middlewares=ticketsystem-noindex@docker"
+
+  # ---------------------------------------------------------------- Planer
+  #
+  # Ein zweiter Container aus demselben Abbild, der nichts ausliefert, sondern
+  # nur die Uhr im Blick hat: "schedule:work" ruft jede Minute das auf, was in
+  # routes/console.php steht — heute die Erinnerungen an bevorstehende Treffen
+  # (24 Stunden und eine Stunde vorher).
+  #
+  # Warum überhaupt ein Dauerprozess, wo dieses Projekt sonst ohne auskommt
+  # (Benachrichtigungen umgehen die Warteschlange bewusst): eine Erinnerung
+  # hat keinen Auslöser im System. Niemand klickt sie an — es ist die Uhr, die
+  # sie auslöst, und die tickt auch nachts und am Wochenende.
+  #
+  # Kein eigenes build: das Abbild baut der Dienst darüber, dieser hängt sich
+  # an denselben Stand. depends_on sorgt dafür, dass er nach ihm startet.
+  #
+  # ROLLE=planer sagt dem Einstiegsskript, dass es hier weder Migrationen noch
+  # Zwischenspeicher aufbauen soll — das hat der app-Container schon getan,
+  # und zwei gleichzeitige "migrate --force" sind genau die Art Rennen, das
+  # man einmal im Jahr trifft und dann nicht erklären kann.
+  planer:
+    image: ticketsystem:aktuell
+    container_name: ticketsystem-planer
+    restart: unless-stopped
+
+    depends_on:
+      - app
+
+    # Als www-data und nicht als root: beide Container schreiben in denselben
+    # Speicher. Legt der Planer als root eine Protokolldatei an, kann die
+    # Anwendung sie danach nicht mehr beschreiben — und ein Protokoll, das
+    # stillschweigend nichts mehr aufnimmt, merkt man erst, wenn man es
+    # braucht.
+    user: www-data
+
+    environment:
+      <<: *umgebung
+      ROLLE: planer
+
+    command: ["php", "artisan", "schedule:work"]
+
+    volumes:
+      - ticketsystem-storage:/var/www/html/storage
+
+    networks:
+      - n8n_default
+
 
 volumes:
   ticketsystem-storage:

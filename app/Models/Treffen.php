@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Erinnerung;
 use App\Observers\TreffenObserver;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -46,6 +47,14 @@ class Treffen extends Model
         return [
             'beginnt_am' => 'datetime',
             'abgesagt_at' => 'datetime',
+            // Wann welche Erinnerung raus ist. Bewusst nicht in der
+            // Fillable-Liste: gesetzt werden die beiden allein vom Planer
+            // (Console\Commands\TreffenErinnern) und beim Verschieben
+            // zurückgenommen (TreffenObserver). Über ein Formularfeld
+            // wären sie versehentlich zu setzen — und ein Treffen, an das
+            // laut Datenbank schon erinnert wurde, meldet sich nie wieder.
+            'erinnert_24h_at' => 'datetime',
+            'erinnert_1h_at' => 'datetime',
             'kunden_sichtbar' => 'boolean',
             'dauer_minuten' => 'integer',
         ];
@@ -150,6 +159,26 @@ class Treffen extends Model
     public function scopeNichtAbgesagt(Builder $query): Builder
     {
         return $query->whereNull('abgesagt_at');
+    }
+
+    /**
+     * Was noch ansteht und für diese Stufe noch keine Erinnerung bekommen hat.
+     *
+     * Bewusst ohne die Frage, ob sich die Erinnerung lohnt — das entscheidet
+     * die Stufe selbst (Erinnerung::lohntSich). Hier steht nur, was überhaupt
+     * in Frage kommt: nicht abgesagt, noch nicht gewesen, noch nicht
+     * gestempelt.
+     *
+     * "Noch nicht gewesen" meint den Beginn und nicht das Ende: an ein
+     * Treffen, das schon läuft, erinnert man niemanden mehr.
+     */
+    public function scopeZuErinnern(Builder $query, Erinnerung $stufe): Builder
+    {
+        return $query
+            ->nichtAbgesagt()
+            ->whereNull($stufe->spalte())
+            ->where('beginnt_am', '>', now())
+            ->where('beginnt_am', '<=', now()->addMinutes($stufe->vorlaufMinuten()));
     }
 
     /** Ein Termin, der nur uns betrifft — Team-Besprechung, Retro, Planung. */
