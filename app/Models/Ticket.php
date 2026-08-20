@@ -81,6 +81,10 @@ class Ticket extends Model
             'quelle' => Quelle::class,
             'faellig_am' => 'date',
             'erledigt_at' => 'datetime',
+            // Wann wir uns selbst daran erinnert haben, dass hier ein Kunde
+            // wartet. Setzt allein der Planer (Support\Wache), deshalb nicht
+            // in der Fillable-Liste.
+            'nachgehakt_at' => 'datetime',
         ];
     }
 

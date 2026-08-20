@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Enums\MailEreignis;
 use App\Models\Comment;
+use App\Support\Automatik;
 use App\Support\Benachrichtigung;
 use Filament\Notifications\Notification;
 
@@ -13,6 +14,11 @@ use Filament\Notifications\Notification;
  * Ohne das wäre der Kundenbereich eine Einbahnstraße mit Wartesaal: der Kunde
  * schreibt etwas und schaut danach täglich nach, ob jemand geantwortet hat —
  * oder er ruft an, und dann hätten wir das Ticketsystem auch weglassen können.
+ *
+ * Antwortet der Kunde, endet außerdem die Wartestellung: das Ticket wandert
+ * zurück zu uns (Support\Automatik::ausDerWartestellung). "Warten auf Kunde"
+ * ist das einzige Stadium, dessen Bedingung von außen endet — und es blieb
+ * bis dahin trotzdem stehen, bis jemand von uns die Spalte durchging.
  */
 class CommentObserver
 {
@@ -37,6 +43,11 @@ class CommentObserver
         $auszug = str($comment->body)->stripTags()->squish()->limit(120)->toString();
 
         if ($comment->autor?->istKunde()) {
+            // Er hat geantwortet, also warten wir nicht mehr auf ihn. Das
+            // Ticket kommt von selbst aus der Wartestellung zurück — siehe
+            // Support\Automatik.
+            Automatik::ausDerWartestellung($ticket);
+
             Benachrichtigung::nachInnen(
                 $ticket,
                 Notification::make()

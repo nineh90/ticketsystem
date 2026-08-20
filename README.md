@@ -451,6 +451,71 @@ nur Abschluss und Rückfrage), im Verlauf des Tickets steht er wie jeder
 andere. Und der Startknopf sagt es dazu — eine Automatik, die sich nicht
 zeigt, hält man beim ersten Mal für einen Fehler.
 
+## Was von selbst passiert
+
+Alles, was das System ohne Klick tut, steht in `Support\Automatik` (die
+Regeln an einem Datensatz) und in `routes/console.php` (was an der Uhr hängt).
+Das ist Absicht: **eine Automatik, die man nicht findet, ist eine, der man
+nicht traut.** Wer wissen will, warum ein Ticket gewandert ist, ohne dass er
+es angefasst hat, soll eine Datei aufschlagen müssen.
+
+Zwei Grundsätze gelten für jede Regel:
+
+* **Sie schreibt nur, was ohnehin gälte.** Wer die Uhr startet, arbeitet
+  daran; wer antwortet, wartet nicht mehr. Die Automatik nimmt niemandem eine
+  Entscheidung ab, sie spart den zweiten Handgriff.
+* **Sie tut nichts, wenn die Voraussetzungen fehlen.** Kein Stadium, keine
+  eindeutige Zuständigkeit, kein Projekt — dann bleibt alles, wie es ist.
+  Raten wäre schlimmer als nichts tun.
+
+### Auf eine Tatsache hin
+
+| Auslöser | Wirkung |
+| --- | --- |
+| Uhr startet | Ticket auf *In Arbeit* (siehe *Das Deck*) |
+| Kunde kommentiert | Ticket raus aus *Warten auf Kunde* — zum Zuständigen (*In Arbeit*), sonst in den Stapel (*Offen*) |
+| Anliegen kommt herein | Zuteilung an den einzigen Zuständigen des Projekts, sonst des Kunden |
+| Ticket wird zugeteilt | Meldung an den, der es bekommt (nicht an den, der sich selbst nimmt) |
+| Angebot angenommen | Ticket *Auftrag: …* im Projekt des Angebots, `dokumente.folgeticket_id` verhindert ein zweites |
+
+Die Grenzen sind bei jeder Regel der eigentliche Inhalt: ein **Nachtrag**
+verschiebt kein Ticket, ein **interner Kommentar** beendet keine
+Wartestellung, bei **mehreren Zuständigen** wird nicht geraten, ein **von Hand
+angelegtes** Ticket bleibt ohne Zuständigen, und ohne **Projekt** entsteht
+kein Auftrag. `tests/Feature/AutomatikTest.php` hält zu jeder Regel beides
+fest — dass sie greift und wo sie ausdrücklich nicht greift.
+
+### Zu einer Uhrzeit
+
+Der Fahrplan steht in `routes/console.php`, die Meldungen in `Support\Wache`
+(unser Haushalt) und `Support\Kasse` (Geld).
+
+| Wann | Was | An wen |
+| --- | --- | --- |
+| jede Minute | Erinnerung an Treffen, 24 h und 1 h vorher | Crew und eingeladene Kunden |
+| stündlich | Anliegen ohne Antwort seit über 24 h | den Innenkreis des Tickets |
+| werktags 07:45 | was heute fällig ist und was überfällig | jedem seine eigenen |
+| täglich 18:30 | deine Uhr läuft noch | dem, der sie laufen hat |
+| montags 08:00 | ruhende Tickets, unzugeteilte Tickets | Zuständige bzw. Administratoren |
+| montags 08:15 | überfällige Rechnungen, liegende Angebote | Administratoren |
+| 1. des Monats 08:30 | Zeit, die auf keiner Rechnung steht | Administratoren |
+
+Jede Meldung geht an genau den, der etwas tun kann, und niemals an alle: eine
+Rundmail an drei Leute, von der zwei nichts angeht, bringt allen dreien bei,
+sie zu übergehen. Und keine meldet zweimal — dagegen steht je Regel ein
+Stempel (`nachgehakt_at`, `erinnert_24h_at`) oder eine Bedingung.
+
+**Nicht automatisiert, mit Absicht:** eine laufende Uhr wird nicht selbst
+gestoppt. Eine Buchung ist eine Aussage darüber, wie lange jemand gearbeitet
+hat — die schreibt das System nicht um, es fragt nach.
+
+> ⚠️ Die neuen Mail-Themen (*Mir zugeteilte Tickets*, *Meldungen zum Tag*,
+> *Liegengebliebenes*, *Offene Beträge und Fristen*) sind für bestehende
+> Zugänge **nicht** angehakt: wer seine Auswahl schon einmal gespeichert hat,
+> bekommt nur, was darin steht — sonst kämen Mails, die niemand bestellt hat.
+> An der Glocke stehen sie trotzdem. Einmal unter *Mein Zugang* nachziehen.
+
+
 ## Nachrichten
 
 Ein Chat neben den Tickets, an kein Ticket gebunden: `/nachrichten` innen,

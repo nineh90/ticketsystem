@@ -2,8 +2,8 @@
 
 namespace App\Observers;
 
-use App\Models\TicketStatus;
 use App\Models\TimeEntry;
+use App\Support\Automatik;
 
 /**
  * Wer die Uhr startet, arbeitet daran — also steht das Ticket auf "In Arbeit".
@@ -18,6 +18,10 @@ use App\Models\TimeEntry;
  * (dem Logbuch am Ticket), aber das war beim Ticket auch einmal so, und
  * inzwischen entsteht eines an vier Stellen. Was an der Tatsache hängt, gilt
  * für jeden Weg dorthin — auch für den, den es noch nicht gibt.
+ *
+ * Die Regel selbst steht in Support\Automatik, zusammen mit allen anderen:
+ * wer wissen will, was das System von selbst tut, soll eine Datei aufschlagen
+ * müssen und nicht sieben Observer durchsehen.
  *
  * Ausdrücklich NUR beim Starten einer laufenden Uhr. Ein Nachtrag ("gestern
  * zwei Stunden") beschreibt Vergangenes und darf den Stand von heute nicht
@@ -38,18 +42,6 @@ class TimeEntryObserver
             return;
         }
 
-        $inArbeit = TicketStatus::inArbeit();
-
-        // Kein Stadium, kein Umzug. Und kein Fehler: wer "In Arbeit"
-        // gelöscht hat, arbeitet mit anderen Spalten.
-        if ($inArbeit === null || $ticket->ticket_status_id === $inArbeit->getKey()) {
-            return;
-        }
-
-        // update() und nicht saveQuietly(): der Wechsel soll im Verlauf des
-        // Tickets stehen wie jeder andere auch. Nach außen bleibt er still —
-        // "In Arbeit" ist weder Abschluss noch Rückfrage, und der
-        // TicketObserver meldet nur diese beiden.
-        $ticket->update(['ticket_status_id' => $inArbeit->getKey()]);
+        Automatik::inArbeit($ticket);
     }
 }

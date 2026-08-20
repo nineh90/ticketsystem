@@ -4,8 +4,10 @@ namespace App\Models;
 
 use App\Enums\DokumentArt;
 use App\Enums\DokumentStand;
+use App\Observers\DokumentObserver;
 use App\Support\Dateigroesse;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +29,7 @@ use Illuminate\Support\Facades\Storage;
  * in der DokumentPolicy — doppelt, weil die eine Liste füllt und die andere
  * die Ausliefer-Route bewacht.
  */
+#[ObservedBy(DokumentObserver::class)]
 #[Fillable([
     'customer_id', 'project_id', 'user_id', 'art', 'titel', 'nummer',
     'datum', 'faellig_am', 'betrag', 'stand', 'notiz', 'kunden_sichtbar',
@@ -73,6 +76,18 @@ class Dokument extends Model
         static::deleted(function (Dokument $dokument) {
             Storage::disk(self::PLATTE)->delete($dokument->pfad);
         });
+    }
+
+    /**
+     * Das Ticket, das aus diesem Angebot entstanden ist.
+     *
+     * Bewusst nicht in der Fillable-Liste: gesetzt wird es allein von
+     * Support\Automatik::folgeticket, und die Spalte ist zugleich die Sperre
+     * gegen ein zweites.
+     */
+    public function folgeticket(): BelongsTo
+    {
+        return $this->belongsTo(Ticket::class, 'folgeticket_id');
     }
 
     public function customer(): BelongsTo

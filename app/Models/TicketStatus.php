@@ -16,6 +16,9 @@ class TicketStatus extends Model
     /** Der Slug des Stadiums "In Arbeit" — siehe inArbeit(). */
     public const IN_ARBEIT = 'in-arbeit';
 
+    /** Der Slug des Stadiums "Offen" — siehe offen(). */
+    public const OFFEN = 'offen';
+
     protected $attributes = [
         'ist_abschluss' => false,
         'wartet_auf_kunde' => false,
@@ -62,5 +65,17 @@ class TicketStatus extends Model
     public static function inArbeit(): ?self
     {
         return static::query()->where('slug', self::IN_ARBEIT)->first();
+    }
+
+    /**
+     * Das Stadium für alles, was bei uns liegt, ohne dass jemand daran sitzt.
+     *
+     * Dorthin kommt ein Ticket zurück, dessen Kunde geantwortet hat und für
+     * das niemand eingetragen ist (Support\Automatik). Wie bei inArbeit():
+     * über den Slug, und null heißt "gibt es nicht mehr, dann nichts tun".
+     */
+    public static function offen(): ?self
+    {
+        return static::query()->where('slug', self::OFFEN)->first();
     }
 }

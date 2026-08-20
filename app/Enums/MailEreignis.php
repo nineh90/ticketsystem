@@ -52,6 +52,18 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
     /** Ein Treffen, bei dem ich selbst dabei bin. Bleibt intern. */
     case TreffenCrew = 'treffen-crew';
 
+    /** Mir wurde ein Ticket zugeteilt. */
+    case Zuweisung = 'zuweisung';
+
+    /** Die Meldungen des Planers zum Tag: morgens was ansteht, abends die laufende Uhr. */
+    case Tagesmeldung = 'tagesmeldung';
+
+    /** Was liegen geblieben ist — ruhende Tickets, wartende Kunden. */
+    case Liegengeblieben = 'liegengeblieben';
+
+    /** Offene Beträge und Fristen: unbezahlte Rechnungen, nicht abgerechnete Zeit. */
+    case Kasse = 'kasse';
+
     public function getLabel(): string
     {
         return match ($this) {
@@ -64,6 +76,10 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
             self::StandAnKunde => 'Stadienwechsel an den Kunden',
             self::Treffen => 'Treffen an den Kunden',
             self::TreffenCrew => 'Meine Treffen',
+            self::Zuweisung => 'Mir zugeteilte Tickets',
+            self::Tagesmeldung => 'Meldungen zum Tag',
+            self::Liegengeblieben => 'Liegengebliebenes',
+            self::Kasse => 'Offene Beträge und Fristen',
         };
     }
 
@@ -79,6 +95,10 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
             self::StandAnKunde => 'Geht nach außen. Ohne Wirkung, solange Kundenzugänge keine Mail bekommen.',
             self::Treffen => 'Geht nach außen. Einladung zu einem Treffen und jede Änderung daran.',
             self::TreffenCrew => 'Du wirst zu einem Treffen dazugenommen, oder eines deiner Treffen verschiebt sich.',
+            self::Zuweisung => 'Jemand gibt dir ein Ticket — oder ein neues Anliegen landet bei dir.',
+            self::Tagesmeldung => 'Morgens, was heute fällig ist. Abends, wenn deine Uhr noch läuft.',
+            self::Liegengeblieben => 'Tickets ohne Bewegung und Kunden, die zu lange auf eine Antwort warten.',
+            self::Kasse => 'Überfällige Rechnungen, unbeantwortete Angebote und Zeit, die noch auf keiner Rechnung steht.',
         };
     }
 
@@ -92,6 +112,10 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
             self::Angebot => 'heroicon-o-document-check',
             self::AntwortAnKunde, self::StandAnKunde => 'heroicon-o-arrow-up-right',
             self::Treffen, self::TreffenCrew => 'heroicon-o-video-camera',
+            self::Zuweisung => 'heroicon-o-user-plus',
+            self::Tagesmeldung => 'heroicon-o-sun',
+            self::Liegengeblieben => 'heroicon-o-moon',
+            self::Kasse => 'heroicon-o-banknotes',
         };
     }
 

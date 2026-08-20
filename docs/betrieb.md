@@ -71,14 +71,27 @@ demselben Abbild: **`ticketsystem-planer`**. Er liefert nichts aus, er hält
 nur die Uhr — `php artisan schedule:work` ruft jede Minute auf, was in
 `routes/console.php` steht.
 
-Heute steht dort genau eines: `messe:erinnern`. Der Befehl erinnert an
-Treffen, die in 24 Stunden oder in einer Stunde anfangen — an die Crew
-(interne Termine eingeschlossen) und an eingeladene Kunden.
+Was dort steht:
+
+| Befehl | Wann | Was |
+| --- | --- | --- |
+| `messe:erinnern` | jede Minute | Treffen in 24 h bzw. in 1 h |
+| `wache:kundewartet` | stündlich | Anliegen ohne Antwort seit über 24 h |
+| `wache:morgenmeldung` | werktags 07:45 | was heute fällig ist |
+| `wache:uhren` | täglich 18:30 | laufende Uhren |
+| `wache:liegengebliebenes` | montags 08:00 | ruhende und unzugeteilte Tickets |
+| `kasse:fristen` | montags 08:15 | überfällige Rechnungen, liegende Angebote |
+| `kasse:monat` | 1. des Monats 08:30 | nicht abgerechnete Zeit |
+
+Jeder Befehl lässt sich einzeln von Hand aufrufen und sagt, an wie viele er
+gemeldet hat. Was dahintersteckt, steht im README unter „Was von selbst
+passiert".
 
 ```bash
-docker logs --tail 20 ticketsystem-planer     # was er zuletzt getan hat
-docker exec ticketsystem php artisan messe:erinnern    # von Hand nachhelfen
-docker exec ticketsystem php artisan schedule:list     # was er vorhat
+docker logs --tail 20 ticketsystem-planer            # was er zuletzt getan hat
+docker exec ticketsystem php artisan schedule:list   # was er vorhat
+docker exec ticketsystem php artisan messe:erinnern  # von Hand nachhelfen
+docker exec ticketsystem php artisan wache:morgenmeldung
 ```
 
 > ⚠️ **Steht er still, fällt das von selbst nicht auf.** Eine Erinnerung, die
