@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Tickets\RelationManagers;
 
+use App\Models\Comment;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -17,6 +18,14 @@ class CommentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'comments';
 
+    /**
+     * Der Gesprächsfaden am Ticket — unsere Seite davon.
+     *
+     * Anders als im Kundenbereich stehen hier auch die internen Notizen. Zwei
+     * Dinge sind deshalb wichtig und beide waren einmal falsch: Kommentare
+     * werden vollständig angezeigt (ein abgeschnittener Kommentar ist ein
+     * verlorener), und was der Kunde geschrieben hat, ändert bei uns niemand.
+     */
     protected static ?string $title = 'Kommentare';
 
     /**
@@ -59,12 +68,16 @@ class CommentsRelationManager extends RelationManager
                     ->label('Von')
                     ->placeholder('—'),
 
+                // Vollständig und ohne "…". Vorher stand hier limit(300),
+                // mit der Begründung, ein langer Kommentar sprenge die
+                // Zeilenhöhe — was stimmt, aber den falschen Preis hat: es
+                // gab keinen Weg, den Rest zu lesen. Ein abgeschnittener
+                // Kommentar ist kein kürzerer Kommentar, sondern ein
+                // verlorener, und ausgerechnet der lange enthält das, worauf
+                // es ankommt.
                 TextColumn::make('body')
                     ->label('Kommentar')
-                    ->wrap()
-                    // Ohne Begrenzung sprengt ein langer Kommentar die
-                    // Zeilenhöhe der ganzen Tabelle.
-                    ->limit(300),
+                    ->wrap(),
 
                 IconColumn::make('ist_intern')
                     ->label('Intern')
@@ -92,8 +105,17 @@ class CommentsRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
-                EditAction::make()->label('Bearbeiten'),
-                DeleteAction::make()->label('Löschen'),
+                // Beide fragen die CommentPolicy: bearbeiten darf man nur den
+                // eigenen Beitrag, löschen zusätzlich der Administrator. Was
+                // ein Kunde geschrieben hat, ändert hier niemand — dort steht
+                // seine Aussage, nicht unsere.
+                EditAction::make()
+                    ->label('Bearbeiten')
+                    ->visible(fn (Comment $record) => auth()->user()?->can('update', $record) ?? false),
+
+                DeleteAction::make()
+                    ->label('Löschen')
+                    ->visible(fn (Comment $record) => auth()->user()?->can('delete', $record) ?? false),
             ])
             ->emptyStateHeading('Noch keine Kommentare')
             ->emptyStateDescription('Halte hier fest, was zum Ticket besprochen wurde.');

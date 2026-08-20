@@ -70,10 +70,12 @@ class AntwortenRelationManager extends RelationManager
                     ->weight('medium')
                     ->description(fn (Comment $record) => $record->created_at?->format('d.m.Y H:i')),
 
+                // Vollständig: eine Antwort, die nach 600 Zeichen mit "…"
+                // aufhört und nirgends weitergeht, ist genau die Sorte
+                // Sackgasse, die den Kunden wieder zum Telefon greifen lässt.
                 TextColumn::make('body')
                     ->label('Nachricht')
-                    ->wrap()
-                    ->limit(600),
+                    ->wrap(),
             ])
             // Älteste oben: ein Gespräch liest man von vorn.
             ->defaultSort('created_at', 'asc')
