@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Tickets\RelationManagers;
 
 use App\Filament\Concerns\StopptLaufendeZeiten;
+use App\Models\Ticket;
 use App\Models\TimeEntry;
 use App\Support\Dauer;
 use App\Support\LaufendeZeiten;
@@ -187,18 +188,35 @@ class TimeEntriesRelationManager extends RelationManager
                         $vorher = $this->laufendeZeit();
                         $vorher?->stoppen();
 
+                        /** @var Ticket $ticket */
+                        $ticket = $this->getOwnerRecord();
+
+                        $stadiumVorher = $ticket->ticket_status_id;
+
                         TimeEntry::create([
-                            'ticket_id' => $this->getOwnerRecord()->getKey(),
+                            'ticket_id' => $ticket->getKey(),
                             'user_id' => auth()->id(),
                             'gestartet_am' => now(),
                         ]);
 
+                        // Das Ticket ist inzwischen auf "In Arbeit" gerutscht
+                        // (TimeEntryObserver). Die Meldung sagt es dazu: eine
+                        // Automatik, die sich nicht zeigt, hält man beim
+                        // ersten Mal für einen Fehler — und beim zweiten für
+                        // Zauberei.
+                        $ticket->refresh();
+
                         Notification::make()
                             ->title('Die Uhr läuft')
-                            ->body($vorher === null
-                                ? null
-                                : $vorher->ticket?->kennung().' beendet mit '
-                                    .Dauer::alsStunden($vorher->minuten).'.')
+                            ->body(implode(' ', array_filter([
+                                $vorher === null
+                                    ? null
+                                    : $vorher->ticket?->kennung().' beendet mit '
+                                        .Dauer::alsStunden($vorher->minuten).'.',
+                                $ticket->ticket_status_id === $stadiumVorher
+                                    ? null
+                                    : $ticket->kennung().' steht jetzt auf '.$ticket->status?->name.'.',
+                            ])) ?: null)
                             ->success()
                             ->send();
                     }),

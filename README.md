@@ -423,6 +423,34 @@ im Spaltenkopf zählt vollständig, und der Weg dahinter führt auf genau diese
 Menge. Offene Spalten bleiben ungekürzt — jede Karte darin ist etwas, das
 noch jemand anfassen muss.
 
+### Die Uhr schiebt die Karte
+
+**Wer im Logbuch die Uhr startet, schiebt das Ticket auf *In Arbeit*.**
+Vorher waren das zwei Handgriffe, die dasselbe sagen — und den zweiten
+vergisst man. Ein Brett, das nicht mehr stimmt, sieht sich niemand mehr an.
+
+Das hängt am Modell (`Observers\TimeEntryObserver`) und nicht am Knopf: die
+Uhr wird heute an einer Stelle gestartet, aber beim Ticket war das auch
+einmal so, und inzwischen entsteht eines an vier Stellen. Gefunden wird das
+Stadium über den Slug `in-arbeit` (`TicketStatus::inArbeit()`) — Namen darf
+man umbenennen, der Slug ist die Kennung. Gibt es das Stadium nicht mehr,
+passiert nichts: wer es gelöscht hat, arbeitet mit anderen Spalten.
+
+Zwei Grenzen, und beide sind der eigentliche Punkt:
+
+* **Ein Nachtrag verschiebt nichts.** Nur eine laufende Uhr zählt. „Gestern
+  zwei Stunden" beschreibt Vergangenes; sonst zöge das Aufräumen der letzten
+  Woche längst erledigte Tickets zurück aufs Brett.
+* **Ein erledigtes Ticket kommt zurück.** Wer daran die Uhr startet,
+  arbeitet daran — dann ist es nicht mehr fertig, und `erledigt_at` fällt
+  mit. Das ist Absicht und der einzige Fall, in dem die Automatik etwas
+  zurücknimmt.
+
+Nach außen bleibt der Wechsel still (der `TicketObserver` meldet dem Kunden
+nur Abschluss und Rückfrage), im Verlauf des Tickets steht er wie jeder
+andere. Und der Startknopf sagt es dazu — eine Automatik, die sich nicht
+zeigt, hält man beim ersten Mal für einen Fehler.
+
 ## Nachrichten
 
 Ein Chat neben den Tickets, an kein Ticket gebunden: `/nachrichten` innen,
