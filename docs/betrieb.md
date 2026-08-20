@@ -45,6 +45,21 @@ Von Hand geht auch:
 ssh root@187.124.178.193 /docker/ticketsystem/deploy/deploy.sh
 ```
 
+> ⚠️ **Eine Änderung an `deploy/deploy.sh` wirkt nicht durch einen Push.**
+> Ausgeführt wird die Kopie unter `/usr/local/bin/deploy-ticketsystem`; der
+> Push aktualisiert nur das Repository auf dem Server. Das ist Absicht — wer
+> auf `main` pushen kann, soll damit nicht ändern können, was als root
+> ausgeführt wird. Nach einer Änderung am Skript also einmal von Hand:
+>
+> ```bash
+> ssh root@187.124.178.193 'cp /docker/ticketsystem/deploy/deploy.sh /usr/local/bin/deploy-ticketsystem'
+> ```
+>
+> Aufgefallen am 20.08.2026: die Prüfung „läuft der Planer?" stand im
+> Repository und lief trotzdem nicht mit. `docker-compose.yml` und
+> `entrypoint.sh` sind davon **nicht** betroffen — die liest der Deploy
+> direkt aus dem Projektverzeichnis.
+
 Migrationen und Zwischenspeicher erledigt das Einstiegsskript beim Start des
 neuen Containers. **Kein Seeder, der Daten ersetzt** — nur die Ticket-Stadien
 über `firstOrCreate`, umbenannte Stadien bleiben also erhalten.
