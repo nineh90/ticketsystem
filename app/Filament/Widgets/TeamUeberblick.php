@@ -2,14 +2,17 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Concerns\OeffnetDasLogbuch;
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Models\Ticket;
 use App\Models\TimeEntry;
 use App\Models\User;
 use App\Support\Dauer;
+use App\Support\Logbuch;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 /**
  * Der Blick aufs Ganze — nur für Administratoren.
@@ -31,7 +34,16 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class TeamUeberblick extends StatsOverviewWidget
 {
+    use OeffnetDasLogbuch;
+
     protected static ?int $sort = 2;
+
+    /**
+     * Eigener View statt des Filament-eigenen: er ist derselbe, nur mit dem
+     * Fenster hinter der Zeit-Kachel darin. Warum das in dieser Komponente
+     * stehen muss, steht in der Datei.
+     */
+    protected string $view = 'filament.widgets.ueberblick-mit-logbuch';
 
     /**
      * Volle Breite und vier Kacheln nebeneinander.
@@ -82,11 +94,11 @@ class TeamUeberblick extends StatsOverviewWidget
 
         // Bewusst die Zeit aller Beteiligten, nicht nur die eigene: die eigene
         // steht schon nebenan in MeinUeberblick. Hier geht es darum, was
-        // heute insgesamt in diese Projekte geflossen ist.
-        $minutenHeute = TimeEntry::query()
-            ->whereIn('ticket_id', $sichtbar()->select('tickets.id'))
-            ->whereDate('gestartet_am', today())
-            ->sum('minuten');
+        // heute insgesamt in diese Projekte geflossen ist. Summe und
+        // Auflistung im Fenster kommen aus derselben Abfrage — siehe
+        // Support\Logbuch, dort steht auch, warum über die sichtbaren
+        // Tickets gefiltert wird und nicht über TimeEntry::sichtbarFuer.
+        $minutenHeute = Logbuch::betriebHeuteAbfrage($nutzer)->sum('minuten');
 
         // Wohin die Kacheln führen. Reiterschlüssel aus ListTickets,
         // Filterwerte aus TicketsTable; die Bedingungen dahinter sind
@@ -122,12 +134,46 @@ class TeamUeberblick extends StatsOverviewWidget
                 ->color($ruhend > 0 ? 'warning' : 'gray')
                 ->url($liste('offen', 'ruhend')),
 
-            // Wie nebenan in "Meine Zeit diese Woche" ohne Adresse: erfasste
-            // Zeiten haben keine eigene Liste.
+            // Keine Adresse, sondern ein Fenster: erfasste Zeiten haben keine
+            // eigene Liste im Menü, und eine anzulegen hieße, eine zweite
+            // Ansicht auf dieselben Zeilen zu pflegen. Die Frage hinter der
+            // Zahl ist ohnehin eine kurze — wer war das, woran und wann —,
+            // und die beantwortet man schneller im Fenster als auf einer
+            // Seite, von der man wieder zurückklicken muss.
             Stat::make('Zeit heute', Dauer::alsStunden((int) $minutenHeute))
-                ->description('von allen Beteiligten erfasst')
+                ->description('von allen Beteiligten erfasst — anklicken')
                 ->descriptionIcon('heroicon-m-clock')
-                ->color('info'),
+                ->color('info')
+                ->extraAttributes($this->logbuchKachel()),
         ];
+    }
+
+    public function logbuchId(): string
+    {
+        return 'logbuch-betrieb';
+    }
+
+    public function logbuchTitel(): string
+    {
+        return 'Zeit heute';
+    }
+
+    public function logbuchBeschreibung(): string
+    {
+        return 'Was heute im Betrieb erfasst wurde — wer, wann, woran.';
+    }
+
+    /** Hier arbeiten mehrere, also steht in jeder Zeile, wer gebucht hat. */
+    public function logbuchMitNamen(): bool
+    {
+        return true;
+    }
+
+    /** @return Collection<int, TimeEntry> */
+    protected function logbuchZeiten(): Collection
+    {
+        $nutzer = auth()->user();
+
+        return $nutzer ? Logbuch::betriebHeute($nutzer) : collect();
     }
 }

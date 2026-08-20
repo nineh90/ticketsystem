@@ -2,13 +2,16 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Concerns\OeffnetDasLogbuch;
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Models\Ticket;
 use App\Models\TimeEntry;
 use App\Support\Dauer;
+use App\Support\Logbuch;
 use App\Support\Sichtbarkeit;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Collection;
 
 /**
  * Die vier Zahlen, mit denen man den Tag anfängt.
@@ -20,7 +23,16 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
  */
 class MeinUeberblick extends StatsOverviewWidget
 {
+    use OeffnetDasLogbuch;
+
     protected static ?int $sort = 1;
+
+    /**
+     * Eigener View statt des Filament-eigenen: er ist derselbe, nur mit dem
+     * Fenster hinter der Logbuch-Kachel darin. Warum das in dieser Komponente
+     * stehen muss, steht in der Datei.
+     */
+    protected string $view = 'filament.widgets.ueberblick-mit-logbuch';
 
     /**
      * Die Überschrift bleibt, obwohl die Betriebszahlen nicht mehr daneben
@@ -79,10 +91,9 @@ class MeinUeberblick extends StatsOverviewWidget
         // diese Menge zeigt, steht in TicketResource::listeUrl().
         $liste = TicketResource::listeUrl(...);
 
-        $minutenDieseWoche = TimeEntry::query()
-            ->where('user_id', $nutzer->getKey())
-            ->where('gestartet_am', '>=', today()->startOfWeek())
-            ->sum('minuten');
+        // Summe und Auflistung im Fenster kommen aus derselben Abfrage,
+        // siehe Support\Logbuch.
+        $minutenDieseWoche = Logbuch::eigeneWocheAbfrage($nutzer)->sum('minuten');
 
         return [
             Stat::make('Meine offenen Tickets', (string) $meine->count())
@@ -103,19 +114,51 @@ class MeinUeberblick extends StatsOverviewWidget
                 ->color($dieseWoche > 0 ? 'warning' : 'gray')
                 ->url($liste('meine', 'faellig-diese-woche')),
 
-            // Ohne Adresse, und das bleibt so: erfasste Zeiten haben keine
-            // eigene Liste, sie hängen an den Tickets. Eine Kachel, die
-            // irgendwohin führt, weil die beiden daneben es auch tun, ist
-            // schlechter als eine, die stehen bleibt.
+            // Weiterhin ohne Adresse, aber nicht mehr stumm: erfasste Zeiten
+            // haben keine eigene Liste, sie hängen an den Tickets. Statt die
+            // Kachel irgendwohin führen zu lassen, wo man die Woche wieder
+            // zusammensuchen müsste, klappt sie auf — Tag für Tag, was man
+            // gebucht hat. Dieselbe Mechanik wie bei "Zeit heute" auf der
+            // Brücke, siehe Concerns\OeffnetDasLogbuch.
             Stat::make('Mein Logbuch diese Woche', Dauer::alsStunden((int) $minutenDieseWoche))
-                ->description('seit Montag erfasst')
+                ->description('seit Montag erfasst — anklicken')
                 ->descriptionIcon('heroicon-m-clock')
-                ->color('primary'),
+                ->color('primary')
+                ->extraAttributes($this->logbuchKachel()),
 
             // Bewusst keine vierte Kachel mit den unzugewiesenen Tickets:
             // Zuteilen ist Sache des Administrators, und eine Zahl, auf die
             // man nicht handeln kann, ist auf einem Dashboard nur Beiwerk.
             // Für den Administrator steht sie nebenan unter "Im Betrieb".
         ];
+    }
+
+    public function logbuchId(): string
+    {
+        return 'logbuch-eigenes';
+    }
+
+    public function logbuchTitel(): string
+    {
+        return 'Mein Logbuch';
+    }
+
+    public function logbuchBeschreibung(): string
+    {
+        return 'Was du seit Montag erfasst hast — Tag für Tag.';
+    }
+
+    /** Hier steht in jeder Zeile derselbe Name. Der bleibt weg. */
+    public function logbuchMitNamen(): bool
+    {
+        return false;
+    }
+
+    /** @return Collection<int, TimeEntry> */
+    protected function logbuchZeiten(): Collection
+    {
+        $nutzer = auth()->user();
+
+        return $nutzer ? Logbuch::eigeneWoche($nutzer) : collect();
     }
 }
