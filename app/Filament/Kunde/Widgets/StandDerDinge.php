@@ -51,7 +51,7 @@ class StandDerDinge extends StatsOverviewWidget
                 ->url($amZug > 0 ? AnliegenResource::getUrl('index', ['tab' => 'am-zug']) : null),
 
             Stat::make('In Bearbeitung', (string) $offen)
-                ->description('Anliegen, an denen wir arbeiten')
+                ->description('Ihre Meldungen, an denen wir arbeiten')
                 ->descriptionIcon('heroicon-m-arrow-path')
                 ->color('info')
                 ->url(AnliegenResource::getUrl('index', ['tab' => 'offen'])),

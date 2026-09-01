@@ -85,7 +85,12 @@ class AnliegenTable
             // können, schon gar nicht mehrere auf einmal.
             ->toolbarActions([])
             ->emptyStateIcon('heroicon-o-chat-bubble-left-right')
-            ->emptyStateHeading('Noch nichts gemeldet')
-            ->emptyStateDescription('Hier stehen alle Anliegen zu Ihren Projekten — auch die, die wir selbst angelegt haben.');
+            ->emptyStateHeading('Nichts offen')
+            // Der Text sagt seit dem 01.09.2026 das Gegenteil von vorher.
+            // Damals standen hier ALLE Anliegen der Projekte, und der Hinweis
+            // war nötig, damit sich niemand über fremde Zeilen wundert. Jetzt
+            // ist die Liste kurz, und die Frage ist die umgekehrte: "wo ist
+            // der Rest?" Deshalb steht hier, was sie zeigt — und was nicht.
+            ->emptyStateDescription('Hier steht, wo wir etwas von Ihnen brauchen, und was Sie selbst gemeldet haben. Woran wir gerade arbeiten, sehen Sie am Fortschritt Ihrer Projekte.');
     }
 }

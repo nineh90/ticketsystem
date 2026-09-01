@@ -393,23 +393,52 @@ class Ticket extends Model
             return $query;
         }
 
-        // Der Kunde sieht alle Tickets seiner freigegebenen Projekte, nicht
-        // nur die selbst gemeldeten — das ist der Sinn der Sache: er soll
-        // sehen, woran gearbeitet wird, ohne zu fragen. Was er dabei NICHT
-        // sieht, hängt nicht an dieser Abfrage, sondern an den internen
-        // Kommentaren (Comment::scopeFuerKunden) und daran, dass es im
-        // Kundenpanel keine Zeitbuchungen gibt.
+        // Der Kunde sieht zwei Dinge, und sonst nichts: was wir von IHM
+        // brauchen, und was er selbst gemeldet hat.
         //
-        // Die Bedingung läuft über die Projektbeziehung und nicht über
+        // Bis zum 01.09.2026 sah er alle Tickets seiner freigegebenen
+        // Projekte — mit dem Gedanken, er solle sehen, woran gearbeitet wird,
+        // ohne zu fragen. Der Gedanke war richtig, das Ergebnis nicht: bei
+        // Sarah Schweikert standen 114 Zeilen in der Liste, davon 4, bei
+        // denen sie etwas tun konnte. Der Rest war unser Arbeitsbrett in
+        // unseren Worten — "Backlog", "Hero überarbeiten", "Notausgang
+        // verlegen", drei davon ganz ohne Beschreibung. Eine Liste, in der
+        // 110 von 114 Zeilen den Leser nichts angehen, liest niemand; sie
+        // versteckt die vier, um die es geht.
+        //
+        // Bewusst KEIN Freigabehaken je Ticket, obwohl es das Muster im
+        // System dreimal gibt (Dokumente, Zugangsdaten, Meilensteine). Ein
+        // Haken ist ein Handgriff, den man bei jedem der rund 150 Tickets
+        // setzen müsste — und der beim 151. vergessen wird. Diese Regel
+        // pflegt sich selbst: sie liest den Stand, den wir ohnehin setzen.
+        //
+        // Die Kehrseite ist bekannt und in Kauf genommen: fragen wir bei
+        // einem Ticket nach, das WIR angelegt haben, und der Kunde antwortet,
+        // verschwindet es aus seiner Liste, sobald wir den Stand
+        // zurückstellen. Das ist die wörtliche Umsetzung von "nur, was wir
+        // von ihm brauchen" — es liegt dann wieder bei uns. Was er selbst
+        // gemeldet hat, bleibt dagegen stehen, bis es erledigt ist und
+        // darüber hinaus.
+        //
+        // Die Projektbedingung läuft über die Beziehung und nicht über
         // tickets.customer_id, weil sonst Tickets aus einem verborgenen
         // Projekt durchkämen: sie tragen dieselbe customer_id.
         if ($nutzer->istKunde()) {
-            return $query->whereHas(
-                'project',
-                fn (Builder $p) => $p
-                    ->where('customer_id', $nutzer->customer_id)
-                    ->where('kunden_sichtbar', true),
-            );
+            return $query
+                ->whereHas(
+                    'project',
+                    fn (Builder $p) => $p
+                        ->where('customer_id', $nutzer->customer_id)
+                        ->where('kunden_sichtbar', true),
+                )
+                // Die Klammer ist Pflicht: ohne sie hinge das orWhere am
+                // Ende der gesamten Bedingung und hebelte die Projektprüfung
+                // aus — jedes kundengemeldete Ticket wäre für jeden Kunden
+                // sichtbar. Das ist genau die Art Leck, die man in einer
+                // grünen Testsuite nicht bemerkt.
+                ->where(fn (Builder $q) => $q
+                    ->wartetAufKunde()
+                    ->orWhere('quelle', Quelle::Kunde));
         }
 
         return $query->where(fn (Builder $q) => $q

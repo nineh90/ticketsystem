@@ -254,19 +254,50 @@ class KundenbereichTest extends TestCase
         $this->assertFalse($kunde->can('view', $ticket));
     }
 
-    public function test_kunde_sieht_alle_tickets_seines_projekts_nicht_nur_die_eigenen(): void
+    /**
+     * Umgedreht am 01.09.2026.
+     *
+     * Bis dahin hieß dieser Test "kunde_sieht_alle_tickets_seines_projekts_
+     * nicht_nur_die_eigenen" und prüfte das Gegenteil. Der Gedanke war, der
+     * Kunde solle sehen, woran gearbeitet wird, ohne zu fragen. In der Praxis
+     * standen bei Sarah Schweikert 114 Zeilen in der Liste, von denen 4 sie
+     * betrafen — unser Arbeitsbrett in unseren Worten. Jetzt gilt: was wir
+     * von ihm brauchen, und was er selbst gemeldet hat.
+     *
+     * Woran gearbeitet wird, zeigt weiterhin der Fortschritt am Projekt
+     * (Meilensteine) — nur eben nicht mehr als Ticketliste.
+     *
+     * Die ausführliche Begründung steht in Ticket::scopeSichtbarFuer, die
+     * übrigen Fälle in KundensichtAnliegenTest.
+     */
+    public function test_kunde_sieht_unsere_eigene_arbeit_nicht(): void
     {
         $customer = Customer::factory()->create();
         $kunde = $this->kunde($customer);
         $projekt = Project::factory()->for($customer)->create();
 
-        // Von uns angelegt, nicht vom Kunden gemeldet.
-        $unseres = Ticket::factory()->for($projekt, 'project')->create();
+        // Von uns angelegt, nicht vom Kunden gemeldet, und es wartet nichts
+        // auf ihn.
+        $unseres = Ticket::factory()->for($projekt, 'project')->create([
+            'quelle' => Quelle::Manuell,
+            'ticket_status_id' => $this->stadium(['wartet_auf_kunde' => false])->getKey(),
+        ]);
 
-        $this->assertTrue(
+        $this->assertFalse(
             Ticket::query()->sichtbarFuer($kunde)->whereKey($unseres->getKey())->exists(),
         );
-        $this->assertTrue($kunde->can('view', $unseres));
+
+        // Was er selbst gemeldet hat, bleibt dagegen sichtbar.
+        $seines = Ticket::factory()->for($projekt, 'project')->create([
+            'quelle' => Quelle::Kunde,
+            'created_by' => $kunde->getKey(),
+            'ticket_status_id' => $this->stadium(['wartet_auf_kunde' => false])->getKey(),
+        ]);
+
+        $this->assertTrue(
+            Ticket::query()->sichtbarFuer($kunde)->whereKey($seines->getKey())->exists(),
+        );
+        $this->assertTrue($kunde->can('view', $seines));
     }
 
     public function test_kunde_sieht_keine_internen_kommentare(): void
@@ -323,7 +354,16 @@ class KundenbereichTest extends TestCase
         $customer = Customer::factory()->create();
         $kunde = $this->kunde($customer);
         $projekt = Project::factory()->for($customer)->create();
-        $ticket = Ticket::factory()->for($projekt, 'project')->create();
+
+        // Ausdrücklich ein selbst gemeldetes Anliegen: seit dem 01.09.2026
+        // sieht der Kunde nur solche und die, bei denen wir etwas von ihm
+        // brauchen. Ein beliebiges Ticket lieferte auf der Ansichtsseite
+        // einen 404 — richtig so, aber hier soll geprüft werden, dass die
+        // Seiten überhaupt laden.
+        $ticket = Ticket::factory()->for($projekt, 'project')->create([
+            'quelle' => Quelle::Kunde,
+            'created_by' => $kunde->getKey(),
+        ]);
 
         $this->actingAs($kunde, 'kunde');
         Filament::setCurrentPanel('kunde');

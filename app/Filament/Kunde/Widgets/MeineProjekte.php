@@ -33,8 +33,16 @@ class MeineProjekte extends Widget
         return Project::query()
             ->sichtbarFuer(auth()->user())
             ->withCount([
-                'tickets as offene_anliegen' => fn ($q) => $q->offen(),
-                'tickets as am_zug' => fn ($q) => $q->wartetAufKunde(),
+                // sichtbarFuer auch hier, obwohl die Karte schon zu einem
+                // Projekt dieses Kunden gehört. Ohne die Zeile zählte der
+                // Unterzähler ALLE Tickets des Projekts, während die Liste
+                // dahinter nur zeigt, was den Kunden angeht — bei Sarah
+                // stünde "114 offene Anliegen" über einer Liste mit vier
+                // Einträgen. Eine Zahl, die auf eine Liste mit anderer
+                // Definition führt, ist eine Lüge; dasselbe steht schon bei
+                // Ticket::scopeUeberfaellig.
+                'tickets as offene_anliegen' => fn ($q) => $q->sichtbarFuer(auth()->user())->offen(),
+                'tickets as am_zug' => fn ($q) => $q->sichtbarFuer(auth()->user())->wartetAufKunde(),
                 'meilensteine as meilensteine_gesamt' => fn ($q) => $q->kundenSichtbar(),
                 'meilensteine as meilensteine_erledigt' => fn ($q) => $q->kundenSichtbar()->erledigt(),
             ])
