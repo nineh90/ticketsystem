@@ -9,7 +9,7 @@ NILS-DIGITAL · ND-DECK
 @if (filled($url))
 
 Ansehen:
-{{ $url }}
+{!! $url !!}
 @endif
 
 --

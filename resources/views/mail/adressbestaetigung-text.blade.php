@@ -7,7 +7,7 @@ Adresse, die auch wirklich ankommt. Bestätigen Sie sie einmal, dann sind Sie
 fertig.
 
 Adresse bestätigen:
-{{ $url }}
+{!! $url !!}
 
 --
 Der Link gilt drei Tage. Haben Sie das nicht angefordert, können Sie diese
