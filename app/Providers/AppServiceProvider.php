@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Notifications\PasswortZuruecksetzen;
+use Filament\Auth\Notifications\ResetPassword as FilamentResetPassword;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -9,7 +11,18 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        /*
+         * Die Reset-Mail ohne Warteschlange verschicken.
+         *
+         * Filament erzeugt seine Meldung über den Container
+         * (RequestPasswordReset: app(ResetPassword::class, ['token' => …])),
+         * und weil sie ein ShouldQueue ist, bliebe sie in der jobs-Tabelle
+         * liegen — es läuft kein Worker, weder lokal noch auf dem Server.
+         * Diese Zeile ist die einzige Stelle, an der sich das abfangen lässt,
+         * ohne Filaments Seite nachzubauen. Begründung ausführlich in der
+         * ersetzenden Klasse.
+         */
+        $this->app->bind(FilamentResetPassword::class, PasswortZuruecksetzen::class);
     }
 
     public function boot(): void

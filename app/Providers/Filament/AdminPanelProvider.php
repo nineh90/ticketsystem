@@ -49,12 +49,20 @@ class AdminPanelProvider extends PanelProvider
             // das ausschließlich unter Maschinenraum → Crew, also an der
             // Stelle, an der einer für einen anderen entscheidet.
             ->profile(Profil::class, isSimple: false)
-            // ->passwordReset() bleibt aus, solange MAIL_MAILER auf "log"
-            // steht: der Knopf verschickt eine Mail, die nirgends ankommt,
-            // und der Nutzer wartet auf etwas, das nie kommt. Sobald der
-            // Strato-SMTP hinterlegt ist, hier einkommentieren. Bis dahin
-            // setzt ein Admin ein vergessenes Passwort in der
-            // Nutzerverwaltung neu.
+            // "Passwort vergessen" — seit dem 01.09.2026 an.
+            //
+            // Es stand aus einem guten Grund aus: mit MAIL_MAILER=log wäre
+            // der Knopf ein Versprechen gewesen, das nichts einlöst — die
+            // Mail landet im Protokoll, der Nutzer wartet. Seit dem 19.08.
+            // läuft der Strato-SMTP, damit ist die Bedingung erfüllt, unter
+            // der hier von Anfang an "einkommentieren" stand.
+            //
+            // Beide Panels teilen sich den Broker "users": derselbe Provider,
+            // dasselbe Model, dieselbe Tabelle (config/auth.php). Ein zweiter
+            // wäre eine Datei mehr, die bei jeder Änderung mitgepflegt werden
+            // müsste, ohne etwas zu trennen — die Trennung der Bereiche
+            // besorgt canAccessPanel und nicht der Broker.
+            ->passwordReset()
 
             // "ND-Deck" statt "Nils-Digital": das hier ist das Werkzeug, und
             // wer damit arbeitet, weiß, in wessen Betrieb er sitzt. Der Name

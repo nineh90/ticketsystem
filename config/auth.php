@@ -124,6 +124,41 @@ return [
             'expire' => 60,
             'throttle' => 60,
         ],
+
+        /*
+        |----------------------------------------------------------------------
+        | Der Kundenbereich — dieselben Nutzer, längere Frist
+        |----------------------------------------------------------------------
+        |
+        | Eingehängt über KundePanelProvider->authPasswordBroker('kunde'). Er
+        | gilt damit für beides, was dort Links erzeugt: "Passwort vergessen"
+        | und die Einladung an einen neuen Zugang (App\Support\Einladen).
+        |
+        | Drei Tage statt einer Stunde, und der Unterschied ist keine
+        | Bequemlichkeit. Wir sitzen den ganzen Tag im System; wer intern sein
+        | Passwort zurücksetzt, klickt den Link binnen Minuten. Ein Kunde
+        | bekommt die Einladung nachmittags, sieht sie abends und macht sie
+        | morgens auf — nach einer Stunde stünde er dann vor einem abgelaufenen
+        | Link und dem Eindruck, sein Zugang funktioniere nicht. Genau an
+        | dieser Stelle haben wir schon zwei Kunden verloren, die sich seit
+        | ihrer Anlage im August nie angemeldet haben.
+        |
+        | Sicherheitlich vertretbar: das Token ist einmalig (Laravel löscht es
+        | beim Einlösen), es steht in keiner Liste und der Weg dorthin führt
+        | ausschließlich über das Postfach des Empfängers. Wer drei Tage lang
+        | Zugriff auf dieses Postfach hat, könnte sich ohnehin jederzeit selbst
+        | einen neuen Link schicken lassen — die kürzere Frist schützt in
+        | diesem Fall vor nichts.
+        |
+        | Der interne Broker bleibt bei einer Stunde. Das ist kein Widerspruch:
+        | dort ist die kurze Frist gratis zu haben.
+        */
+        'kunde' => [
+            'provider' => 'users',
+            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 4320,
+            'throttle' => 60,
+        ],
     ],
 
     /*

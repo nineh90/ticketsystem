@@ -76,9 +76,25 @@ class KundePanelProvider extends PanelProvider
             // der Grund, warum ein Admin eines vergeben darf: es ist von
             // Anfang an als vorläufig gedacht — siehe PasswortWechseln.
             ->profile(Profil::class, isSimple: false)
-            // ->passwordReset() bleibt aus, solange MAIL_MAILER auf "log"
-            // steht — genau wie im internen Panel. Vergisst ein Kunde sein
-            // Passwort, setzt es ein Admin unter Kunden → Zugänge neu.
+            // "Passwort vergessen" — seit dem 01.09.2026 an, siehe die
+            // ausführliche Begründung im internen Panel.
+            //
+            // Hier wiegt es schwerer als dort. Wir sind sechs und sitzen im
+            // selben Raum; ein vergessenes Passwort ist intern ein Zuruf.
+            // Ein Kunde hat diesen Zuruf nicht: er hätte anrufen müssen, um
+            // wieder in seinen eigenen Bereich zu kommen, und die Erfahrung
+            // aus drei Wochen Betrieb ist, dass er das nicht tut — er kommt
+            // stattdessen gar nicht mehr. Von fünf Kundenzugängen hatten sich
+            // am 01.09. zwei noch nie angemeldet.
+            ->passwordReset()
+            // Eigener Broker, nur damit die Frist länger ist: drei Tage statt
+            // einer Stunde. Ausführliche Begründung in config/auth.php — kurz:
+            // ein Kunde öffnet seine Post nicht binnen einer Stunde, und ein
+            // abgelaufener Link liest sich für ihn wie ein kaputter Zugang.
+            //
+            // Er gilt für beides, was hier Links erzeugt: das Zurücksetzen und
+            // die Einladung (App\Support\Einladen).
+            ->authPasswordBroker('kunde')
 
             // Bleibt "Nils-Digital", während das interne Panel "ND-Deck"
             // heißt. Der Name des Werkzeugs ist unsere Angelegenheit; ein
