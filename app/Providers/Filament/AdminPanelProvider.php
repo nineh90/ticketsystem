@@ -18,6 +18,8 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -133,6 +135,18 @@ class AdminPanelProvider extends PanelProvider
             // das eine wiederholt nur den Namen aus der Kopfleiste, das
             // andere wirbt für Filament. Beide kosten die beste Stelle.
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
+            // Der Hinweis "das hier ist nicht live" — Rahmen und Schild, nur
+            // in der lokalen Umgebung. Begründung in der Ansicht.
+            //
+            // BODY_START und nicht PAGE_START: der Haken sitzt im Grundgerüst
+            // (components/layout/base.blade.php) und gilt damit auch für die
+            // Anmeldeseite. Die ist die wichtigste von allen — dort fängt die
+            // Verwechslung an, und wer sich erst live angemeldet hat, merkt
+            // es erst hinterher.
+            ->renderHook(
+                PanelsRenderHook::BODY_START,
+                fn (): string|View => app()->isLocal() ? view('filament.lokal-hinweis') : '',
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

@@ -24,6 +24,8 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -165,6 +167,14 @@ class KundePanelProvider extends PanelProvider
             // der eine Sichtbarkeitsregel unbemerkt vorbeiläuft. Bei vier
             // Menüpunkten fehlt sie ohnehin niemandem.
             ->globalSearch(false)
+            // Der Hinweis "das hier ist nicht live" — dieselbe Begründung wie
+            // im internen Panel, und hier noch eine Spur wichtiger: der
+            // Kundenbereich sieht lokal und live vollkommen gleich aus, und
+            // was man hier ausprobiert, trifft im Zweifel echte Kundendaten.
+            ->renderHook(
+                PanelsRenderHook::BODY_START,
+                fn (): string|View => app()->isLocal() ? view('filament.lokal-hinweis') : '',
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
