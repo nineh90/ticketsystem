@@ -4,7 +4,6 @@ namespace App\Filament\Kunde\Resources\Projekte;
 
 use App\Filament\Kunde\Resources\Projekte\Pages\ListProjekte;
 use App\Filament\Kunde\Resources\Projekte\Pages\ViewProjekt;
-use App\Filament\Kunde\Resources\Projekte\RelationManagers\AnliegenRelationManager;
 use App\Filament\Kunde\Resources\Projekte\Tables\ProjekteTable;
 use App\Models\Project;
 use BackedEnum;
@@ -34,6 +33,14 @@ class ProjektResource extends Resource
 
     protected static ?int $navigationSort = 10;
 
+    /**
+     * Kein eigener Menüpunkt (NID-23). Die Projekte stehen als Karten auf
+     * der Übersicht, mit Stand und Fortschritt, und von dort geht es auf die
+     * Projektseite. Die Liste dahinter zeigte dasselbe ein zweites Mal — bei
+     * den meisten Kunden eine Tabelle mit einer Zeile.
+     */
+    protected static bool $shouldRegisterNavigation = false;
+
     /** Sonst wird daraus /kunde/projekte/projekts. */
     protected static ?string $slug = 'projekte';
 
@@ -53,11 +60,19 @@ class ProjektResource extends Resource
         return ProjekteTable::configure($table);
     }
 
+    /**
+     * Bewusst keine Anliegen-Liste unter dem Projekt (NID-23).
+     *
+     * Dort stand bis hierher JEDES Ticket des Projekts — auch unser
+     * Arbeitsbrett, das der Kunde seit dem 01.09. in seiner Anliegen-Liste
+     * nicht mehr sieht. Die Liste hing an der Beziehung tickets() und lief
+     * nie durch sichtbarFuer. Statt sie zu filtern, fällt sie weg: Anliegen
+     * stehen an genau einer Stelle, und eine zweite Liste ist eine zweite
+     * Stelle, an der dieselbe Regel gelten müsste.
+     */
     public static function getRelations(): array
     {
-        return [
-            AnliegenRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array

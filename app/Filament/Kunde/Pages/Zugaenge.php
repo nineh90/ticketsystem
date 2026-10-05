@@ -33,6 +33,22 @@ class Zugaenge extends Page
 
     protected string $view = 'filament.kunde.pages.zugaenge';
 
+    /**
+     * Im Menü nur, wenn etwas freigegeben ist — wie bei den Dokumenten.
+     *
+     * Ein Menüpunkt, hinter dem nichts steht, kostet den Kunden einen Klick
+     * und lehrt ihn, den Punkt zu übergehen. Die Seite selbst bleibt
+     * erreichbar: wer sie direkt aufruft, bekommt eine leere Seite mit
+     * Erklärung statt eines Fehlers.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        $nutzer = auth()->user();
+
+        return $nutzer !== null
+            && Zugangsdaten::query()->sichtbarFuer($nutzer)->exists();
+    }
+
     public function getTitle(): string
     {
         return 'Zugangsdaten';

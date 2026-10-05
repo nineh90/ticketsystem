@@ -32,13 +32,13 @@ class ProjekteTable
                 TextColumn::make('offene_anliegen')
                     ->label('Offen')
                     ->badge()
-                    ->state(fn (Project $record) => $record->tickets()->offen()->count())
+                    ->state(fn (Project $record) => $record->tickets()->sichtbarFuer(auth()->user())->offen()->count())
                     ->color(fn ($state) => $state > 0 ? 'info' : 'gray'),
 
                 TextColumn::make('am_zug')
                     ->label('Sie sind am Zug')
                     ->badge()
-                    ->state(fn (Project $record) => $record->tickets()->wartetAufKunde()->count())
+                    ->state(fn (Project $record) => $record->tickets()->sichtbarFuer(auth()->user())->wartetAufKunde()->count())
                     // Eine Null wäre hier eine gute Nachricht — aber ein
                     // gelbes Abzeichen liest sich immer wie eine Meldung.
                     // Also bleibt es grau und zeigt einen Strich, solange

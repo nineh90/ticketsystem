@@ -8,6 +8,8 @@
 --}}
 @php
     $kontakt = $this->getKontaktdaten();
+    $ich = auth()->user();
+    $unterhaltung = $this->verlauf();
 @endphp
 
 <x-filament-panels::page>
@@ -98,6 +100,17 @@
                 Was am Telefon besprochen wird, halten wir anschließend als Anliegen
                 fest — damit es später nachvollziehbar bleibt.
             </p>
+        </x-filament::section>
+
+        {{-- Der kurze Draht: für alles, was kein Anliegen ist. Über die
+             ganze Breite, weil ein Verlauf Platz zum Lesen braucht. --}}
+        <x-filament::section
+            class="lg:col-span-3"
+            icon="heroicon-o-chat-bubble-left-right"
+            heading="Nachricht schreiben"
+            description="Für eine kurze Frage oder einen Hinweis. Bleibt zwischen Ihnen und uns und taucht in keinem Anliegen auf."
+        >
+            @include('filament.unterhaltung', ['unterhaltung' => $unterhaltung, 'ich' => $ich])
         </x-filament::section>
     </div>
 </x-filament-panels::page>

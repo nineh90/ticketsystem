@@ -2,13 +2,10 @@
 
 namespace App\Filament\Kunde\Pages;
 
-use App\Models\Nachricht;
-use App\Models\Unterhaltung;
-use App\Support\Unterhaltungen;
+use App\Filament\Concerns\SchreibtMitUns;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Validation\ValidationException;
 
 /**
  * Der kurze Draht zu uns — ohne Anliegen, ohne Ticketnummer.
@@ -24,6 +21,17 @@ use Illuminate\Validation\ValidationException;
  */
 class Nachrichten extends Page
 {
+    use SchreibtMitUns;
+
+    /**
+     * Kein eigener Menüpunkt mehr (NID-23): der Verlauf steht auf der
+     * Kontaktseite, dort wo der Kunde ohnehin hingeht, wenn er uns etwas
+     * sagen will. Die Seite selbst bleibt, weil Glockenmeldungen und Mails
+     * ihre Adresse tragen — ein "Ansehen"-Knopf soll auch in einem halben
+     * Jahr noch etwas öffnen.
+     */
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;
 
     protected static ?string $navigationLabel = 'Nachrichten';
@@ -33,9 +41,6 @@ class Nachrichten extends Page
     protected static ?string $slug = 'nachrichten';
 
     protected string $view = 'filament.kunde.pages.nachrichten';
-
-    /** Was im Eingabefeld steht — siehe views/filament/unterhaltung.blade.php. */
-    public string $entwurf = '';
 
     public function mount(): void
     {
@@ -54,62 +59,5 @@ class Nachrichten extends Page
     {
         return 'Für alles, was kein Anliegen ist — eine Frage, ein Termin, ein kurzer Hinweis. '
             .'Wir antworten '.config('kontakt.reaktionszeit').'.';
-    }
-
-    public static function getNavigationBadge(): ?string
-    {
-        $offen = Unterhaltungen::ungelesen();
-
-        return $offen > 0 ? (string) $offen : null;
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'primary';
-    }
-
-    /**
-     * Der eine Verlauf dieses Kunden.
-     *
-     * Ohne Merker, damit eine gerade gesendete Nachricht im selben Aufbau
-     * schon dabei ist.
-     */
-    public function verlauf(): Unterhaltung
-    {
-        $nutzer = auth()->user();
-
-        // Ein Kundenzugang ohne Kundenzuordnung kommt gar nicht erst ins
-        // Panel (User::canAccessPanel). Die Prüfung steht trotzdem hier:
-        // ohne sie hinge die Zuordnung des Verlaufs an einer Bedingung, die
-        // eine ganz andere Datei stellt.
-        abort_if($nutzer?->customer_id === null, 403);
-
-        return Unterhaltungen::fuerKunden($nutzer->customer_id)
-            ->load(['nachrichten.absender', 'teilnehmer']);
-    }
-
-    public function senden(): void
-    {
-        $unterhaltung = $this->verlauf();
-
-        if (auth()->user()?->cannot('schreiben', $unterhaltung)) {
-            throw ValidationException::withMessages([
-                'entwurf' => 'In diese Unterhaltung dürfen Sie nicht schreiben.',
-            ]);
-        }
-
-        $text = trim($this->entwurf);
-
-        if ($text === '') {
-            return;
-        }
-
-        Nachricht::create([
-            'unterhaltung_id' => $unterhaltung->getKey(),
-            'user_id' => auth()->id(),
-            'text' => $text,
-        ]);
-
-        $this->entwurf = '';
     }
 }

@@ -11,6 +11,7 @@ use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
 class ViewProjekt extends ViewRecord
@@ -58,6 +59,18 @@ class ViewProjekt extends ViewRecord
         ];
     }
 
+    /**
+     * Die Anliegen dieses Projekts, soweit der Kunde sie sieht.
+     *
+     * Über sichtbarFuer und nicht über tickets() allein: die Zahlen unten
+     * zählten sonst unser gesamtes Arbeitsbrett mit — "114 offene Anliegen"
+     * über einer Liste, in der vier stehen.
+     */
+    private function anliegen(): HasMany
+    {
+        return $this->record->tickets()->sichtbarFuer(auth()->user());
+    }
+
     public function infolist(Schema $schema): Schema
     {
         return $schema->components([
@@ -70,16 +83,16 @@ class ViewProjekt extends ViewRecord
 
                     TextEntry::make('offen')
                         ->label('Offene Anliegen')
-                        ->state(fn () => (string) $this->record->tickets()->offen()->count()),
+                        ->state(fn () => (string) $this->anliegen()->offen()->count()),
 
                     TextEntry::make('am_zug')
                         ->label('Sie sind am Zug')
-                        ->state(fn () => (string) $this->record->tickets()->wartetAufKunde()->count())
-                        ->color(fn () => $this->record->tickets()->wartetAufKunde()->exists() ? 'warning' : null),
+                        ->state(fn () => (string) $this->anliegen()->wartetAufKunde()->count())
+                        ->color(fn () => $this->anliegen()->wartetAufKunde()->exists() ? 'warning' : null),
 
                     TextEntry::make('erledigt')
                         ->label('Erledigt')
-                        ->state(fn () => (string) $this->record->tickets()
+                        ->state(fn () => (string) $this->anliegen()
                             ->whereHas('status', fn ($q) => $q->where('ist_abschluss', true))
                             ->count()),
 

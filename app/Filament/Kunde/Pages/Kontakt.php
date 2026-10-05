@@ -3,7 +3,9 @@
 namespace App\Filament\Kunde\Pages;
 
 use App\Enums\TicketArt;
+use App\Filament\Concerns\SchreibtMitUns;
 use App\Filament\Kunde\Resources\Anliegen\AnliegenResource;
+use App\Support\Unterhaltungen;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
@@ -22,9 +24,16 @@ use Filament\Support\Icons\Heroicon;
  * Telefon und Mail bleiben trotzdem sichtbar. Wer anrufen will, ruft an; die
  * Alternative wäre nicht, dass er ein Anliegen anlegt, sondern dass er sich
  * die Nummer woanders sucht und sich dabei ärgert.
+ *
+ * Seit NID-23 steht hier auch der Nachrichtenverlauf. Vorher gab es dafür
+ * einen eigenen Menüpunkt, und der Kunde stand vor zwei Türen mit fast
+ * derselben Aufschrift — "Nachrichten" und "Kontakt". Jetzt gibt es eine:
+ * wer uns etwas sagen will, kommt hierher und findet alle Wege nebeneinander.
  */
 class Kontakt extends Page
 {
+    use SchreibtMitUns;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedLifebuoy;
 
     protected static ?string $navigationLabel = 'Kontakt';
@@ -35,9 +44,28 @@ class Kontakt extends Page
 
     protected string $view = 'filament.kunde.pages.kontakt';
 
+    public function mount(): void
+    {
+        // Wer die Seite öffnet, sieht den Verlauf — damit ist er gelesen.
+        $this->verlauf()->alsGelesenMarkieren(auth()->user());
+    }
+
     public function getTitle(): string
     {
         return 'Kontakt';
+    }
+
+    /** Ungelesene Antworten von uns — die Zahl stand vorher an "Nachrichten". */
+    public static function getNavigationBadge(): ?string
+    {
+        $offen = Unterhaltungen::ungelesen();
+
+        return $offen > 0 ? (string) $offen : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'primary';
     }
 
     public function getSubheading(): ?string

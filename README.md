@@ -522,6 +522,13 @@ Ein Chat neben den Tickets, an kein Ticket gebunden: `/nachrichten` innen,
 `/kunde/nachrichten` außen. Für alles, wofür ein Ticket zu viel wäre — eine
 Terminfrage, eine Rückfrage zur Rechnung, ein Hinweis an einen Kollegen.
 
+Außen hat der Verlauf keinen eigenen Menüpunkt mehr: er steht auf der
+Kontaktseite (`/kunde/kontakt`), neben „Anliegen anlegen", Telefon und Mail.
+Die alte Adresse bleibt gültig, weil Meldungen und Mails auf sie zeigen. Das
+Kundenmenü besteht damit aus Übersicht, Anliegen, Kontakt und Mein Konto;
+Dokumente und Zugangsdaten kommen dazu, sobald etwas freigegeben ist. Die
+Projekte erreicht der Kunde über die Karten auf der Übersicht.
+
 Zwei Arten, und der Unterschied ist der Empfängerkreis:
 
 * **Kundenunterhaltung** — gehört dem Kunden, nicht einer Person. Es gibt je
