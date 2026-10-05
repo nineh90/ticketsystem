@@ -9,6 +9,7 @@ use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -31,74 +32,96 @@ class AnliegenForm
         return $schema
             ->components([
                 Section::make('Worum geht es?')
-                    ->schema([
-                        Radio::make('art')
-                            ->hiddenLabel()
-                            ->options(collect(TicketArt::fuerKunden())
-                                ->mapWithKeys(fn (TicketArt $art) => [$art->value => $art->getLabel()])
-                                ->all())
-                            ->descriptions(collect(TicketArt::fuerKunden())
-                                ->mapWithKeys(fn (TicketArt $art) => [$art->value => $art->erklaerung()])
-                                ->all())
-                            ->default(TicketArt::Fehler->value)
-                            ->required()
-                            ->columnSpanFull(),
-                    ]),
+                    ->schema([self::artFeld()]),
 
                 Section::make('Ihr Anliegen')
-                    ->schema([
-                        Select::make('project_id')
-                            ->label('Projekt')
-                            ->options(fn () => Project::query()
-                                ->sichtbarFuer(auth()->user())
-                                ->orderBy('name')
-                                ->pluck('name', 'id'))
-                            ->required()
-                            // Bei genau einem Projekt gibt es nichts zu
-                            // wählen — dann steht die Auswahl vorbelegt da,
-                            // statt eine Entscheidung zu verlangen, die keine
-                            // ist.
-                            ->default(fn () => Project::query()
-                                ->sichtbarFuer(auth()->user())
-                                ->count() === 1
-                                    ? Project::query()->sichtbarFuer(auth()->user())->value('id')
-                                    : null)
-                            ->native(false)
-                            ->searchable()
-                            ->helperText('Zu welchem Projekt gehört es?'),
-
-                        TextInput::make('titel')
-                            ->label('Kurz gesagt')
-                            ->required()
-                            ->maxLength(255)
-                            ->placeholder('Das Kontaktformular verschickt nichts')
-                            ->helperText('Ein Satz genügt.'),
-
-                        Textarea::make('beschreibung')
-                            ->label('Ausführlich')
-                            ->rows(8)
-                            ->columnSpanFull()
-                            ->placeholder(
-                                "Was haben Sie gemacht?\n".
-                                "Was ist passiert?\n".
-                                'Was hätte stattdessen passieren sollen?',
-                            ),
-
-                        // Gleich hier und nicht erst hinterher am angelegten
-                        // Anliegen. Beides geht, aber wer einen Fehler meldet,
-                        // hat den Screenshot in genau diesem Moment auf dem
-                        // Bildschirm — eine Seite später ist er vergessen, und
-                        // dann kostet die Rückfrage "können Sie ein Bild
-                        // schicken?" beide Seiten einen halben Tag.
-                        // Dasselbe Feld wie beim internen Anlegen, siehe
-                        // Anhangfeld: gleiche Typen, gleiche Höchstgröße,
-                        // gleiche Ablage. Zwei Fassungen, die sich um ein
-                        // erlaubtes Format unterscheiden, fallen erst dem
-                        // Kunden auf.
-                        Anhangfeld::machen()
-                            ->label('Screenshots')
-                            ->helperText('Bilder oder PDF, je bis 16 MB. Ein Screenshot spart oft drei Absätze Beschreibung.'),
-                    ]),
+                    ->schema(self::felder()),
             ]);
+    }
+
+    /**
+     * Dieselben Felder ohne die beiden Rahmen — für das Formular auf der
+     * Übersicht (Widgets\EtwasMelden), das selbst schon in einer Karte
+     * steht. Eine zweite Fassung der Felder gäbe es nur, damit sie sich
+     * irgendwann um ein Pflichtfeld unterscheiden.
+     *
+     * @return array<int, Component>
+     */
+    public static function alleFelder(): array
+    {
+        return [self::artFeld(), ...self::felder()];
+    }
+
+    private static function artFeld(): Radio
+    {
+        return Radio::make('art')
+            ->hiddenLabel()
+            ->options(collect(TicketArt::fuerKunden())
+                ->mapWithKeys(fn (TicketArt $art) => [$art->value => $art->getLabel()])
+                ->all())
+            ->descriptions(collect(TicketArt::fuerKunden())
+                ->mapWithKeys(fn (TicketArt $art) => [$art->value => $art->erklaerung()])
+                ->all())
+            ->default(TicketArt::Fehler->value)
+            ->required()
+            ->columnSpanFull();
+    }
+
+    /** @return array<int, Component> */
+    private static function felder(): array
+    {
+        return [
+            Select::make('project_id')
+                ->label('Projekt')
+                ->options(fn () => Project::query()
+                    ->sichtbarFuer(auth()->user())
+                    ->orderBy('name')
+                    ->pluck('name', 'id'))
+                ->required()
+                // Bei genau einem Projekt gibt es nichts zu
+                // wählen — dann steht die Auswahl vorbelegt da,
+                // statt eine Entscheidung zu verlangen, die keine
+                // ist.
+                ->default(fn () => Project::query()
+                    ->sichtbarFuer(auth()->user())
+                    ->count() === 1
+                        ? Project::query()->sichtbarFuer(auth()->user())->value('id')
+                        : null)
+                ->native(false)
+                ->searchable()
+                ->helperText('Zu welchem Projekt gehört es?'),
+
+            TextInput::make('titel')
+                ->label('Kurz gesagt')
+                ->required()
+                ->maxLength(255)
+                ->placeholder('Das Kontaktformular verschickt nichts')
+                ->helperText('Ein Satz genügt.'),
+
+            Textarea::make('beschreibung')
+                ->label('Ausführlich')
+                ->rows(8)
+                ->columnSpanFull()
+                ->placeholder(
+                    "Was haben Sie gemacht?\n".
+                    "Was ist passiert?\n".
+                    'Was hätte stattdessen passieren sollen?',
+                ),
+
+            // Gleich hier und nicht erst hinterher am angelegten
+            // Anliegen. Beides geht, aber wer einen Fehler meldet,
+            // hat den Screenshot in genau diesem Moment auf dem
+            // Bildschirm — eine Seite später ist er vergessen, und
+            // dann kostet die Rückfrage "können Sie ein Bild
+            // schicken?" beide Seiten einen halben Tag.
+            // Dasselbe Feld wie beim internen Anlegen, siehe
+            // Anhangfeld: gleiche Typen, gleiche Höchstgröße,
+            // gleiche Ablage. Zwei Fassungen, die sich um ein
+            // erlaubtes Format unterscheiden, fallen erst dem
+            // Kunden auf.
+            Anhangfeld::machen()
+                ->label('Screenshots')
+                ->helperText('Bilder oder PDF, je bis 16 MB. Ein Screenshot spart oft drei Absätze Beschreibung.'),
+        ];
     }
 }

@@ -2,9 +2,7 @@
 
 namespace App\Filament\Kunde\Pages;
 
-use App\Filament\Kunde\Resources\Anliegen\AnliegenResource;
 use BackedEnum;
-use Filament\Actions\Action;
 use Filament\Pages\Dashboard;
 use Filament\Support\Icons\Heroicon;
 
@@ -35,21 +33,12 @@ class Uebersicht extends Dashboard
      * dort zusammen mit dem Logo des Kunden. Zweimal "Guten Tag" auf
      * derselben Seite liest sich wie ein Fehler.
      *
-     * Der Knopf "Etwas melden" bleibt trotzdem stehen — Filament rendert die
-     * Kopfzeile, sobald es Aktionen gibt, auch ohne Überschrift.
+     * Auch der Knopf "Etwas melden" stand hier. Seit das Formular selbst auf
+     * der Übersicht liegt (Widgets\EtwasMelden), führte er auf eine zweite
+     * Fassung dessen, was drei Zeilen tiefer schon steht.
      */
     public function getHeading(): string
     {
         return '';
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            Action::make('melden')
-                ->label('Etwas melden')
-                ->icon('heroicon-o-plus')
-                ->url(fn () => AnliegenResource::getUrl('create')),
-        ];
     }
 }

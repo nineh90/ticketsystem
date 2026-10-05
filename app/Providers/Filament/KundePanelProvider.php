@@ -7,6 +7,7 @@ use App\Filament\AvatarProviders\InitialenAvatar;
 use App\Filament\Kunde\Pages\Profil;
 use App\Filament\Kunde\Pages\Uebersicht;
 use App\Filament\Kunde\Widgets\BenachrichtigungenEinrichten;
+use App\Filament\Kunde\Widgets\EtwasMelden;
 use App\Filament\Kunde\Widgets\MeineProjekte;
 use App\Filament\Kunde\Widgets\Messe;
 use App\Filament\Kunde\Widgets\StandDerDinge;
@@ -160,6 +161,9 @@ class KundePanelProvider extends PanelProvider
                 // Die Karte erscheint nur, wenn etwas ansteht.
                 Messe::class,
                 StandDerDinge::class,
+                // Das Formular selbst, nicht ein Knopf dorthin: der Kunde
+                // kommt meistens her, um etwas zu melden.
+                EtwasMelden::class,
                 MeineProjekte::class,
             ])
             // Keine globale Suche: sie durchsucht alles, was als Ressource

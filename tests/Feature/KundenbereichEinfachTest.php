@@ -9,6 +9,7 @@ use App\Filament\Kunde\Pages\Nachrichten;
 use App\Filament\Kunde\Pages\Zugaenge;
 use App\Filament\Kunde\Resources\Projekte\Pages\ViewProjekt;
 use App\Filament\Kunde\Resources\Projekte\ProjektResource;
+use App\Filament\Kunde\Widgets\EtwasMelden;
 use App\Models\Customer;
 use App\Models\Nachricht;
 use App\Models\Project;
@@ -170,6 +171,68 @@ class KundenbereichEinfachTest extends TestCase
         Livewire::test(Kontakt::class)->assertSee('Donnerstag passt.');
 
         $this->assertNull(Kontakt::getNavigationBadge());
+    }
+
+    public function test_auf_der_uebersicht_laesst_sich_direkt_etwas_melden(): void
+    {
+        $backlog = TicketStatus::factory()->create(['sortierung' => 1]);
+        $customer = Customer::factory()->create();
+        $kunde = $this->kunde($customer);
+        $projekt = Project::factory()->for($customer)->create(['kunden_sichtbar' => true]);
+
+        $this->actingAs($kunde, 'kunde');
+        Filament::setCurrentPanel('kunde');
+
+        // Das Formular steht auf der Seite, nicht hinter einem Knopf.
+        // Widgets lädt Filament nach, im ersten Abruf steht deshalb nur
+        // der Platzhalter mit dem Namen — die Felder prüft der Aufruf darunter.
+        $this->get('/kunde')->assertOk()->assertSeeLivewire(EtwasMelden::class);
+
+        Livewire::test(EtwasMelden::class)
+            ->assertSee('Etwas melden')
+            ->assertSee('Kurz gesagt')
+            // Ein einziges Projekt ist vorbelegt — da gibt es nichts zu wählen.
+            ->assertSchemaStateSet(['project_id' => $projekt->getKey()])
+            ->fillForm(['titel' => 'Das Kontaktformular verschickt nichts'])
+            ->call('senden')
+            ->assertHasNoFormErrors()
+            ->assertRedirect();
+
+        $ticket = Ticket::query()->latest('id')->first();
+        $this->assertSame('Das Kontaktformular verschickt nichts', $ticket->titel);
+        $this->assertSame(Quelle::Kunde, $ticket->quelle);
+        $this->assertSame($projekt->getKey(), $ticket->project_id);
+        $this->assertSame($backlog->getKey(), $ticket->ticket_status_id);
+        $this->assertSame($kunde->getKey(), $ticket->created_by);
+    }
+
+    public function test_von_der_uebersicht_aus_geht_nichts_in_ein_fremdes_projekt(): void
+    {
+        // Dieselbe Schranke wie auf der Seite "Neues Anliegen": die
+        // Auswahlliste ist keine Prüfung.
+        TicketStatus::factory()->create();
+        $customer = Customer::factory()->create();
+        $kunde = $this->kunde($customer);
+        Project::factory()->for($customer)->create(['kunden_sichtbar' => true]);
+        $fremd = Project::factory()->create(['kunden_sichtbar' => true]);
+
+        $this->actingAs($kunde, 'kunde');
+        Filament::setCurrentPanel('kunde');
+
+        Livewire::test(EtwasMelden::class)
+            ->set('data.project_id', $fremd->getKey())
+            ->set('data.titel', 'Darf hier nicht landen')
+            ->call('senden')
+            ->assertHasErrors();
+
+        $this->assertDatabaseMissing('tickets', ['titel' => 'Darf hier nicht landen']);
+    }
+
+    public function test_ohne_freigegebenes_projekt_gibt_es_kein_meldeformular(): void
+    {
+        $this->actingAs($this->kunde(), 'kunde');
+
+        $this->assertFalse(EtwasMelden::canView());
     }
 
     public function test_die_alte_nachrichtenadresse_geht_weiter(): void

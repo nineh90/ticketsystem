@@ -2,18 +2,17 @@
 
 namespace App\Filament\Kunde\Resources\Anliegen\Pages;
 
-use App\Enums\Quelle;
 use App\Enums\TicketArt;
+use App\Filament\Concerns\LegtAnliegenAn;
 use App\Filament\Concerns\NimmtDateienEntgegen;
 use App\Filament\Kunde\Resources\Anliegen\AnliegenResource;
 use App\Models\Project;
-use App\Models\TicketStatus;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Validation\ValidationException;
 
 class CreateAnliegen extends CreateRecord
 {
+    use LegtAnliegenAn;
     use NimmtDateienEntgegen;
 
     protected static string $resource = AnliegenResource::class;
@@ -97,56 +96,15 @@ class CreateAnliegen extends CreateRecord
     }
 
     /**
-     * Alles, was nicht im Formular steht, wird hier gesetzt.
-     *
-     * Das ist der eigentliche Schutz dieser Seite: der Kunde füllt vier
-     * Felder aus, und die übrigen — Kunde, Herkunft, Stadium, Urheber —
-     * ergeben sich, statt aus dem Browser zu kommen. Käme etwa project_id
-     * ungeprüft aus dem Formular, ließe sich mit einer geänderten Anfrage ein
-     * Anliegen in einem fremden Projekt anlegen.
+     * Alles, was nicht im Formular steht, wird hier gesetzt — siehe
+     * LegtAnliegenAn, das dieselbe Prüfung auch für die Karte auf der
+     * Übersicht stellt.
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $nutzer = auth()->user();
-
         // "dateien" ist keine Spalte; die Dateien werden erst in afterCreate()
         // zugeordnet, wenn das Anliegen eine Nummer hat.
-        $data = $this->dateienAusFormular($data);
-
-        // Gehört das Projekt wirklich diesem Kunden? Die Auswahlliste zeigt
-        // nur passende, aber eine Auswahlliste ist keine Prüfung.
-        $projekt = Project::query()
-            ->sichtbarFuer($nutzer)
-            ->whereKey($data['project_id'] ?? null)
-            ->first();
-
-        if ($projekt === null) {
-            throw ValidationException::withMessages([
-                'data.project_id' => 'Bitte wählen Sie eines Ihrer Projekte aus.',
-            ]);
-        }
-
-        $stadium = TicketStatus::standard();
-
-        if ($stadium === null) {
-            throw ValidationException::withMessages([
-                'data.titel' => 'Das System nimmt gerade keine Anliegen an. Bitte melden Sie sich direkt bei uns.',
-            ]);
-        }
-
-        return [
-            ...$data,
-            'project_id' => $projekt->getKey(),
-            'customer_id' => $projekt->customer_id,
-            // Das erste Stadium der Reihenfolge — bei uns "Backlog". Neue
-            // Anliegen kommen bewusst dort an und nicht in "Offen": erst
-            // sehen wir sie an, dann werden sie eingeplant.
-            'ticket_status_id' => $stadium->getKey(),
-            'quelle' => Quelle::Kunde,
-            'created_by' => $nutzer->getKey(),
-            // Priorität bleibt auf dem Standardwert des Models. Wer sie
-            // festlegt, sind wir.
-        ];
+        return $this->anliegenDaten($this->dateienAusFormular($data));
     }
 
     /** Die mitgeschickten Dateien an das eben angelegte Anliegen hängen. */
