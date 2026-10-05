@@ -433,6 +433,24 @@ class Ticket extends Model
         return (bool) $this->status?->wartet_auf_kunde;
     }
 
+    /** Über die Website hereingekommen — von jemandem, der noch kein Kunde ist. */
+    public function istVonDerWebsite(): bool
+    {
+        return $this->quelle === Quelle::Website;
+    }
+
+    /**
+     * Kam das Ticket von außen — vom Kunden oder über die Website?
+     *
+     * Das Gegenstück zu scopeVonAussen für ein einzelnes Ticket: in beiden
+     * Fällen wartet draußen jemand, und danach richtet sich, was auf der
+     * Brücke hervorgehoben und gemeldet wird.
+     */
+    public function istVonAussen(): bool
+    {
+        return $this->istVomKunden() || $this->istVonDerWebsite();
+    }
+
     /** Wurde dieses Ticket von einem Kunden gemeldet? */
     public function istVomKunden(): bool
     {

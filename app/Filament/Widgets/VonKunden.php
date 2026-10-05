@@ -12,7 +12,12 @@ use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Was Kunden selbst gemeldet haben und noch offen ist.
+ * Was von außen gemeldet wurde und noch offen ist — von Kunden im
+ * Kundenbereich und, seit NID-24, von Anfragenden über die Website.
+ *
+ * Beides in einer Liste, weil es für uns dieselbe Lage ist: draußen wartet
+ * jemand. Eine Anfrage von jemandem, der noch kein Kunde ist, gehört eher
+ * weiter nach oben als nach unten.
  *
  * Das Widget steht ganz oben auf dem Dashboard und verschwindet vollständig,
  * sobald nichts offen ist. Beides gehört zusammen: eine Liste, die meistens
@@ -36,7 +41,7 @@ class VonKunden extends TableWidget
 
     public function getTableHeading(): string
     {
-        return 'Von Kunden gemeldet';
+        return 'Von außen gemeldet';
     }
 
     /**
@@ -58,7 +63,7 @@ class VonKunden extends TableWidget
         return Ticket::query()
             ->sichtbarFuer($nutzer)
             ->offen()
-            ->vomKunden()
+            ->vonAussen()
             ->exists();
     }
 
@@ -68,7 +73,7 @@ class VonKunden extends TableWidget
             ->query(fn (): Builder => Ticket::query()
                 ->sichtbarFuer(auth()->user())
                 ->offen()
-                ->vomKunden()
+                ->vonAussen()
                 ->with(['customer', 'project', 'status', 'ersteller']))
             // Ältestes zuerst — nicht neuestes. Das Anliegen, das am
             // längsten unbeantwortet liegt, ist das dringendste, auch wenn
@@ -98,10 +103,17 @@ class VonKunden extends TableWidget
                     ->label('Anliegen')
                     ->wrap()
                     ->weight('medium')
-                    ->description(fn (Ticket $record) => $record->customer->name.' · '.$record->project->name),
+                    ->description(fn (Ticket $record) => $record->istVonDerWebsite()
+                        ? 'Über die Website'
+                        : $record->customer->name.' · '.$record->project->name),
 
+                // Bei einer Anfrage über die Website gibt es kein Konto,
+                // nur den Absender, den sie mitgeschickt hat.
                 TextColumn::make('ersteller.name')
                     ->label('Von')
+                    ->state(fn (Ticket $record) => $record->ersteller?->name
+                        ?? $record->absender_name
+                        ?? $record->absender_email)
                     ->placeholder('—'),
 
                 TextColumn::make('status.name')

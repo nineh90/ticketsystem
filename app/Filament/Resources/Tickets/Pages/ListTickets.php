@@ -129,11 +129,14 @@ class ListTickets extends ListRecords
             // Der eigene Reiter, weil auf der anderen Seite jemand wartet —
             // ein Kundenanliegen, das drei Tage im Backlog liegt, ist etwas
             // anderes als eine eigene Notiz, die dort drei Tage liegt.
-            'von-kunden' => Tab::make('Von Kunden')
+            //
+            // Dazu gehören auch die Anfragen über die Website. Der Schlüssel
+            // bleibt "von-kunden", weil Kacheln und Lesezeichen ihn tragen.
+            'von-kunden' => Tab::make('Von außen')
                 ->icon('heroicon-m-inbox-arrow-down')
-                ->badge($this->zaehlen(fn (Builder $query) => $query->offen()->vomKunden()))
+                ->badge($this->zaehlen(fn (Builder $query) => $query->offen()->vonAussen()))
                 ->badgeColor('info')
-                ->modifyQueryUsing(fn (Builder $query) => $query->offen()->vomKunden()),
+                ->modifyQueryUsing(fn (Builder $query) => $query->offen()->vonAussen()),
 
             'unzugewiesen' => Tab::make('Unzugewiesen')
                 ->icon('heroicon-m-question-mark-circle')

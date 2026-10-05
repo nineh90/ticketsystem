@@ -55,16 +55,23 @@ class TicketObserver
 
     public function created(Ticket $ticket): void
     {
-        if (! $ticket->istVomKunden()) {
+        if (! $ticket->istVonAussen()) {
             return;
         }
 
         $ticket->loadMissing(['customer', 'project']);
 
+        // Bei einer Anfrage über die Website hieße der Kunde "Eingang" —
+        // das sagt niemandem etwas. Dort steht, wer geschrieben hat.
+        $titel = $ticket->istVonDerWebsite()
+            ? 'Anfrage über die Website'
+                .(filled($ticket->absender_name) ? ' von '.$ticket->absender_name : '')
+            : $ticket->art->getLabel().' von '.$ticket->customer->name;
+
         Benachrichtigung::nachInnen(
             $ticket,
             Notification::make()
-                ->title($ticket->art->getLabel().' von '.$ticket->customer->name)
+                ->title($titel)
                 ->body($ticket->kennung().' · '.$ticket->project->name.' — '.$ticket->titel)
                 ->icon($ticket->art->getIcon())
                 ->color($ticket->art->getColor())

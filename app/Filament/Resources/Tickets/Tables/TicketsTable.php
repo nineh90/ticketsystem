@@ -50,9 +50,11 @@ class TicketsTable
                     // Angabe, die über die Reihenfolge des Tages entscheidet,
                     // und sie soll nicht hinter einer ausblendbaren Spalte
                     // liegen.
-                    ->description(fn ($record) => $record->istVomKunden()
-                        ? $record->project->name.' · vom Kunden gemeldet'
-                        : $record->project->name),
+                    ->description(fn ($record) => match (true) {
+                        $record->istVomKunden() => $record->project->name.' · vom Kunden gemeldet',
+                        $record->istVonDerWebsite() => $record->project->name.' · über die Website',
+                        default => $record->project->name,
+                    }),
 
                 TextColumn::make('customer.name')
                     ->label('Kunde')

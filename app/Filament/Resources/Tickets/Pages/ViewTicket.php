@@ -181,6 +181,18 @@ class ViewTicket extends ViewRecord
                 ->schema([])
                 ->visible(fn () => $this->record->istVomKunden()),
 
+            // Dasselbe für Anfragen über die Website. Der Unterschied steht
+            // im Text: hier gibt es keinen Kundenbereich, in dem ein
+            // Kommentar ankäme — geantwortet wird per Mail.
+            Section::make('Über die Website angefragt')
+                ->icon('heroicon-o-globe-alt')
+                ->description(fn () => ($this->record->absender_name ?: $this->record->absender_email ?: 'Jemand')
+                    .' wartet auf eine Antwort — per Mail'
+                    .(filled($this->record->absender_email) ? ' an '.$this->record->absender_email : '').'. '
+                    .'Danach hier mit einem Kommentar ohne "Interne Notiz" festhalten, sonst gilt die Anfrage weiter als unbeantwortet.')
+                ->schema([])
+                ->visible(fn () => $this->record->istVonDerWebsite()),
+
             Section::make()
                 ->columns(4)
                 ->schema([
