@@ -9,7 +9,6 @@ use App\Models\Ticket;
 use App\Models\TimeEntry;
 use App\Models\User;
 use Filament\Notifications\Notification;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -209,23 +208,18 @@ class Wache
      * haben. Alles andere ist unser eigener Haushalt; hier steht draußen
      * jemand, der nichts hört.
      *
-     * "Antwort" heißt: ein Kommentar von uns, den der Kunde auch sieht. Eine
-     * interne Notiz zählt nicht — der Kunde hat davon nichts, und genau die
-     * Verwechslung wäre die teuerste: wir hätten das Gefühl, geantwortet zu
-     * haben.
+     * Wer wartet, steht in Ticket::scopeWartetAufUns — dieselbe Regel zählt
+     * die Übersicht für die Website. Hier kommt nur dazu, was zur Erinnerung
+     * gehört: erst nach einem Tag, und nur ein einziges Mal.
      */
     public static function kundeWartet(): int
     {
         $grenze = now()->subHours(self::ANTWORT_SPAETESTENS_STUNDEN);
 
         $wartende = Ticket::query()
-            ->offen()
-            ->vomKunden()
+            ->wartetAufUns()
             ->whereNull('nachgehakt_at')
             ->where('created_at', '<', $grenze)
-            ->whereDoesntHave('comments', fn (Builder $q) => $q
-                ->where('ist_intern', false)
-                ->whereHas('autor', fn (Builder $a) => $a->where('rolle', '!=', Rolle::Kunde->value)))
             ->with(['customer', 'project'])
             ->get();
 

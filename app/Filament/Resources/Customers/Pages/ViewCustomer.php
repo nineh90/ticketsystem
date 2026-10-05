@@ -6,7 +6,9 @@ use App\Filament\Resources\Customers\CustomerResource;
 use App\Filament\Resources\Customers\Widgets\KundeKennzahlen;
 use App\Filament\Resources\Customers\Widgets\KundeTicketaufkommen;
 use App\Filament\Resources\Customers\Widgets\KundeZeitverlauf;
+use App\Filament\Resources\Tickets\TicketResource;
 use App\Models\Customer;
+use App\Models\Ticket;
 use App\Support\Benachrichtigung;
 use App\Support\Herkunft;
 use Filament\Actions\EditAction;
@@ -147,6 +149,27 @@ class ViewCustomer extends ViewRecord
                         ->label('Hauptkontakt')
                         ->state(fn (Customer $record) => $record->hauptkontakt()?->name)
                         ->placeholder('—'),
+                ]),
+
+            // Woher dieser Kunde kam. Die Anfrage liegt weiter unter
+            // "Eingang" und stünde sonst nirgends in seiner Akte.
+            Section::make('Entstanden aus')
+                ->visible(fn (Customer $record) => $record->anfragen()->exists())
+                ->schema([
+                    TextEntry::make('anfragen')
+                        ->hiddenLabel()
+                        ->html()
+                        ->state(fn (Customer $record) => $record->anfragen()
+                            ->with('customer')
+                            ->oldest('id')
+                            ->get()
+                            ->map(fn (Ticket $ticket) => sprintf(
+                                '<a href="%s" class="underline">%s</a> — %s',
+                                e(TicketResource::getUrl('view', ['record' => $ticket])),
+                                e($ticket->kennung()),
+                                e($ticket->titel),
+                            ))
+                            ->implode('<br>')),
                 ]),
 
             Section::make('Interne Notizen')

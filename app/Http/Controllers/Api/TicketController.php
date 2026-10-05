@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\Prioritaet;
 use App\Enums\Quelle;
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\ApiToken;
 use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\TicketStatus;
@@ -13,11 +14,11 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * Schnittstelle für n8n.
+ * Schnittstelle für n8n und die Website.
  *
- * n8n läuft auf derselben Maschine und im selben Docker-Netz (n8n_default),
- * erreicht das Ticketsystem also intern unter http://ticketsystem/api/v1/…
- * ohne Umweg über das öffentliche Internet.
+ * Beide laufen auf derselben Maschine und im selben Docker-Netz
+ * (n8n_default), erreichen das Ticketsystem also intern unter
+ * http://ticketsystem/api/v1/… ohne Umweg über das öffentliche Internet.
  */
 class TicketController extends Controller
 {
@@ -59,7 +60,8 @@ class TicketController extends Controller
             'beschreibung' => ['nullable', 'string'],
             'prioritaet' => ['nullable', Rule::enum(Prioritaet::class)],
             'external_ref' => ['nullable', 'string', 'max:255'],
-            'absender_email' => ['nullable', 'email'],
+            'absender_email' => ['nullable', 'email', 'max:255'],
+            'absender_name' => ['nullable', 'string', 'max:255'],
             'faellig_am' => ['nullable', 'date'],
         ]);
 
@@ -97,10 +99,13 @@ class TicketController extends Controller
 
         $beschreibung = $daten['beschreibung'] ?? null;
 
-        if (! empty($daten['absender_email'])) {
-            // Die Absenderadresse gehört sichtbar ins Ticket — sonst weiß
-            // niemand, wem er antworten soll.
-            $beschreibung = trim('Absender: '.$daten['absender_email']."\n\n".$beschreibung);
+        $absender = $this->absenderzeile($daten['absender_name'] ?? null, $daten['absender_email'] ?? null);
+
+        if ($absender !== null) {
+            // Der Absender gehört sichtbar ins Ticket — sonst weiß niemand,
+            // wem er antworten soll. Die Felder darunter sind für die
+            // Maschine, diese Zeile ist für den, der das Ticket liest.
+            $beschreibung = trim('Absender: '.$absender."\n\n".$beschreibung);
         }
 
         $ticket = Ticket::create([
@@ -110,8 +115,12 @@ class TicketController extends Controller
             'ticket_status_id' => $stadium->id,
             'prioritaet' => $daten['prioritaet'] ?? Prioritaet::Normal->value,
             'faellig_am' => $daten['faellig_am'] ?? null,
-            'quelle' => Quelle::Api,
+            // Die Quelle folgt dem Token, nicht dem Aufruf: was die
+            // Middleware erkannt hat, gilt.
+            'quelle' => $request->attributes->get(ApiToken::QUELLE, Quelle::Api),
             'external_ref' => $daten['external_ref'] ?? null,
+            'absender_name' => $daten['absender_name'] ?? null,
+            'absender_email' => $daten['absender_email'] ?? null,
             // created_by bleibt leer: hinter dem Aufruf steht kein Mensch.
         ]);
 
@@ -119,6 +128,20 @@ class TicketController extends Controller
             'ticket' => $this->darstellen($ticket),
             'neu' => true,
         ], 201);
+    }
+
+    /** "Erika Muster <erika@example.de>", oder was davon vorhanden ist. */
+    private function absenderzeile(?string $name, ?string $email): ?string
+    {
+        $name = trim((string) $name);
+        $email = trim((string) $email);
+
+        return match (true) {
+            $name !== '' && $email !== '' => "{$name} <{$email}>",
+            $name !== '' => $name,
+            $email !== '' => $email,
+            default => null,
+        };
     }
 
     private function projektFinden(mixed $kennung): ?Project
@@ -146,7 +169,7 @@ class TicketController extends Controller
             // Die sprechende Adresse, nicht die ID: diese Zeile wandert in
             // n8n weiter und landet am Ende in einer Mail oder einer
             // Chatnachricht, wo man sie liest, bevor man sie anklickt.
-            'url' => url('/tickets/'.$ticket->getRouteKey()),
+            'url' => $ticket->oeffentlicheAdresse(),
         ];
     }
 }

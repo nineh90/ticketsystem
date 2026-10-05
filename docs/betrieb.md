@@ -7,7 +7,7 @@ Live unter <https://intern.nils-digital.de> auf dem Hostinger-VPS
 
 ```
 /docker/ticketsystem/            Git-Klon von origin/main
-  deploy/.env                    APP_KEY, DB_PASSWORD, TICKET_API_TOKEN (nur dort, chmod 600)
+  deploy/.env                    APP_KEY, DB_PASSWORD, TICKET_API_TOKEN, TICKET_API_TOKEN_WEBSITE (nur dort, chmod 600)
 /usr/local/bin/deploy-ticketsystem     Kopie von deploy/deploy.sh
 /usr/local/bin/ticketsystem-backup     Kopie von deploy/backup.sh
 /var/log/ticketsystem-deploy.log

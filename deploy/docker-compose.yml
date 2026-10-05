@@ -93,6 +93,7 @@ services:
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Nils-Digital}
 
       TICKET_API_TOKEN: ${TICKET_API_TOKEN:-}
+      TICKET_API_TOKEN_WEBSITE: ${TICKET_API_TOKEN_WEBSITE:-}
 
     volumes:
       # Nur der Speicher wird beständig gehalten. Der Code kommt vollständig

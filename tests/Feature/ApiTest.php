@@ -16,6 +16,8 @@ class ApiTest extends TestCase
 
     private const TOKEN = 'test-token-fuer-die-schnittstelle';
 
+    private const TOKEN_WEBSITE = 'test-token-fuer-die-website';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -148,6 +150,101 @@ class ApiTest extends TestCase
 
         $this->assertStringContainsString('kunde@example.de', Ticket::first()->beschreibung);
         $this->assertStringContainsString('Wann geht es weiter?', Ticket::first()->beschreibung);
+        $this->assertSame('kunde@example.de', Ticket::first()->absender_email);
+    }
+
+    public function test_adresse_entsteht_aus_app_url_und_nicht_aus_dem_host_des_aufrufs(): void
+    {
+        // n8n und die Website rufen intern über das Docker-Netz. Mit url()
+        // kam https://ticketsystem/tickets/… zurück — das öffnet kein Browser.
+        config(['app.url' => 'https://intern.nils-digital.de']);
+        TicketStatus::factory()->create();
+        $kunde = Customer::factory()->create(['kuerzel' => 'ANF']);
+        Project::factory()->for($kunde, 'customer')->create(['slug' => 'anfragen']);
+
+        $daten = ['projekt' => 'anfragen', 'titel' => 'Neue Website', 'external_ref' => 'website-anfrage-1'];
+        $kopf = ['Authorization' => 'Bearer '.self::TOKEN];
+        $erwartet = 'https://intern.nils-digital.de/tickets/anf-1-neue-website';
+
+        $this->withHeaders($kopf)
+            ->postJson('http://ticketsystem/api/v1/tickets', $daten)
+            ->assertStatus(201)
+            ->assertJsonPath('ticket.url', $erwartet);
+
+        // Auch die Wiederholung, die das bestehende Ticket zurückgibt.
+        $this->withHeaders($kopf)
+            ->postJson('http://ticketsystem/api/v1/tickets', $daten)
+            ->assertStatus(200)
+            ->assertJsonPath('ticket.url', $erwartet);
+    }
+
+    public function test_ticket_mit_website_token_traegt_die_quelle_website(): void
+    {
+        config(['ticketsystem.api_token_website' => self::TOKEN_WEBSITE]);
+        TicketStatus::factory()->create();
+        Project::factory()->create(['slug' => 'anfragen']);
+
+        $this->anlegen(['projekt' => 'anfragen', 'titel' => 'Von der Website'], token: self::TOKEN_WEBSITE)
+            ->assertStatus(201);
+        $this->anlegen(['projekt' => 'anfragen', 'titel' => 'Von n8n'])
+            ->assertStatus(201);
+
+        $this->assertSame(Quelle::Website, Ticket::where('titel', 'Von der Website')->sole()->quelle);
+        // Der alte Token gilt weiter und bleibt, was er war.
+        $this->assertSame(Quelle::Api, Ticket::where('titel', 'Von n8n')->sole()->quelle);
+    }
+
+    public function test_quelle_laesst_sich_nicht_per_feld_im_aufruf_setzen(): void
+    {
+        TicketStatus::factory()->create();
+        Project::factory()->create(['slug' => 'anfragen']);
+
+        $this->anlegen(['projekt' => 'anfragen', 'titel' => 'Getarnt', 'quelle' => 'website'])
+            ->assertStatus(201);
+
+        $this->assertSame(Quelle::Api, Ticket::sole()->quelle);
+    }
+
+    public function test_website_token_allein_genuegt(): void
+    {
+        // Wird der n8n-Token widerrufen, darf die Website nicht mit ausfallen.
+        config(['ticketsystem.api_token' => '', 'ticketsystem.api_token_website' => self::TOKEN_WEBSITE]);
+        TicketStatus::factory()->create();
+        Project::factory()->create(['slug' => 'anfragen']);
+
+        $this->anlegen(['projekt' => 'anfragen', 'titel' => 'Test'], token: self::TOKEN_WEBSITE)
+            ->assertStatus(201);
+        $this->anlegen(['projekt' => 'anfragen', 'titel' => 'Test'], token: self::TOKEN)
+            ->assertStatus(401);
+    }
+
+    public function test_leerer_website_token_laesst_keinen_leeren_bearer_durch(): void
+    {
+        // Der Website-Token ist hier nicht gesetzt (Vorgabe ''). Ein leerer
+        // oder fehlender Bearer darf deshalb nicht als Treffer zählen.
+        $this->anlegen(['projekt' => 'x', 'titel' => 'y'], token: '')
+            ->assertStatus(401);
+    }
+
+    public function test_absendername_wird_als_feld_gespeichert(): void
+    {
+        // Damit aus der Anfrage später ein Kontakt wird, ohne dass jemand
+        // den Namen aus dem Fließtext abtippt.
+        TicketStatus::factory()->create();
+        Project::factory()->create(['slug' => 'anfragen']);
+
+        $this->anlegen([
+            'projekt' => 'anfragen',
+            'titel' => 'Anfrage',
+            'beschreibung' => 'Ich brauche eine Website.',
+            'absender_name' => 'Erika Muster',
+            'absender_email' => 'erika@example.de',
+        ])->assertStatus(201);
+
+        $ticket = Ticket::sole();
+        $this->assertSame('Erika Muster', $ticket->absender_name);
+        $this->assertSame('erika@example.de', $ticket->absender_email);
+        $this->assertStringStartsWith('Absender: Erika Muster <erika@example.de>', $ticket->beschreibung);
     }
 
     public function test_titel_ist_pflicht(): void

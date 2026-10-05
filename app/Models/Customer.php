@@ -64,6 +64,17 @@ class Customer extends Model
     }
 
     /**
+     * Die Anfragen, aus denen dieser Kunde entstanden ist.
+     *
+     * Nicht in tickets() enthalten: sie liegen weiter unter "Eingang" und
+     * tragen dessen Kennung, damit der Link aus der Website gültig bleibt.
+     */
+    public function anfragen(): HasMany
+    {
+        return $this->hasMany(Ticket::class, 'interessent_id');
+    }
+
+    /**
      * Mitarbeiter, die diesem Kunden als Ganzes zugeordnet sind.
      *
      * Sie sehen alle Projekte des Kunden — auch die, die erst später

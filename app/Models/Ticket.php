@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\Prioritaet;
 use App\Enums\Quelle;
+use App\Enums\Rolle;
 use App\Enums\TicketArt;
 use App\Observers\TicketObserver;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -22,6 +23,7 @@ use Spatie\Activitylog\Support\LogOptions;
 #[Fillable([
     'project_id', 'titel', 'beschreibung', 'art', 'ticket_status_id', 'prioritaet',
     'assigned_to', 'created_by', 'faellig_am', 'position', 'quelle', 'external_ref',
+    'absender_name', 'absender_email',
 ])]
 #[ObservedBy(TicketObserver::class)]
 class Ticket extends Model
@@ -196,6 +198,20 @@ class Ticket extends Model
     }
 
     /**
+     * Die Adresse, unter der ein Mensch das Ticket im Browser öffnet.
+     *
+     * Aus APP_URL und nicht über url(): das nähme den Host des Aufrufs, und
+     * die Schnittstelle wird intern über das Docker-Netz gerufen. Heraus kam
+     * https://ticketsystem/tickets/… — eine Adresse, die außerhalb des
+     * Servers nichts öffnet, aber genau dort landet: in einer Mail aus n8n
+     * oder an der Anfrage in der Redaktion der Website.
+     */
+    public function oeffentlicheAdresse(): string
+    {
+        return rtrim((string) config('app.url'), '/').'/tickets/'.$this->getRouteKey();
+    }
+
+    /**
      * Und zurück.
      *
      * Drei Fälle, und der dritte ist der Grund, warum hier überhaupt etwas
@@ -245,6 +261,15 @@ class Ticket extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /**
+     * Der Kunde, der aus dieser Anfrage geworden ist — nicht der, unter dem
+     * das Ticket zählt (siehe Support\Anfrage).
+     */
+    public function interessent(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'interessent_id');
     }
 
     public function status(): BelongsTo
@@ -355,6 +380,41 @@ class Ticket extends Model
     public function scopeVomKunden(Builder $query): Builder
     {
         return $query->where('quelle', Quelle::Kunde);
+    }
+
+    /**
+     * Was von draußen kam: vom Kunden im Kundenbereich oder über die Website.
+     *
+     * Beiden gemeinsam ist, dass ein Mensch außerhalb auf eine Antwort
+     * wartet — anders als bei einem Ticket, das n8n aus einer Mail baut.
+     */
+    public function scopeVonAussen(Builder $query): Builder
+    {
+        return $query->whereIn('quelle', [Quelle::Kunde, Quelle::Website]);
+    }
+
+    /**
+     * Draußen wartet jemand, und wir haben noch nicht geantwortet.
+     *
+     * Die eine Regel für zwei Stellen: die stündliche Erinnerung
+     * (Support\Wache::kundeWartet) und die Zahl "wartet_auf_uns" in der
+     * Übersicht für die Website. Stünde sie zweimal da, liefen die beiden
+     * auseinander, und dann mahnt der Planer drei Tickets an, während das
+     * Dashboard fünf zählt.
+     *
+     * "Antwort" heißt: ein Kommentar von uns, den der Kunde auch sieht. Eine
+     * interne Notiz zählt nicht — der Kunde hat davon nichts, und genau die
+     * Verwechslung wäre die teuerste: wir hätten das Gefühl, geantwortet zu
+     * haben.
+     */
+    public function scopeWartetAufUns(Builder $query): Builder
+    {
+        return $query
+            ->offen()
+            ->vonAussen()
+            ->whereDoesntHave('comments', fn (Builder $q) => $q
+                ->where('ist_intern', false)
+                ->whereHas('autor', fn (Builder $a) => $a->where('rolle', '!=', Rolle::Kunde->value)));
     }
 
     /**
