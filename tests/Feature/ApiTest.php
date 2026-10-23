@@ -194,6 +194,58 @@ class ApiTest extends TestCase
         $this->assertSame(Quelle::Api, Ticket::where('titel', 'Von n8n')->sole()->quelle);
     }
 
+    public function test_spam_von_der_website_wird_kein_ticket(): void
+    {
+        // So sahen die Wellen im Oktober 2026 aus.
+        config(['ticketsystem.api_token_website' => self::TOKEN_WEBSITE]);
+        TicketStatus::factory()->create();
+        Project::factory()->create(['slug' => 'anfragen']);
+
+        $this->anlegen([
+            'projekt' => 'anfragen',
+            'titel' => 'Пассивный доход – eruthrog',
+            'beschreibung' => 'Заработок от 5000 в день https://xtimex.buzz/abc',
+            'absender_name' => 'eruthrog',
+            'absender_email' => 'irgendwer@gmail.com',
+            'external_ref' => 'website-anfrage-400',
+        ], token: self::TOKEN_WEBSITE)->assertStatus(422);
+
+        $this->anlegen([
+            'projekt' => 'anfragen',
+            'titel' => 'Anfrage',
+            'absender_name' => 'Gewinn auf https://example.buzz',
+        ], token: self::TOKEN_WEBSITE)->assertStatus(422);
+
+        $this->assertSame(0, Ticket::count());
+    }
+
+    public function test_echte_anfrage_der_website_kommt_durch(): void
+    {
+        config(['ticketsystem.api_token_website' => self::TOKEN_WEBSITE]);
+        TicketStatus::factory()->create();
+        Project::factory()->create(['slug' => 'anfragen']);
+
+        // Ein Link in der Nachricht ist normal: die Website hängt selbst den
+        // Weg in ihre Redaktion an.
+        $this->anlegen([
+            'projekt' => 'anfragen',
+            'titel' => 'Neue Website – Erika Muster',
+            'beschreibung' => "Ich brauche eine Website.\n\nIn der Redaktion: https://nils-digital.de/admin/inquiries/1/edit",
+            'absender_name' => 'Erika Muster',
+        ], token: self::TOKEN_WEBSITE)->assertStatus(201);
+    }
+
+    public function test_kyrillisch_ueber_n8n_bleibt_erlaubt(): void
+    {
+        // Über n8n schreiben bestehende Kunden; die Spamregel gilt nur für
+        // die Website.
+        TicketStatus::factory()->create();
+        Project::factory()->create(['slug' => 'anfragen']);
+
+        $this->anlegen(['projekt' => 'anfragen', 'titel' => 'Привет'])
+            ->assertStatus(201);
+    }
+
     public function test_quelle_laesst_sich_nicht_per_feld_im_aufruf_setzen(): void
     {
         TicketStatus::factory()->create();

@@ -199,6 +199,15 @@ optional, nichts davon umbenennen.
 Das Projekt `anfragen` gehört zum Kunden „Eingang" (Kürzel `ANF`) und ist im
 Kundenbereich nicht sichtbar.
 
+**Spam wird kein Ticket.** Enthält eine Anfrage der Website kyrillischen Text
+(Titel, Beschreibung oder Name) oder einen Link im Namen, antwortet die
+Schnittstelle mit 422 „Als Spam verworfen." und legt nichts an; der Grund
+steht im Laravel-Log. Dieselben Regeln prüft schon die Website selbst — das
+hier ist das zweite Netz, nachdem im Oktober 2026 zweimal Dutzende russische
+Betrugsanfragen als Tickets angekommen sind. Die Anfrage bleibt in der
+Redaktion der Website als nicht übergeben stehen. Für n8n gilt die Regel
+nicht.
+
 ### Aus einer Anfrage wird ein Kunde
 
 Am Ticket steht für Administratoren der Knopf **„Als Interessent anlegen"**,

@@ -11,6 +11,7 @@ use App\Models\Ticket;
 use App\Models\TicketStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 /**
@@ -78,6 +79,21 @@ class TicketController extends Controller
             }
         }
 
+        if ($this->istSpamVonDerWebsite($request, $daten)) {
+            // Keine stille Erfolgsmeldung wie auf der Website: dort sitzt ein
+            // Roboter, der nichts erfahren soll, hier nur unsere eigene
+            // Warteschlange. Sie soll die Anfrage als nicht übergeben stehen
+            // lassen, statt eine Kennung zu speichern, die es nie gab.
+            Log::notice('Schnittstelle: Anfrage der Website als Spam verworfen.', [
+                'external_ref' => $daten['external_ref'] ?? null,
+                'absender_email' => $daten['absender_email'] ?? null,
+            ]);
+
+            return response()->json([
+                'fehler' => 'Als Spam verworfen.',
+            ], 422);
+        }
+
         $projekt = $this->projektFinden($daten['projekt']);
 
         if ($projekt === null) {
@@ -128,6 +144,36 @@ class TicketController extends Controller
             'ticket' => $this->darstellen($ticket),
             'neu' => true,
         ], 201);
+    }
+
+    /**
+     * Das zweite Netz hinter dem Spamschutz der Website.
+     *
+     * Im Oktober 2026 kamen zweimal Dutzende Anfragen durch, alle auf
+     * Russisch, mit einem Betrugslink. Die Website fängt kyrillischen Text
+     * inzwischen selbst ab (App\Support\Spamschutz dort); hier steht dieselbe
+     * Regel noch einmal, damit eine Lücke drüben nicht wieder siebzig Tickets
+     * bedeutet, die ein Mitarbeiter öffnet und deren Link er anklickt.
+     *
+     * Nur für die Website: über n8n kommt Post von bestehenden Kunden, und
+     * die darf schreiben, wie sie will.
+     *
+     * @param  array<string, mixed>  $daten
+     */
+    private function istSpamVonDerWebsite(Request $request, array $daten): bool
+    {
+        if ($request->attributes->get(ApiToken::QUELLE) !== Quelle::Website) {
+            return false;
+        }
+
+        $text = implode("\n", array_filter([
+            $daten['titel'] ?? null,
+            $daten['beschreibung'] ?? null,
+            $daten['absender_name'] ?? null,
+        ]));
+
+        return preg_match('~\p{Cyrillic}~u', $text) === 1
+            || preg_match('~https?:|://|www\.~i', (string) ($daten['absender_name'] ?? '')) === 1;
     }
 
     /** "Erika Muster <erika@example.de>", oder was davon vorhanden ist. */
