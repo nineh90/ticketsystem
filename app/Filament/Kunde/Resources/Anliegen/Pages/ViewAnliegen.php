@@ -96,7 +96,11 @@ class ViewAnliegen extends ViewRecord
                     TextEntry::make('beschreibung')
                         ->hiddenLabel()
                         ->placeholder('Keine Beschreibung hinterlegt.')
-                        ->prose(),
+                        ->prose()
+                        // Absätze so, wie sie getippt wurden. Ohne das läuft
+                        // ein Text, den der Kunde für seine Website schickt,
+                        // zu einem einzigen Block zusammen (NID-31).
+                        ->extraAttributes(['class' => 'whitespace-pre-line']),
                 ])
                 ->collapsible(),
         ]);

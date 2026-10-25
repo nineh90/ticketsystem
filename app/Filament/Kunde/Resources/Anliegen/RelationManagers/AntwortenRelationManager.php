@@ -75,7 +75,9 @@ class AntwortenRelationManager extends RelationManager
                 // Sackgasse, die den Kunden wieder zum Telefon greifen lässt.
                 TextColumn::make('body')
                     ->label('Nachricht')
-                    ->wrap(),
+                    ->wrap()
+                    // Absätze erhalten — siehe die Beschreibung im Anliegen.
+                    ->extraAttributes(['class' => 'whitespace-pre-line']),
             ])
             // Älteste oben: ein Gespräch liest man von vorn.
             ->defaultSort('created_at', 'asc')

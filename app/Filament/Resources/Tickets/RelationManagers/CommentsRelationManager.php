@@ -77,7 +77,9 @@ class CommentsRelationManager extends RelationManager
                 // es ankommt.
                 TextColumn::make('body')
                     ->label('Kommentar')
-                    ->wrap(),
+                    ->wrap()
+                    // Absätze erhalten — siehe die Beschreibung im Ticket.
+                    ->extraAttributes(['class' => 'whitespace-pre-line']),
 
                 IconColumn::make('ist_intern')
                     ->label('Intern')
