@@ -2,10 +2,8 @@
 
 namespace App\Filament\Kunde\Resources\Anliegen\Schemas;
 
-use App\Enums\TicketArt;
 use App\Filament\Formulare\Anhangfeld;
 use App\Models\Project;
-use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -21,8 +19,14 @@ use Filament\Schemas\Schema;
  * Fälligkeit und Kategorie einordnen soll, ruft stattdessen an oder schreibt
  * eine Mail, und dann steht es wieder nirgends.
  *
- * Was hier fehlt, ist Absicht: Priorität, Zuständigkeit, Termin und Status
- * setzen wir. Ein Kunde, der seine eigene Meldung auf "dringend" stellen
+ * Was hier fehlt, ist Absicht: Art, Priorität, Zuständigkeit, Termin und
+ * Status setzen wir. Die Art (Fehler, Änderungswunsch, Frage) stand bis
+ * NID-33 als erste Frage im Formular — eine Entscheidung vor dem eigentlichen
+ * Anliegen, die der Kunde oft nicht treffen kann und die wir beim Lesen
+ * ohnehin selbst treffen. Ob ein Wunsch Gewährleistung ist oder neue Arbeit,
+ * ist unsere Einordnung, nicht seine.
+ *
+ * Auch sonst gilt: Ein Kunde, der seine eigene Meldung auf "dringend" stellen
  * kann, stellt jede darauf, und die Angabe wird wertlos.
  */
 class AnliegenForm
@@ -31,44 +35,20 @@ class AnliegenForm
     {
         return $schema
             ->components([
-                Section::make('Worum geht es?')
-                    ->schema([self::artFeld()]),
-
                 Section::make('Ihr Anliegen')
-                    ->schema(self::felder()),
+                    ->schema(self::alleFelder()),
             ]);
     }
 
     /**
-     * Dieselben Felder ohne die beiden Rahmen — für das Formular auf der
-     * Übersicht (Widgets\EtwasMelden), das selbst schon in einer Karte
-     * steht. Eine zweite Fassung der Felder gäbe es nur, damit sie sich
-     * irgendwann um ein Pflichtfeld unterscheiden.
+     * Die Felder ohne Rahmen — für das Formular auf der Übersicht
+     * (Widgets\EtwasMelden), das selbst schon in einer Karte steht. Eine
+     * zweite Fassung der Felder gäbe es nur, damit sie sich irgendwann um
+     * ein Pflichtfeld unterscheiden.
      *
      * @return array<int, Component>
      */
     public static function alleFelder(): array
-    {
-        return [self::artFeld(), ...self::felder()];
-    }
-
-    private static function artFeld(): Radio
-    {
-        return Radio::make('art')
-            ->hiddenLabel()
-            ->options(collect(TicketArt::fuerKunden())
-                ->mapWithKeys(fn (TicketArt $art) => [$art->value => $art->getLabel()])
-                ->all())
-            ->descriptions(collect(TicketArt::fuerKunden())
-                ->mapWithKeys(fn (TicketArt $art) => [$art->value => $art->erklaerung()])
-                ->all())
-            ->default(TicketArt::Fehler->value)
-            ->required()
-            ->columnSpanFull();
-    }
-
-    /** @return array<int, Component> */
-    private static function felder(): array
     {
         return [
             Select::make('project_id')
@@ -95,17 +75,19 @@ class AnliegenForm
                 ->label('Kurz gesagt')
                 ->required()
                 ->maxLength(255)
-                ->placeholder('Das Kontaktformular verschickt nichts')
+                ->placeholder('Neuer Text für die Startseite')
                 ->helperText('Ein Satz genügt.'),
 
             Textarea::make('beschreibung')
                 ->label('Ausführlich')
                 ->rows(8)
                 ->columnSpanFull()
+                // Für alles, was kommt: einen Fehler, einen Wunsch, eine
+                // Frage, einen fertigen Text für die Website. Die Absätze
+                // bleiben stehen, wie sie getippt wurden (NID-31).
                 ->placeholder(
-                    "Was haben Sie gemacht?\n".
-                    "Was ist passiert?\n".
-                    'Was hätte stattdessen passieren sollen?',
+                    "Was sollen wir tun, oder was ist Ihnen aufgefallen?\n\n".
+                    'Texte für die Website können Sie direkt hier hineinschreiben — Absätze bleiben erhalten.',
                 ),
 
             // Gleich hier und nicht erst hinterher am angelegten
@@ -120,8 +102,8 @@ class AnliegenForm
             // erlaubtes Format unterscheiden, fallen erst dem
             // Kunden auf.
             Anhangfeld::machen()
-                ->label('Screenshots')
-                ->helperText('Bilder oder PDF, je bis 16 MB. Ein Screenshot spart oft drei Absätze Beschreibung.'),
+                ->label('Bilder und Dateien')
+                ->helperText('Screenshots, Fotos oder PDF, je bis 16 MB. Ein Screenshot spart oft drei Absätze Beschreibung.'),
         ];
     }
 }

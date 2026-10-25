@@ -5,8 +5,8 @@
 <x-filament-widgets::widget>
     <x-filament::section
         icon="heroicon-o-plus-circle"
-        heading="Etwas melden"
-        description="Ein Fehler, ein Wunsch oder eine Frage — schreiben Sie es hier auf, wir kümmern uns."
+        heading="Anliegen melden"
+        description="Was auch immer es ist — schreiben Sie es hier auf, wir kümmern uns."
     >
         <form wire:submit="senden">
             {{ $this->form }}

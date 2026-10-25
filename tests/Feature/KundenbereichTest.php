@@ -446,8 +446,8 @@ class KundenbereichTest extends TestCase
         Filament::setCurrentPanel('kunde');
 
         Livewire::test(CreateAnliegen::class)
+            ->assertFormFieldDoesNotExist('art')
             ->fillForm([
-                'art' => TicketArt::Fehler->value,
                 'project_id' => $projekt->getKey(),
                 'titel' => 'Das Kontaktformular verschickt nichts',
                 'beschreibung' => 'Nach dem Absenden passiert nichts.',
@@ -458,12 +458,37 @@ class KundenbereichTest extends TestCase
         $ticket = Ticket::query()->latest('id')->first();
 
         $this->assertSame('Das Kontaktformular verschickt nichts', $ticket->titel);
-        $this->assertSame(TicketArt::Fehler, $ticket->art);
-        // Herkunft und Stadium werden gesetzt, nicht gewählt.
+        // Art, Herkunft und Stadium werden gesetzt, nicht gewählt. Die Art
+        // ordnen wir beim Lesen ein (NID-33).
+        $this->assertSame(TicketArt::Aufgabe, $ticket->art);
         $this->assertSame(Quelle::Kunde, $ticket->quelle);
         $this->assertSame($backlog->getKey(), $ticket->ticket_status_id);
         $this->assertSame($kunde->getKey(), $ticket->created_by);
         $this->assertSame($customer->getKey(), $ticket->customer_id);
+    }
+
+    public function test_eine_untergeschobene_art_wird_ueberschrieben(): void
+    {
+        // Das Feld gibt es nicht mehr — eine selbst gebaute Anfrage, die es
+        // trotzdem mitschickt, darf an der Einordnung nichts ändern.
+        $this->stadium(['sortierung' => 1]);
+
+        $customer = Customer::factory()->create();
+        $projekt = Project::factory()->for($customer)->create();
+
+        $this->actingAs($this->kunde($customer), 'kunde');
+        Filament::setCurrentPanel('kunde');
+
+        Livewire::test(CreateAnliegen::class)
+            ->set('data.art', TicketArt::Fehler->value)
+            ->fillForm([
+                'project_id' => $projekt->getKey(),
+                'titel' => 'Bitte als Fehler',
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(TicketArt::Aufgabe, Ticket::query()->latest('id')->first()->art);
     }
 
     public function test_screenshots_koennen_gleich_beim_melden_mitgeschickt_werden(): void
@@ -481,7 +506,6 @@ class KundenbereichTest extends TestCase
 
         Livewire::test(CreateAnliegen::class)
             ->fillForm([
-                'art' => TicketArt::Fehler->value,
                 'project_id' => $projekt->getKey(),
                 'titel' => 'Galerie bleibt leer',
                 'dateien' => [UploadedFile::fake()->image('screenshot.png')],
@@ -541,12 +565,9 @@ class KundenbereichTest extends TestCase
         $this->actingAs($kunde, 'kunde');
         Filament::setCurrentPanel('kunde');
 
-        Livewire::withQueryParams(['art' => TicketArt::Frage->value, 'project_id' => $eigenes->getKey()])
+        Livewire::withQueryParams(['project_id' => $eigenes->getKey()])
             ->test(CreateAnliegen::class)
-            ->assertFormSet([
-                'art' => TicketArt::Frage->value,
-                'project_id' => $eigenes->getKey(),
-            ]);
+            ->assertFormSet(['project_id' => $eigenes->getKey()]);
 
         // Ein fremdes Projekt in der Adresse wird verworfen. Stehen bleibt,
         // was das Formular ohnehin vorschlägt — hier das einzige eigene
@@ -570,7 +591,6 @@ class KundenbereichTest extends TestCase
         // geprüft, in dem jemand die Anfrage selbst zusammenbaut.
         Livewire::test(CreateAnliegen::class)
             ->fillForm([
-                'art' => TicketArt::Fehler->value,
                 'project_id' => $fremdesProjekt->getKey(),
                 'titel' => 'Sollte nicht durchkommen',
             ])

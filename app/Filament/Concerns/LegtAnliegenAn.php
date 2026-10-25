@@ -3,6 +3,7 @@
 namespace App\Filament\Concerns;
 
 use App\Enums\Quelle;
+use App\Enums\TicketArt;
 use App\Models\Project;
 use App\Models\TicketStatus;
 use Illuminate\Validation\ValidationException;
@@ -60,6 +61,10 @@ trait LegtAnliegenAn
             // sehen wir sie an, dann werden sie eingeplant.
             'ticket_status_id' => $stadium->getKey(),
             'quelle' => Quelle::Kunde,
+            // Der Kunde meldet ein Anliegen, keine Kategorie (NID-33). Was
+            // es ist — Fehler, Änderungswunsch, Frage —, ordnen wir beim
+            // Lesen ein; bis dahin steht es als Aufgabe da.
+            'art' => TicketArt::Aufgabe,
             'created_by' => $nutzer->getKey(),
             // Priorität bleibt auf dem Standardwert des Models. Wer sie
             // festlegt, sind wir.

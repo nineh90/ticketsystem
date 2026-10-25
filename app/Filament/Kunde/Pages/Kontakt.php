@@ -2,7 +2,6 @@
 
 namespace App\Filament\Kunde\Pages;
 
-use App\Enums\TicketArt;
 use App\Filament\Concerns\SchreibtMitUns;
 use App\Filament\Kunde\Resources\Anliegen\AnliegenResource;
 use App\Support\Unterhaltungen;
@@ -92,11 +91,5 @@ class Kontakt extends Page
             'telefon' => config('kontakt.telefon'),
             'website' => config('kontakt.website'),
         ];
-    }
-
-    /** Der Weg zum Formular, mit vorgewählter Art. */
-    public function frageUrl(): string
-    {
-        return AnliegenResource::getUrl('create', ['art' => TicketArt::Frage->value]);
     }
 }

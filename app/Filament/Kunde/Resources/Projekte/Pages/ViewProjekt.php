@@ -48,7 +48,7 @@ class ViewProjekt extends ViewRecord
                 ->visible(filled($adresse)),
 
             Action::make('melden')
-                ->label('Etwas melden')
+                ->label('Anliegen melden')
                 ->icon('heroicon-o-plus')
                 ->color('gray')
                 // Projekt vorbelegen: wer von hier aus etwas meldet, meint

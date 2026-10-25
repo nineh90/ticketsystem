@@ -2,7 +2,6 @@
 
 namespace App\Filament\Kunde\Resources\Anliegen\Tables;
 
-use App\Enums\TicketArt;
 use App\Models\Project;
 use App\Models\Ticket;
 use Filament\Actions\ViewAction;
@@ -22,10 +21,6 @@ class AnliegenTable
                     ->state(fn (Ticket $record) => $record->kennung())
                     ->weight('medium')
                     ->searchable(query: fn ($query, string $search) => $query->where('nummer', 'like', "%{$search}%")),
-
-                TextColumn::make('art')
-                    ->label('Art')
-                    ->badge(),
 
                 TextColumn::make('titel')
                     ->label('Anliegen')
@@ -62,12 +57,6 @@ class AnliegenTable
             ->defaultSort('updated_at', 'desc')
             ->modifyQueryUsing(fn ($query) => $query->with(['status', 'project']))
             ->filters([
-                SelectFilter::make('art')
-                    ->label('Art')
-                    ->options(collect(TicketArt::cases())
-                        ->mapWithKeys(fn (TicketArt $art) => [$art->value => $art->getLabel()])
-                        ->all()),
-
                 SelectFilter::make('project_id')
                     ->label('Projekt')
                     ->options(fn () => Project::query()

@@ -24,14 +24,14 @@
 
             <div class="space-y-4 text-sm text-gray-500 dark:text-gray-400">
                 <p>
-                    Ob Fehler, Änderungswunsch oder eine Frage zum Projekt: legen Sie es
-                    als Anliegen an. Es landet direkt bei uns im System, bekommt eine
+                    Ob etwas nicht funktioniert, anders werden soll oder Sie eine Frage
+                    haben: legen Sie es als Anliegen an. Es landet direkt bei uns im System, bekommt eine
                     Nummer, und Sie sehen jederzeit, wie weit wir damit sind — ohne
                     nachfragen zu müssen.
                 </p>
                 <p>
-                    Screenshots können Sie anhängen. Bei einem Fehler sparen sie
-                    erfahrungsgemäß drei Absätze Beschreibung.
+                    Bilder und Dateien können Sie anhängen, Texte für die Website
+                    direkt hineinschreiben — die Absätze bleiben erhalten.
                 </p>
             </div>
 
@@ -42,15 +42,6 @@
                     icon="heroicon-o-plus"
                 >
                     Anliegen anlegen
-                </x-filament::button>
-
-                <x-filament::button
-                    tag="a"
-                    color="gray"
-                    :href="$this->frageUrl()"
-                    icon="heroicon-o-question-mark-circle"
-                >
-                    Nur eine Frage stellen
                 </x-filament::button>
             </div>
         </x-filament::section>

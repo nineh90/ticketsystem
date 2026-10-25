@@ -9,12 +9,14 @@ use Filament\Support\Contracts\HasLabel;
 /**
  * Worum es in einem Ticket geht.
  *
- * Entstanden mit dem Kundenbereich: ein Kunde meldet nicht "ein Ticket",
- * sondern einen Fehler, einen Änderungswunsch oder eine Frage — und diese
- * drei brauchen unterschiedliche Reaktionen. Ein Fehler an einem fertigen
+ * Entstanden mit dem Kundenbereich: Fehler, Änderungswunsch und Frage
+ * brauchen unterschiedliche Reaktionen. Ein Fehler an einem fertigen
  * Produkt ist Gewährleistung, ein Änderungswunsch ist neue Arbeit, die
  * abgestimmt und in der Regel berechnet wird. Steht das nicht am Ticket,
  * muss jedes Mal die Beschreibung gelesen werden, um es zu unterscheiden.
+ *
+ * Eingeordnet wird intern. Bis NID-33 hat der Kunde selbst gewählt; seitdem
+ * meldet er nur noch "ein Anliegen", und wir entscheiden, was es ist.
  *
  * Bewusst getrennt von Prioritaet (wie dringend) und Quelle (woher es kam):
  * die Art beschreibt die Sache selbst und bleibt gleich, während die
@@ -31,7 +33,7 @@ enum TicketArt: string implements HasColor, HasIcon, HasLabel
     /** Keine Arbeit, sondern eine Auskunft. */
     case Frage = 'frage';
 
-    /** Der Normalfall für intern angelegte Tickets. */
+    /** Der Normalfall für intern angelegte Tickets — und für Kundenanliegen, bis wir sie einordnen. */
     case Aufgabe = 'aufgabe';
 
     public function getLabel(): string
@@ -61,29 +63,6 @@ enum TicketArt: string implements HasColor, HasIcon, HasLabel
             self::Aenderung => 'heroicon-m-pencil-square',
             self::Frage => 'heroicon-m-question-mark-circle',
             self::Aufgabe => 'heroicon-m-clipboard-document-list',
-        };
-    }
-
-    /**
-     * Die Auswahl, die ein Kunde bekommt.
-     *
-     * "Aufgabe" fehlt bewusst: sie ist die interne Sammelkategorie und sagt
-     * über ein Kundenanliegen nichts aus. Wer sich nicht entscheiden kann,
-     * nimmt "Frage" — daraus wird intern, was es tatsächlich ist.
-     */
-    public static function fuerKunden(): array
-    {
-        return [self::Fehler, self::Aenderung, self::Frage];
-    }
-
-    /** Was in der Kundenauswahl unter der Bezeichnung steht. */
-    public function erklaerung(): string
-    {
-        return match ($this) {
-            self::Fehler => 'Etwas funktioniert nicht so, wie es soll.',
-            self::Aenderung => 'Etwas soll anders werden, als es jetzt ist.',
-            self::Frage => 'Eine Frage zum Projekt oder zum Vorgehen.',
-            self::Aufgabe => 'Allgemeine Aufgabe.',
         };
     }
 }

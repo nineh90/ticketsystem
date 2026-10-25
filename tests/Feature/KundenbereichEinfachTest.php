@@ -189,7 +189,8 @@ class KundenbereichEinfachTest extends TestCase
         $this->get('/kunde')->assertOk()->assertSeeLivewire(EtwasMelden::class);
 
         Livewire::test(EtwasMelden::class)
-            ->assertSee('Etwas melden')
+            ->assertSee('Anliegen melden')
+            ->assertDontSee('Änderungswunsch')
             ->assertSee('Kurz gesagt')
             // Ein einziges Projekt ist vorbelegt — da gibt es nichts zu wählen.
             ->assertSchemaStateSet(['project_id' => $projekt->getKey()])

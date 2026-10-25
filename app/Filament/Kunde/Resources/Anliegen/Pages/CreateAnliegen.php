@@ -2,7 +2,6 @@
 
 namespace App\Filament\Kunde\Resources\Anliegen\Pages;
 
-use App\Enums\TicketArt;
 use App\Filament\Concerns\LegtAnliegenAn;
 use App\Filament\Concerns\NimmtDateienEntgegen;
 use App\Filament\Kunde\Resources\Anliegen\AnliegenResource;
@@ -38,14 +37,13 @@ class CreateAnliegen extends CreateRecord
     /**
      * Vorgaben aus der Adresse übernehmen.
      *
-     * Zwei Wege führen mit einer Vorauswahl hierher: „Etwas melden" auf einer
-     * Projektseite (dann ist das Projekt gemeint, das man gerade ansieht) und
-     * „Nur eine Frage stellen" auf der Kontaktseite. Ohne diese Methode
-     * blieben die Anhängsel in der Adresse wirkungslos, und der Kunde müsste
-     * noch einmal auswählen, was er gerade angeklickt hat.
+     * Mit einer Vorauswahl führt „Anliegen melden" auf einer Projektseite
+     * hierher — dann ist das Projekt gemeint, das man gerade ansieht. Ohne
+     * diese Methode bliebe das Anhängsel in der Adresse wirkungslos, und der
+     * Kunde müsste noch einmal auswählen, was er gerade angeklickt hat.
      *
-     * Beide Werte werden geprüft, nicht übernommen: aus der Adresse darf
-     * weder ein fremdes Projekt noch eine erfundene Art werden. Ein falscher
+     * Der Wert wird geprüft, nicht übernommen: aus der Adresse darf kein
+     * fremdes Projekt werden. Ein falscher
      * Wert wird stillschweigend ignoriert — eine Fehlermeldung über einen
      * Parameter, den der Kunde nie gesehen hat, hülfe ihm nicht.
      */
@@ -56,12 +54,6 @@ class CreateAnliegen extends CreateRecord
         parent::fillForm();
 
         $vorgaben = [];
-
-        $art = TicketArt::tryFrom((string) request()->query('art'));
-
-        if ($art !== null && in_array($art, TicketArt::fuerKunden(), strict: true)) {
-            $vorgaben['art'] = $art->value;
-        }
 
         $projekt = Project::query()
             ->sichtbarFuer(auth()->user())

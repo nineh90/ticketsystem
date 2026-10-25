@@ -58,16 +58,12 @@ class ViewAnliegen extends ViewRecord
                 ->visible(fn () => $this->record->wartetAufKunde()),
 
             Section::make()
-                ->columns(4)
+                ->columns(3)
                 ->schema([
                     TextEntry::make('status.name')
                         ->label('Stand')
                         ->badge()
                         ->color(fn () => Color::hex($this->record->status?->farbe ?? '#9ca3af')),
-
-                    TextEntry::make('art')
-                        ->label('Art')
-                        ->badge(),
 
                     TextEntry::make('project.name')
                         ->label('Projekt'),
