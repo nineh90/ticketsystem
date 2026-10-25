@@ -14,6 +14,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -35,6 +36,16 @@ class TimeEntriesRelationManager extends RelationManager
     // Kunden sehen davon nichts (TimeEntry::sichtbarFuer gibt ihnen
     // 1 = 0), das Wort bleibt also unter uns.
     protected static ?string $title = 'Logbuch';
+
+    /** Die Knöpfe unter "Zeit buchen": Minuten => Beschriftung. */
+    private const DAUER_VORSCHLAEGE = [
+        15 => '15 Min.',
+        30 => '30 Min.',
+        45 => '45 Min.',
+        60 => '1 Std.',
+        90 => '1½ Std.',
+        120 => '2 Std.',
+    ];
 
     /** Siehe CommentsRelationManager: sonst fehlen Start, Stopp und Nachtrag. */
     public function isReadOnly(): bool
@@ -247,6 +258,64 @@ class TimeEntriesRelationManager extends RelationManager
                             ->send();
                     }),
 
+                // Der kurze Weg (NID-34): "eine halbe Stunde dran gesessen",
+                // ohne Von und Bis auszurechnen. Gebucht wird ab dem Moment
+                // des Klicks — für die Abrechnung zählen die Minuten, und der
+                // Tag stimmt damit von selbst. Wer die genaue Uhrzeit
+                // braucht, nimmt "Nachtragen".
+                CreateAction::make('buchen')
+                    ->label('Zeit buchen')
+                    ->icon('heroicon-o-clock')
+                    ->color('primary')
+                    ->modalHeading('Zeit buchen')
+                    ->modalSubmitActionLabel('Buchen')
+                    ->createAnother(false)
+                    ->schema([
+                        ToggleButtons::make('vorschlag')
+                            ->label('Wie lange?')
+                            ->options(self::DAUER_VORSCHLAEGE)
+                            ->inline()
+                            ->live()
+                            ->dehydrated(false)
+                            ->afterStateUpdated(fn ($state, $set) => $set('minuten', $state)),
+
+                        TextInput::make('minuten')
+                            ->label('Minuten')
+                            ->numeric()
+                            ->integer()
+                            ->required()
+                            ->minValue(1)
+                            ->maxValue(24 * 60)
+                            ->suffix('Min.')
+                            ->live(onBlur: true)
+                            // Wer selbst tippt, hat keinen der Knöpfe gemeint —
+                            // sonst stünde "30 Min." markiert neben einer 50.
+                            ->afterStateUpdated(fn ($state, $set) => $set(
+                                'vorschlag',
+                                array_key_exists((int) $state, self::DAUER_VORSCHLAEGE) ? (int) $state : null,
+                            ))
+                            ->helperText('Einen Knopf wählen oder die Minuten selbst eintragen.'),
+
+                        TextInput::make('beschreibung')
+                            ->label('Tätigkeit')
+                            ->maxLength(255),
+
+                        Toggle::make('abrechenbar')
+                            ->label('Abrechenbar')
+                            ->default(true),
+                    ])
+                    ->mutateDataUsing(function (array $data): array {
+                        $start = now()->startOfMinute();
+
+                        return [
+                            ...$data,
+                            'user_id' => auth()->id(),
+                            'gestartet_am' => $start,
+                            'beendet_am' => $start->copy()->addMinutes((int) $data['minuten']),
+                        ];
+                    })
+                    ->successNotificationTitle(fn (TimeEntry $record) => 'Gebucht: '.Dauer::alsStunden($record->minuten)),
+
                 CreateAction::make()
                     ->label('Nachtragen')
                     ->icon('heroicon-o-plus')
@@ -262,7 +331,7 @@ class TimeEntriesRelationManager extends RelationManager
                 DeleteAction::make()->label('Löschen'),
             ])
             ->emptyStateHeading('Noch keine Zeiten')
-            ->emptyStateDescription('Starte die Uhr oder trage eine Zeit von Hand nach.');
+            ->emptyStateDescription('Starte die Uhr oder buche, wie lange du dran warst.');
     }
 
     /**
