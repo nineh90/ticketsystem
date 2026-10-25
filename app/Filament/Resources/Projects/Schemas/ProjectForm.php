@@ -106,7 +106,7 @@ class ProjectForm
                         Toggle::make('kunden_sichtbar')
                             ->label('Für den Kunden sichtbar')
                             ->default(true)
-                            ->helperText('Aus: das Projekt verschwindet aus seinem Bereich — samt aller Anliegen dazu, auch der selbst gemeldeten. Für Angebote, die noch nicht besprochen sind.')
+                            ->helperText('Aus: das Projekt verschwindet aus seinem Bereich — samt aller Anliegen dazu, auch der selbst gemeldeten. Für Angebote, die noch nicht besprochen sind. Pausierte und abgesagte Projekte sind unabhängig davon ausgeblendet.')
                             ->columnSpanFull(),
 
                         // Die Phase ist das Feld, das der Kunde am häufigsten

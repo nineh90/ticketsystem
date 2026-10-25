@@ -73,7 +73,7 @@ class TicketPolicy
         return $projekt !== null
             && $user->customer_id !== null
             && $projekt->customer_id === $user->customer_id
-            && $projekt->kunden_sichtbar;
+            && $projekt->istFuerKundenFreigegeben();
     }
 
     /** Dieselben zwei Wege wie Ticket::scopeSichtbarFuer. */

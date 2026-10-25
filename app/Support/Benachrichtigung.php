@@ -340,7 +340,7 @@ class Benachrichtigung
     /** @return Collection<int, User> */
     public static function aussenkreis(Ticket $ticket): Collection
     {
-        if (! $ticket->project?->kunden_sichtbar) {
+        if (! $ticket->project?->istFuerKundenFreigegeben()) {
             return collect();
         }
 

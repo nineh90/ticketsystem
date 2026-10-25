@@ -125,7 +125,7 @@ class Zugangsdaten extends Model
                 ->where('kunden_sichtbar', true)
                 ->where(fn (Builder $q) => $q
                     ->whereNull('project_id')
-                    ->orWhereHas('project', fn (Builder $p) => $p->where('kunden_sichtbar', true)));
+                    ->orWhereHas('project', fn (Builder $p) => $p->fuerKundenFreigegeben()));
         }
 
         // Mitarbeiter: dieselbe Regel wie für die Kunden, zu denen sie

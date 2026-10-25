@@ -507,7 +507,7 @@ class Ticket extends Model
                     'project',
                     fn (Builder $p) => $p
                         ->where('customer_id', $nutzer->customer_id)
-                        ->where('kunden_sichtbar', true),
+                        ->fuerKundenFreigegeben(),
                 )
                 // Die Klammer ist Pflicht: ohne sie hinge das orWhere am
                 // Ende der gesamten Bedingung und hebelte die Projektprüfung

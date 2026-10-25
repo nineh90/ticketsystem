@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Customers\RelationManagers;
 
 use App\Enums\ProjektStatus;
 use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -11,7 +12,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 /**
@@ -106,11 +109,28 @@ class ProjectsRelationManager extends RelationManager
                             : 'gray'),
             ])
             ->defaultSort('name')
+            ->filters([
+                // Was auf Eis liegt oder abgesagt ist, verschwindet aus dem
+                // Blick, bleibt aber da — mit seinen Tickets und Zeiten.
+                // Abgeschlossene bleiben stehen: sie sind die Geschichte des
+                // Kunden, kein Ballast.
+                Filter::make('ruhende_ausblenden')
+                    ->label('Pausierte und abgesagte ausblenden')
+                    ->toggle()
+                    ->default()
+                    ->query(fn (Builder $query) => $query->whereNotIn('status', [
+                        ProjektStatus::Pausiert->value,
+                        ProjektStatus::Abgesagt->value,
+                    ])),
+            ])
             ->headerActions([
                 CreateAction::make()->label('Projekt anlegen'),
             ])
             ->recordActions([
                 EditAction::make()->label('Bearbeiten'),
+                DeleteAction::make()
+                    ->label('Löschen')
+                    ->authorizationTooltip(),
             ])
             ->emptyStateHeading('Noch keine Projekte')
             ->emptyStateDescription('Ohne Projekt lässt sich für diesen Kunden kein Ticket anlegen.');

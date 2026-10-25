@@ -111,7 +111,12 @@ class ProjectsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()->label('Löschen'),
+                    // Einzeln geprüft: Projekte mit Tickets lässt die Policy
+                    // nicht löschen, und die übrigen der Auswahl gehen
+                    // trotzdem durch.
+                    DeleteBulkAction::make()
+                        ->label('Löschen')
+                        ->authorizeIndividualRecords('delete'),
                 ]),
             ])
             ->emptyStateHeading(fn () => Sichtbarkeit::ueberschrift('Noch keine Projekte'))

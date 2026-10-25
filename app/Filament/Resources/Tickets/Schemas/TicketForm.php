@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Tickets\Schemas;
 
 use App\Enums\Prioritaet;
+use App\Enums\ProjektStatus;
 use App\Enums\TicketArt;
 use App\Filament\Formulare\Anhangfeld;
 use App\Models\Project;
@@ -61,8 +62,13 @@ class TicketForm
                             // Die Auswahl ist bereits auf sichtbare Projekte
                             // begrenzt; ein Mitarbeiter kann also gar kein
                             // Ticket in einem fremden Projekt anlegen.
-                            ->options(fn () => Project::query()
+                            // Ein abgesagtes Projekt bekommt keine neuen Tickets
+                            // mehr. Beim Bearbeiten bleibt es in der Liste, sonst
+                            // stünde im gesperrten Feld nur noch die Nummer.
+                            ->options(fn (string $operation) => Project::query()
                                 ->sichtbarFuer(auth()->user())
+                                ->when($operation === 'create', fn ($q) => $q
+                                    ->where('status', '!=', ProjektStatus::Abgesagt->value))
                                 ->with('customer')
                                 ->get()
                                 ->sortBy(fn ($p) => $p->customer->name.$p->name)

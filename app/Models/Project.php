@@ -147,6 +147,25 @@ class Project extends Model
         return filled($this->live_url) && $this->aktuelleAdresse() === $this->live_url;
     }
 
+    /**
+     * Sieht der Kunde dieses Projekt? Freigegeben und nicht ruhend.
+     *
+     * Die eine Regel für alles, was im Kundenbereich am Projekt hängt —
+     * Projekt, Tickets, Zugangsdaten, Benachrichtigungen. Gegenstück in SQL
+     * ist scopeFuerKundenFreigegeben; die beiden gehören zusammen.
+     */
+    public function istFuerKundenFreigegeben(): bool
+    {
+        return $this->kunden_sichtbar && ! $this->status->ruht();
+    }
+
+    public function scopeFuerKundenFreigegeben(Builder $query): Builder
+    {
+        return $query
+            ->where('kunden_sichtbar', true)
+            ->whereNotIn('status', array_map(fn (ProjektStatus $s) => $s->value, ProjektStatus::ruhende()));
+    }
+
     /** Bisher auf dieses Projekt gebuchte Stunden. */
     public function erfassteStunden(): float
     {
@@ -173,7 +192,7 @@ class Project extends Model
         if ($nutzer->istKunde()) {
             return $query
                 ->where('customer_id', $nutzer->customer_id)
-                ->where('kunden_sichtbar', true);
+                ->fuerKundenFreigegeben();
         }
 
         // Sichtbar, wenn der Nutzer diesem Projekt zugeordnet ist ODER

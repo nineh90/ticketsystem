@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Project;
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
 
 /**
  * Wer darf was mit Projekten.
@@ -29,12 +30,12 @@ class ProjectPolicy
     public function view(User $user, Project $project): bool
     {
         // Der Kunde sieht sein eigenes Projekt, und nur solange es
-        // freigegeben ist. Dieselbe Bedingung wie in
+        // freigegeben ist und nicht ruht. Dieselbe Bedingung wie in
         // Project::scopeSichtbarFuer — die beiden gehören zusammen.
         if ($user->istKunde()) {
             return $user->customer_id !== null
                 && $project->customer_id === $user->customer_id
-                && $project->kunden_sichtbar;
+                && $project->istFuerKundenFreigegeben();
         }
 
         return $user->istAdmin() || $this->istZugeordnet($user, $project);
@@ -50,9 +51,23 @@ class ProjectPolicy
         return $user->istAdmin();
     }
 
-    public function delete(User $user, Project $project): bool
+    /**
+     * Löschen nur, solange das Projekt leer ist.
+     *
+     * Tickets hängen mit cascadeOnDelete am Projekt — mit dem Projekt
+     * verschwänden also auch alle Tickets und die darauf gebuchten Zeiten,
+     * und damit Stunden, die womöglich schon abgerechnet sind. Ein Projekt
+     * mit Geschichte wird stattdessen auf "Abgesagt" gesetzt.
+     */
+    public function delete(User $user, Project $project): Response
     {
-        return $user->istAdmin();
+        if (! $user->istAdmin()) {
+            return Response::deny();
+        }
+
+        return $project->tickets()->exists()
+            ? Response::deny('Hat schon Tickets — stattdessen auf „Abgesagt“ oder „Pausiert“ setzen.')
+            : Response::allow();
     }
 
     /**
