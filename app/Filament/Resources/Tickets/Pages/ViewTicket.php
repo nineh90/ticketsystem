@@ -22,6 +22,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Colors\Color;
+use Illuminate\Support\Js;
 
 /**
  * Die Arbeitsfläche für ein einzelnes Ticket: Beschreibung oben, darunter
@@ -57,8 +58,33 @@ class ViewTicket extends ViewRecord
     {
         return [
             $this->interessentAnlegen(),
+            self::kopieren('titelKopieren', 'Titel kopieren', 'Titel kopiert', fn () => $this->getTitle()),
             EditAction::make()->label('Bearbeiten'),
         ];
+    }
+
+    /**
+     * Ein Knopf, der Text in die Zwischenablage legt (NID-38).
+     *
+     * Vorher musste man die Beschreibung von Hand markieren — bei einem
+     * langen Text über mehrere Bildschirmhöhen, und der Titel kam meist mit
+     * einem Stück Kopfzeile mit.
+     *
+     * Ganz im Browser, ohne Rundreise zum Server: der Text steht beim
+     * Zeichnen der Seite schon fest. Js::from() maskiert ihn, sonst beendete
+     * ein Anführungszeichen in der Beschreibung den Ausdruck. Die Zwischenablage
+     * gibt es nur unter https und auf localhost — live ist beides gegeben;
+     * schlägt es trotzdem fehl, sagt die Meldung das statt "Kopiert".
+     */
+    private static function kopieren(string $name, string $beschriftung, string $meldung, \Closure $text): Action
+    {
+        return Action::make($name)
+            ->label($beschriftung)
+            ->icon('heroicon-o-clipboard-document')
+            ->color('gray')
+            ->alpineClickHandler(fn () => 'window.navigator.clipboard.writeText('.Js::from((string) $text()).')'
+                .'.then(() => new FilamentNotification().title('.Js::from($meldung).').success().send())'
+                .'.catch(() => new FilamentNotification().title(\'Kopieren ging nicht — bitte von Hand markieren.\').danger().send())');
     }
 
     /**
@@ -275,6 +301,10 @@ class ViewTicket extends ViewRecord
                 ->visible(fn () => $this->record->bilder()->exists()),
 
             Section::make('Beschreibung')
+                ->headerActions([
+                    self::kopieren('beschreibungKopieren', 'Kopieren', 'Beschreibung kopiert', fn () => (string) $this->record->beschreibung)
+                        ->visible(fn () => filled($this->record->beschreibung)),
+                ])
                 ->schema([
                     TextEntry::make('beschreibung')
                         ->hiddenLabel()
