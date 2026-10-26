@@ -168,6 +168,22 @@
                                 </span>
 
                                 <div class="flex items-center gap-1.5">
+                                    {{-- Eine offene Frage im Team (NID-36).
+                                         An mich deutlich, an andere leise. --}}
+                                    @if ($ticket->offene_fragen_count > 0)
+                                        <span
+                                            title="{{ $ticket->fragen_an_mich_count > 0 ? 'Eine Frage an dich ist offen' : 'Eine Frage im Team ist offen' }}"
+                                            @class([
+                                                'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[0.65rem] font-medium',
+                                                'bg-warning-500/25 text-warning-300 ring-1 ring-warning-500/50' => $ticket->fragen_an_mich_count > 0,
+                                                'bg-warning-500/10 text-warning-400' => $ticket->fragen_an_mich_count === 0,
+                                            ])
+                                        >
+                                            <x-filament::icon icon="heroicon-m-question-mark-circle" class="h-3 w-3" />
+                                            {{ $ticket->fragen_an_mich_count > 0 ? 'an dich' : 'Frage' }}
+                                        </span>
+                                    @endif
+
                                     {{-- Nur was auffallen soll, fällt auf: bei
                                          normaler und niedriger Priorität steht
                                          hier nichts. Ein "Normal" an jeder

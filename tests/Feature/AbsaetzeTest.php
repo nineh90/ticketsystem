@@ -7,7 +7,7 @@ use App\Enums\Rolle;
 use App\Filament\Kunde\Resources\Anliegen\Pages\ViewAnliegen;
 use App\Filament\Kunde\Resources\Anliegen\RelationManagers\AntwortenRelationManager;
 use App\Filament\Resources\Tickets\Pages\ViewTicket;
-use App\Filament\Resources\Tickets\RelationManagers\CommentsRelationManager;
+use App\Livewire\Ticketverlauf;
 use App\Models\Customer;
 use App\Models\Project;
 use App\Models\Ticket;
@@ -62,10 +62,8 @@ class AbsaetzeTest extends TestCase
             ->assertSeeHtml('whitespace-pre-line')
             ->assertSeeText('Zweiter Absatz');
 
-        Livewire::test(CommentsRelationManager::class, [
-            'ownerRecord' => $ticket,
-            'pageClass' => ViewTicket::class,
-        ])->assertSeeHtml('whitespace-pre-line');
+        Livewire::test(Ticketverlauf::class, ['ticket' => $ticket])
+            ->assertSeeHtml('whitespace-pre-line');
     }
 
     public function test_beim_kunden_bleiben_die_absaetze_stehen(): void

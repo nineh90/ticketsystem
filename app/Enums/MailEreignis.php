@@ -31,6 +31,12 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
     /** Ein Kunde antwortet auf ein bestehendes Ticket. */
     case Antwort = 'antwort';
 
+    /** Eine interne Notiz an einem Ticket, das mich angeht. */
+    case Kommentar = 'kommentar';
+
+    /** Jemand stellt mir an einem Ticket eine Frage. */
+    case Frage = 'frage';
+
     /** Neue Nachricht in einem Verlauf — vom Kunden oder von intern. */
     case Nachricht = 'nachricht';
 
@@ -72,6 +78,8 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
         return match ($this) {
             self::Anliegen => 'Neues Anliegen',
             self::Antwort => 'Antwort eines Kunden',
+            self::Kommentar => 'Notizen im Team',
+            self::Frage => 'Fragen an mich',
             self::Nachricht => 'Neue Nachricht',
             self::Stammdaten => 'Geänderte Stammdaten',
             self::Angebot => 'Antwort auf ein Angebot',
@@ -92,6 +100,8 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
         return match ($this) {
             self::Anliegen => 'Ein Kunde meldet einen Fehler oder einen Wunsch.',
             self::Antwort => 'Ein Kunde schreibt etwas unter ein bestehendes Ticket.',
+            self::Kommentar => 'Eine interne Notiz an einem Ticket, das dich angeht.',
+            self::Frage => 'Jemand stellt dir an einem Ticket eine Frage. Kommt sofort, nicht mit der Sammelmail.',
             self::Nachricht => 'Im Kundenverlauf oder in einem internen Faden.',
             self::Stammdaten => 'Anschrift, Rechnungsadresse, USt-IdNr. oder Website.',
             self::Angebot => 'Angenommen oder abgelehnt — mit Betrag.',
@@ -112,6 +122,8 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
         return match ($this) {
             self::Anliegen => 'heroicon-o-inbox-arrow-down',
             self::Antwort => 'heroicon-o-chat-bubble-left-right',
+            self::Kommentar => 'heroicon-o-pencil-square',
+            self::Frage => 'heroicon-o-question-mark-circle',
             self::Nachricht => 'heroicon-o-envelope',
             self::Stammdaten => 'heroicon-o-identification',
             self::Angebot => 'heroicon-o-document-check',
@@ -143,12 +155,26 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
         return in_array($this, [
             self::Anliegen,
             self::Antwort,
+            self::Kommentar,
             self::Nachricht,
             self::Stammdaten,
             self::Zuweisung,
             self::AntwortAnKunde,
             self::StandAnKunde,
         ], true);
+    }
+
+    /**
+     * Zählt in der Sammelmail nur die letzte Meldung zur selben Sache?
+     *
+     * Bei einem Stand ja: "erledigt" nach "wir brauchen etwas" ersetzt das
+     * Erste. Bei allem, was jemand geschrieben hat, nein — drei Notizen
+     * unter einem Ticket sind drei Aussagen, und die zweite war vielleicht
+     * die Frage.
+     */
+    public function zusammenfassbar(): bool
+    {
+        return in_array($this, [self::Anliegen, self::Stammdaten, self::Zuweisung, self::StandAnKunde], true);
     }
 
     /** Kommt dieses Ereignis von außen zu uns? */

@@ -47,7 +47,7 @@ class TimeEntriesRelationManager extends RelationManager
         120 => '2 Std.',
     ];
 
-    /** Siehe CommentsRelationManager: sonst fehlen Start, Stopp und Nachtrag. */
+    /** Siehe AnhaengeRelationManager: sonst fehlen Start, Stopp und Nachtrag. */
     public function isReadOnly(): bool
     {
         return false;

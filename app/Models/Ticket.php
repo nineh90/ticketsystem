@@ -323,6 +323,12 @@ class Ticket extends Model
         return $this->hasMany(Comment::class);
     }
 
+    /** Fragen im Team, die noch niemand beantwortet hat (NID-36). */
+    public function offeneFragen(): HasMany
+    {
+        return $this->hasMany(Comment::class)->offeneFragen();
+    }
+
     public function timeEntries(): HasMany
     {
         return $this->hasMany(TimeEntry::class);

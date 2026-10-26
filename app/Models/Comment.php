@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['ticket_id', 'user_id', 'body', 'ist_intern'])]
+#[Fillable(['ticket_id', 'user_id', 'body', 'ist_intern', 'frage_an', 'beantwortet_at'])]
 #[ObservedBy(CommentObserver::class)]
 class Comment extends Model
 {
@@ -30,6 +30,7 @@ class Comment extends Model
     {
         return [
             'ist_intern' => 'boolean',
+            'beantwortet_at' => 'datetime',
         ];
     }
 
@@ -41,6 +42,22 @@ class Comment extends Model
     public function autor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /** An wen sich der Kommentar als Frage richtet — siehe NID-36. */
+    public function gefragt(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'frage_an');
+    }
+
+    public function istOffeneFrage(): bool
+    {
+        return $this->frage_an !== null && $this->beantwortet_at === null;
+    }
+
+    public function scopeOffeneFragen(Builder $query): Builder
+    {
+        return $query->whereNotNull('frage_an')->whereNull('beantwortet_at');
     }
 
     public function scopeFuerKunden(Builder $query): Builder

@@ -8,7 +8,6 @@ use App\Filament\Resources\Tickets\Pages\ListTickets;
 use App\Filament\Resources\Tickets\Pages\ViewTicket;
 use App\Filament\Resources\Tickets\RelationManagers\AktivitaetRelationManager;
 use App\Filament\Resources\Tickets\RelationManagers\AnhaengeRelationManager;
-use App\Filament\Resources\Tickets\RelationManagers\CommentsRelationManager;
 use App\Filament\Resources\Tickets\RelationManagers\TimeEntriesRelationManager;
 use App\Filament\Resources\Tickets\Schemas\TicketForm;
 use App\Filament\Resources\Tickets\Tables\TicketsTable;
@@ -96,7 +95,6 @@ class TicketResource extends Resource
     public static function getRelations(): array
     {
         return [
-            CommentsRelationManager::class,
             AnhaengeRelationManager::class,
             TimeEntriesRelationManager::class,
             AktivitaetRelationManager::class,

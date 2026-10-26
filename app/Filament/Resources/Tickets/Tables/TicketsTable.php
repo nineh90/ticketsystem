@@ -56,6 +56,19 @@ class TicketsTable
                         default => $record->project->name,
                     }),
 
+                // Offene Fragen im Team (NID-36). Nur wenn es welche gibt —
+                // eine Null in jeder Zeile wäre Rauschen, in dem die eine
+                // Zeile mit Frage untergeht.
+                TextColumn::make('offene_fragen_count')
+                    ->label('Fragen')
+                    ->counts('offeneFragen')
+                    ->state(fn (Ticket $record) => $record->offene_fragen_count ?: null)
+                    ->formatStateUsing(fn (int $state) => $state === 1 ? '1 offen' : $state.' offen')
+                    ->badge()
+                    ->color('warning')
+                    ->icon('heroicon-m-question-mark-circle')
+                    ->toggleable(),
+
                 TextColumn::make('customer.name')
                     ->label('Kunde')
                     ->searchable()

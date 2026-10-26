@@ -255,6 +255,12 @@ class Kanban extends Page
         return $this->basis()
             ->whereIn('ticket_status_id', $stadien->pluck('id'))
             ->with(['customer', 'project', 'zustaendig'])
+            // Offene Fragen an der Karte (NID-36): ob es welche gibt, und ob
+            // eine davon an mich geht.
+            ->withCount([
+                'offeneFragen',
+                'offeneFragen as fragen_an_mich_count' => fn (Builder $q) => $q->where('frage_an', auth()->id()),
+            ])
             // Offene Spalten in ihrer Reihenfolge, bei Gleichstand das ältere
             // zuerst — oben liegt, was am längsten wartet (NID-37). Die
             // abgeschlossenen nach Ticketnummer, die höchste oben: dort

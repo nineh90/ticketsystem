@@ -30,7 +30,12 @@ class AnhaengeRelationManager extends RelationManager
 
     protected static string|\BackedEnum|null $icon = 'heroicon-o-paper-clip';
 
-    /** Siehe CommentsRelationManager: sonst fehlen alle Knöpfe. */
+    /**
+     * Filament setzt Relation-Manager auf einer Ansehen-Seite automatisch auf
+     * schreibgeschützt, sobald die Ressource eine Bearbeiten-Seite hat — dann
+     * verschwinden sämtliche Knöpfe wortlos. Hier ist das Gegenteil gewollt:
+     * die Detailseite ist die Arbeitsfläche.
+     */
     public function isReadOnly(): bool
     {
         return false;

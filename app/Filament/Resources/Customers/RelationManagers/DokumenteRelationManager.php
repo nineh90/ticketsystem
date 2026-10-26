@@ -48,7 +48,7 @@ class DokumenteRelationManager extends RelationManager
 
     protected static string|\BackedEnum|null $icon = 'heroicon-o-document-currency-euro';
 
-    /** Siehe CommentsRelationManager: sonst fehlen alle Knöpfe. */
+    /** Siehe Tickets\RelationManagers\AnhaengeRelationManager: sonst fehlen alle Knöpfe. */
     public function isReadOnly(): bool
     {
         return false;

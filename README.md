@@ -686,6 +686,28 @@ hinaus; danach ist sie gelöscht.
 jede Mail vollständig nach `storage/logs/laravel.log` — Betreff, Text, Link.
 Es geht nichts hinaus.
 
+## Gespräch am Ticket (NID-36)
+
+Kommentare stehen direkt unter der Beschreibung als Verlauf, das Älteste oben
+(`App\Livewire\Ticketverlauf`). Drei Sorten, die man ohne Lesen
+unterscheidet: **gelb** interne Notiz, **cyan** von uns und für den Kunden
+sichtbar, **blau** vom Kunden. „Interne Notiz" bleibt voreingestellt — ein
+vergessener Haken darf nichts an den Kunden geben.
+
+Vorher meldete eine interne Notiz niemanden, und weil fast alle Kommentare
+intern sind, gingen Fragen im Team unter. Jetzt:
+
+- **Notiz** → Glocke und Sammelmail an den Innenkreis, ohne den Schreiber und
+  ohne Mitarbeiter, deren Ticket es nicht ist (Thema *Notizen im Team*).
+- **Frage an …** (nur bei internen Notizen) → sofort an den Gefragten, per
+  Glocke und Mail (Thema *Fragen an mich*). Sie bleibt offen, bis der
+  Gefragte am Ticket schreibt oder sie abhakt; so lange steht sie als
+  Abzeichen an der Kanban-Karte, in der Ticketliste und als Kachel
+  *Fragen an dich* auf der Wache (`OffeneFragen`).
+- In Glocke und Mail stehen bis zu 500 Zeichen des Kommentars statt 120.
+  In der Sammelmail bleibt jeder Kommentar einzeln stehen; zusammengefasst
+  wird nur, was ein Stand ist (`MailEreignis::zusammenfassbar`).
+
 ## Zugang
 
 Ein Konto allein reicht nicht. `User::canAccessPanel()` verlangt zusätzlich

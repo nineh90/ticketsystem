@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Tickets\Pages;
 
 use App\Filament\Resources\Customers\CustomerResource;
 use App\Filament\Resources\Tickets\TicketResource;
+use App\Livewire\Ticketverlauf;
 use App\Models\Customer;
 use App\Support\Anfrage;
 use App\Support\Benachrichtigung;
@@ -16,6 +17,7 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -23,7 +25,8 @@ use Filament\Support\Colors\Color;
 
 /**
  * Die Arbeitsfläche für ein einzelnes Ticket: Beschreibung oben, darunter
- * Kommentare, Zeiten und Verlauf als Reiter.
+ * das Gespräch (App\Livewire\Ticketverlauf), dann Anhänge, Zeiten und
+ * Aktivität als Reiter.
  */
 class ViewTicket extends ViewRecord
 {
@@ -283,6 +286,20 @@ class ViewTicket extends ViewRecord
                         ->extraAttributes(['class' => 'whitespace-pre-line']),
                 ])
                 ->collapsible(),
+
+            // Das Gespräch direkt unter der Beschreibung statt als Reiter
+            // weiter unten (NID-36). Dort stand es zwischen Anhängen, Zeiten
+            // und Aktivität, und eine Frage darin fiel niemandem auf.
+            Section::make(fn () => 'Gespräch'.(($anzahl = $this->record->comments()->count()) > 0 ? ' ('.$anzahl.')' : ''))
+                ->icon('heroicon-o-chat-bubble-left-right')
+                ->description(fn () => ($offen = $this->record->offeneFragen()->count()) > 0
+                    ? $offen.' '.($offen === 1 ? 'Frage ist' : 'Fragen sind').' noch offen.'
+                    : null)
+                ->columnSpanFull()
+                ->schema([
+                    Livewire::make(Ticketverlauf::class, fn () => ['ticket' => $this->record])
+                        ->key('ticketverlauf'),
+                ]),
         ]);
     }
 }

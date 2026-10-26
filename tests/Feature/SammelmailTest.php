@@ -166,22 +166,34 @@ class SammelmailTest extends TestCase
         Mail::assertSent(Sammelmeldung::class);
     }
 
-    public function test_zur_selben_sache_bleibt_die_letzte_meldung(): void
+    public function test_zum_selben_stand_bleibt_die_letzte_meldung(): void
     {
         Mail::fake();
 
+        $kunde = $this->kundenzugang(Customer::factory()->create());
+        $this->melden($kunde, 'test:7', MailEreignis::StandAnKunde, 'Wir brauchen etwas von Ihnen');
+        $this->melden($kunde, 'test:7', MailEreignis::StandAnKunde, 'Erledigt');
+        $this->melden($kunde, 'test:7', MailEreignis::AntwortAnKunde, 'Neue Antwort');
+
+        Sammelmail::leeren(kunden: true);
+
+        Mail::assertSent(Sammelmeldung::class, fn (Sammelmeldung $mail) => array_column($mail->posten, 'titel') === ['Erledigt', 'Neue Antwort']);
+    }
+
+    public function test_was_jemand_geschrieben_hat_bleibt_jedes_mal_stehen(): void
+    {
+        // Drei Notizen unter einem Ticket sind drei Aussagen — die zweite
+        // war vielleicht die Frage (NID-36).
+        Mail::fake();
+
         $nils = $this->intern();
-        $this->melden($nils, 'test:7', MailEreignis::Antwort, 'Erste Antwort');
-        $this->melden($nils, 'test:7', MailEreignis::Antwort, 'Zweite Antwort');
-        $this->melden($nils, 'test:7', MailEreignis::Anliegen, 'Das Anliegen selbst');
+        $this->melden($nils, 'test:7', MailEreignis::Kommentar, 'Erste Notiz');
+        $this->melden($nils, 'test:7', MailEreignis::Kommentar, 'Zweite Notiz');
+        $this->melden($nils, 'test:7', MailEreignis::Antwort, 'Antwort des Kunden');
 
         Sammelmail::leeren(kunden: false);
 
-        Mail::assertSent(Sammelmeldung::class, function (Sammelmeldung $mail) {
-            $titel = array_column($mail->posten, 'titel');
-
-            return $titel === ['Zweite Antwort', 'Das Anliegen selbst'];
-        });
+        Mail::assertSent(Sammelmeldung::class, fn (Sammelmeldung $mail) => count($mail->posten) === 3);
     }
 
     public function test_wer_inzwischen_abbestellt_bekommt_nichts(): void

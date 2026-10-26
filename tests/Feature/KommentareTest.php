@@ -3,15 +3,13 @@
 namespace Tests\Feature;
 
 use App\Enums\Rolle;
-use App\Filament\Resources\Tickets\Pages\ViewTicket;
-use App\Filament\Resources\Tickets\RelationManagers\CommentsRelationManager;
+use App\Livewire\Ticketverlauf;
 use App\Models\Comment;
 use App\Models\Customer;
 use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\TicketStatus;
 use App\Models\User;
-use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -81,10 +79,7 @@ class KommentareTest extends TestCase
         ]);
 
         Livewire::actingAs($admin)
-            ->test(CommentsRelationManager::class, [
-                'ownerRecord' => $ticket,
-                'pageClass' => ViewTicket::class,
-            ])
+            ->test(Ticketverlauf::class, ['ticket' => $ticket])
             ->assertSuccessful()
             ->assertSee('UND DAS STEHT GANz AM ENDE.');
     }
@@ -107,11 +102,11 @@ class KommentareTest extends TestCase
         $this->assertFalse($admin->can('update', $kommentar));
 
         Livewire::actingAs($admin)
-            ->test(CommentsRelationManager::class, [
-                'ownerRecord' => $ticket,
-                'pageClass' => ViewTicket::class,
-            ])
-            ->assertActionHidden(TestAction::make('edit')->table($kommentar));
+            ->test(Ticketverlauf::class, ['ticket' => $ticket])
+            ->assertDontSeeHtml('wire:click="bearbeiten('.$kommentar->id.')"')
+            // Auch nicht am Knopf vorbei: der Aufruf selbst wird abgewiesen.
+            ->call('bearbeiten', $kommentar->id)
+            ->assertForbidden();
     }
 
     public function test_auch_der_admin_bearbeitet_fremde_kommentare_nicht(): void
@@ -146,11 +141,11 @@ class KommentareTest extends TestCase
         $this->assertTrue($admin->can('delete', $kommentar));
 
         Livewire::actingAs($admin)
-            ->test(CommentsRelationManager::class, [
-                'ownerRecord' => $ticket,
-                'pageClass' => ViewTicket::class,
-            ])
-            ->assertActionVisible(TestAction::make('delete')->table($kommentar));
+            ->test(Ticketverlauf::class, ['ticket' => $ticket])
+            ->assertSeeHtml('wire:click="loeschen('.$kommentar->id.')"')
+            ->call('loeschen', $kommentar->id);
+
+        $this->assertModelMissing($kommentar);
     }
 
     public function test_ein_mitarbeiter_loescht_fremde_kommentare_nicht(): void

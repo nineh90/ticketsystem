@@ -8,6 +8,7 @@ use App\Filament\Widgets\MeineTickets;
 use App\Filament\Widgets\MeineTreffen;
 use App\Filament\Widgets\MeineUhr;
 use App\Filament\Widgets\MeinUeberblick;
+use App\Filament\Widgets\OffeneFragen;
 use App\Filament\Widgets\VonKunden;
 use BackedEnum;
 use Filament\Pages\Dashboard;
@@ -56,6 +57,8 @@ class MeinBereich extends Dashboard
             // ist. Verschwindet nach der Antwort, auch bei "nein".
             MailEinrichten::class,
             VonKunden::class,
+            // Fragen von Kollegen — erscheint nur, wenn eine offen ist.
+            OffeneFragen::class,
             MeinUeberblick::class,
             // Meine Treffen über der Uhr: ein Termin hat eine Uhrzeit, an
             // die man sich halten muss. Die Karte erscheint nur, wenn eins

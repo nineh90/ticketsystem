@@ -45,8 +45,9 @@ use Illuminate\Support\Facades\Mail;
  *  - Ist es intern noch offen, und ist es noch seins? Erledigtes fällt
  *    heraus, und ein Mitarbeiter bekommt nichts, was ein anderer hat.
  *
- * Zur selben Sache bleibt nur die letzte Meldung desselben Themas stehen:
- * drei Antworten unter einem Ticket sind eine Zeile, kein Absatz.
+ * Zur selben Sache bleibt nur der letzte Stand stehen: "erledigt" ersetzt
+ * "wir brauchen etwas". Was jemand geschrieben hat, bleibt dagegen jedes Mal
+ * stehen — siehe MailEreignis::zusammenfassbar.
  */
 class Sammelmail
 {
@@ -126,9 +127,10 @@ class Sammelmail
             ->filter(fn (Postausgang $p) => $nutzer->bekommtMailMeldungen($p->ereignis))
             ->reject(fn (Postausgang $p) => in_array($p->notification_id, $gelesen, true))
             ->filter(fn (Postausgang $p) => self::nochErlaubt($nutzer, $p))
-            // Zur selben Sache und zum selben Thema gewinnt die letzte
-            // Meldung. Ohne Herkunft steht jede für sich.
-            ->keyBy(fn (Postausgang $p) => $p->herkunft !== null
+            // Zur selben Sache und zum selben Stand gewinnt die letzte
+            // Meldung. Was jemand geschrieben hat, steht jedes Mal für sich
+            // (MailEreignis::zusammenfassbar), ebenso alles ohne Herkunft.
+            ->keyBy(fn (Postausgang $p) => $p->herkunft !== null && $p->ereignis->zusammenfassbar()
                 ? $p->ereignis->value.'|'.$p->herkunft
                 : 'einzeln|'.$p->getKey())
             ->sortBy('id')
