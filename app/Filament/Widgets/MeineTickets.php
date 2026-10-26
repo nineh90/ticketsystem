@@ -53,7 +53,10 @@ class MeineTickets extends TableWidget
                     WHEN 'dringend' THEN 0
                     WHEN 'hoch' THEN 1
                     WHEN 'normal' THEN 2
-                    ELSE 3 END"))
+                    ELSE 3 END")
+                // Bei gleichem Termin und gleicher Priorität: das ältere
+                // zuerst (NID-37).
+                ->orderBy('created_at'))
             ->columns([
                 // Die Priorität steckt in der Farbe der Nummer, statt eine
                 // eigene Spalte zu belegen: "dringend" erkennt man an Rot

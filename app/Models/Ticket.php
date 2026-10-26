@@ -102,6 +102,29 @@ class Ticket extends Model
             $ticket->nummer ??= static::naechsteNummer($ticket->customer_id);
         });
 
+        // Wer neu in eine Spalte kommt, stellt sich hinten an (NID-37).
+        //
+        // Vorher stand ein neues Ticket mit position 0 ganz oben, und weil
+        // man ein Brett von oben nach unten abarbeitet, kam das Neueste
+        // zuerst dran — die alten lagen dafür immer länger. Dasselbe beim
+        // Wechsel in "Review": wer zuletzt fertig wurde, wurde zuerst
+        // geprüft.
+        //
+        // Nur wenn die Position nicht ausdrücklich mitkommt: das Kanban
+        // schreibt nach dem Ablegen die Reihenfolge der ganzen Spalte fest,
+        // und die gilt dann.
+        static::creating(function (Ticket $ticket) {
+            if ($ticket->position === 0 && $ticket->ticket_status_id !== null) {
+                $ticket->position = static::naechstePosition($ticket->ticket_status_id);
+            }
+        });
+
+        static::updating(function (Ticket $ticket) {
+            if ($ticket->isDirty('ticket_status_id') && ! $ticket->isDirty('position')) {
+                $ticket->position = static::naechstePosition($ticket->ticket_status_id);
+            }
+        });
+
         // erledigt_at hängt am Stadium, nicht an einem separaten Feld, das
         // jemand zu setzen vergessen könnte.
         static::saving(function (Ticket $ticket) {
@@ -126,6 +149,14 @@ class Ticket extends Model
                 $ticket->erledigt_at = null;
             }
         });
+    }
+
+    /** Der Platz hinter der letzten Karte einer Spalte. */
+    public static function naechstePosition(int $stadiumId): int
+    {
+        $letzte = static::query()->where('ticket_status_id', $stadiumId)->max('position');
+
+        return $letzte === null ? 0 : (int) $letzte + 1;
     }
 
     /**

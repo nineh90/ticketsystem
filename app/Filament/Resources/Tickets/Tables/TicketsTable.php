@@ -100,7 +100,13 @@ class TicketsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->defaultSort('created_at', 'desc')
+            // Das Älteste zuerst (NID-37): eine Liste wird von oben
+            // abgearbeitet, und oben soll stehen, was am längsten wartet.
+            // Unter "Erledigt" arbeitet niemand mehr ab — dort wird gesucht,
+            // und gesucht wird nach der Nummer.
+            ->defaultSort(fn (Builder $query, $livewire) => ($livewire->activeTab ?? null) === 'erledigt'
+                ? $query->orderByDesc('nummer')->orderByDesc('id')
+                : $query->orderBy('created_at')->orderBy('id'))
             ->filters([
                 SelectFilter::make('customer')
                     ->label('Kunde')

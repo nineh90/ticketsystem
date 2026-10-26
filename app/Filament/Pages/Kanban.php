@@ -255,8 +255,12 @@ class Kanban extends Page
         return $this->basis()
             ->whereIn('ticket_status_id', $stadien->pluck('id'))
             ->with(['customer', 'project', 'zustaendig'])
-            ->orderBy('position')
-            ->orderByDesc('id')
+            // Offene Spalten in ihrer Reihenfolge, bei Gleichstand das ältere
+            // zuerst — oben liegt, was am längsten wartet (NID-37). Die
+            // abgeschlossenen nach Ticketnummer, die höchste oben: dort
+            // arbeitet niemand mehr ab, dort sucht man etwas.
+            ->when($grenze === null, fn (Builder $q) => $q->orderBy('position')->orderBy('id'))
+            ->when($grenze !== null, fn (Builder $q) => $q->orderByDesc('nummer')->orderByDesc('id'))
             ->when($grenze, fn (Builder $q) => $q->limit($grenze))
             ->get()
             ->groupBy('ticket_status_id');
