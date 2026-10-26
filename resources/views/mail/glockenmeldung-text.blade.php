@@ -1,10 +1,12 @@
-{{-- Die Textfassung. Wer HTML abgeschaltet hat, liest genau das hier. --}}
+{{-- Die Textfassung. Wer HTML abgeschaltet hat, liest genau das hier.
+     {!! !!} statt {{ }}: das ist text/plain, kein HTML. Escapen machte aus
+     "Sozialrecht & Hilfesystem" ein "Sozialrecht &amp; Hilfesystem". --}}
 NILS-DIGITAL · ND-DECK
 
-{{ $titel }}
+{!! $titel !!}
 @if (filled($text))
 
-{{ $text }}
+{!! $text !!}
 @endif
 @if (filled($url))
 

@@ -6,12 +6,14 @@ use App\Enums\MailEreignis;
 use App\Enums\Quelle;
 use App\Enums\Rolle;
 use App\Mail\Glockenmeldung;
+use App\Mail\Sammelmeldung;
 use App\Models\Customer;
 use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\TicketStatus;
 use App\Models\User;
 use App\Support\Benachrichtigung;
+use App\Support\Sammelmail;
 use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -43,8 +45,13 @@ class MailMeldungenTest extends TestCase
         ]);
     }
 
-    /** Eine Meldung durch dieselbe Stelle schicken, durch die alles läuft. */
-    private function melden(User $an, MailEreignis $ereignis = MailEreignis::Anliegen): void
+    /**
+     * Eine Meldung durch dieselbe Stelle schicken, durch die alles läuft.
+     *
+     * Die Vorgabe ist ein Ereignis, das sofort geht: um das Sammeln geht es
+     * in SammelmailTest, hier um die Frage, wer überhaupt etwas bekommt.
+     */
+    private function melden(User $an, MailEreignis $ereignis = MailEreignis::Angebot): void
     {
         Benachrichtigung::an(
             collect([$an]),
@@ -149,13 +156,13 @@ class MailMeldungenTest extends TestCase
     {
         Mail::fake();
 
-        $nutzer = $this->intern(mail: true, ereignisse: [MailEreignis::Anliegen->value]);
+        $nutzer = $this->intern(mail: true, ereignisse: [MailEreignis::Angebot->value]);
 
-        $this->melden($nutzer, MailEreignis::Anliegen);
+        $this->melden($nutzer, MailEreignis::Angebot);
         Mail::assertSentCount(1);
 
         // Nicht gewählt — und damit auch nicht zugestellt.
-        $this->melden($nutzer, MailEreignis::Nachricht);
+        $this->melden($nutzer, MailEreignis::Kasse);
         Mail::assertSentCount(1);
 
         // Die Glocke bekommt beides, unabhängig von der Mailauswahl. Sie ist
@@ -228,6 +235,12 @@ class MailMeldungenTest extends TestCase
 
         defer()->invoke();
 
-        Mail::assertSent(Glockenmeldung::class, fn (Glockenmeldung $mail) => $mail->hasTo($admin->email));
+        // Ein neues Anliegen geht nicht sofort, sondern mit der nächsten
+        // Sammelmail (NID-35).
+        Mail::assertNothingSent();
+
+        Sammelmail::leeren(kunden: false);
+
+        Mail::assertSent(Sammelmeldung::class, fn (Sammelmeldung $mail) => $mail->hasTo($admin->email));
     }
 }

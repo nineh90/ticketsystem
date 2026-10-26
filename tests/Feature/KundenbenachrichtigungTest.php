@@ -47,7 +47,7 @@ class KundenbenachrichtigungTest extends TestCase
         return $nutzer;
     }
 
-    private function melden(User $an, MailEreignis $ereignis = MailEreignis::StandAnKunde): void
+    private function melden(User $an, MailEreignis $ereignis = MailEreignis::Treffen): void
     {
         Benachrichtigung::an(
             collect([$an]),
@@ -314,10 +314,10 @@ class KundenbenachrichtigungTest extends TestCase
 
         Benachrichtigung::an(
             collect([$admin]),
-            Notification::make()->title('Fehler von Beispiel GmbH'),
+            Notification::make()->title('Angebot angenommen'),
             'test:2',
             null,
-            MailEreignis::Anliegen,
+            MailEreignis::Angebot,
         );
         defer()->invoke();
 

@@ -5,8 +5,10 @@ use App\Console\Commands\Liegengebliebenes;
 use App\Console\Commands\Monatsmeldung;
 use App\Console\Commands\Morgenmeldung;
 use App\Console\Commands\OffenePosten;
+use App\Console\Commands\Sammelmail;
 use App\Console\Commands\TreffenErinnern;
 use App\Console\Commands\UhrenNachsehen;
+use App\Console\Commands\Wochenplan;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -60,6 +62,14 @@ Schedule::command(UhrenNachsehen::class)
     ->dailyAt('18:30')
     ->withoutOverlapping();
 
+// Montags früh: was diese Woche für jeden ansteht. Vor der Morgenmeldung,
+// damit die Woche vor dem Tag kommt — und nicht am Sonntagabend, weil dann
+// noch eingeplant wird.
+Schedule::command(Wochenplan::class)
+    ->mondays()
+    ->at('07:00')
+    ->withoutOverlapping();
+
 // Montags: was in der letzten Woche liegen geblieben ist.
 Schedule::command(Liegengebliebenes::class)
     ->mondays()
@@ -75,4 +85,24 @@ Schedule::command(OffenePosten::class)
 // Zum Monatsanfang: was noch auf keiner Rechnung steht.
 Schedule::command(Monatsmeldung::class)
     ->monthlyOn(1, '08:30')
+    ->withoutOverlapping();
+
+// Die gesammelten Meldungen (NID-35, Support\Sammelmail). Intern zweimal am
+// Tag und auch am Wochenende — wer am Sonntag nichts lesen will, liest es
+// eben nicht.
+Schedule::command(Sammelmail::class, ['intern'])
+    ->twiceDaily(9, 17)
+    ->withoutOverlapping();
+
+// An Kunden früh am Morgen: vieles erledigen wir abends und nachts, so steht
+// der ganze Vortag in einer Mail. Samstags später, sonntags gar nicht —
+// was am Wochenende liegen bleibt, kommt Montag um sieben.
+Schedule::command(Sammelmail::class, ['kunden'])
+    ->weekdays()
+    ->at('07:00')
+    ->withoutOverlapping();
+
+Schedule::command(Sammelmail::class, ['kunden'])
+    ->saturdays()
+    ->at('10:00')
     ->withoutOverlapping();

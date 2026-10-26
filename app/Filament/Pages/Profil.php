@@ -59,7 +59,7 @@ class Profil extends EditProfile
                         ->label('E-Mail bei Meldungen')
                         // live, weil die Auswahl darunter daran hängt.
                         ->live()
-                        ->helperText(fn () => 'Geht an '.$this->getUser()->email.'. Jederzeit hier wieder abschaltbar.'),
+                        ->helperText(fn () => 'Geht an '.$this->getUser()->email.'. Treffen und Angebote sofort, alles andere gesammelt um 9 und 17 Uhr. Jederzeit hier wieder abschaltbar.'),
 
                     CheckboxList::make('mail_ereignisse')
                         ->label('Und zwar worüber')

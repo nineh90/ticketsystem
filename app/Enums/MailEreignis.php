@@ -58,6 +58,9 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
     /** Die Meldungen des Planers zum Tag: morgens was ansteht, abends die laufende Uhr. */
     case Tagesmeldung = 'tagesmeldung';
 
+    /** Montags früh: was in dieser Woche für mich ansteht. */
+    case Wochenplan = 'wochenplan';
+
     /** Was liegen geblieben ist — ruhende Tickets, wartende Kunden. */
     case Liegengeblieben = 'liegengeblieben';
 
@@ -78,6 +81,7 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
             self::TreffenCrew => 'Meine Treffen',
             self::Zuweisung => 'Mir zugeteilte Tickets',
             self::Tagesmeldung => 'Meldungen zum Tag',
+            self::Wochenplan => 'Meine Woche',
             self::Liegengeblieben => 'Liegengebliebenes',
             self::Kasse => 'Offene Beträge und Fristen',
         };
@@ -97,6 +101,7 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
             self::TreffenCrew => 'Du wirst zu einem Treffen dazugenommen, oder eines deiner Treffen verschiebt sich.',
             self::Zuweisung => 'Jemand gibt dir ein Ticket — oder ein neues Anliegen landet bei dir.',
             self::Tagesmeldung => 'Morgens, was heute fällig ist. Abends, wenn deine Uhr noch läuft.',
+            self::Wochenplan => 'Montags um sieben: deine Treffen und fälligen Tickets der Woche, dazu Meilensteine.',
             self::Liegengeblieben => 'Tickets ohne Bewegung und Kunden, die zu lange auf eine Antwort warten.',
             self::Kasse => 'Überfällige Rechnungen, unbeantwortete Angebote und Zeit, die noch auf keiner Rechnung steht.',
         };
@@ -114,9 +119,36 @@ enum MailEreignis: string implements HasDescription, HasIcon, HasLabel
             self::Treffen, self::TreffenCrew => 'heroicon-o-video-camera',
             self::Zuweisung => 'heroicon-o-user-plus',
             self::Tagesmeldung => 'heroicon-o-sun',
+            self::Wochenplan => 'heroicon-o-calendar-days',
             self::Liegengeblieben => 'heroicon-o-moon',
             self::Kasse => 'heroicon-o-banknotes',
         };
+    }
+
+    /**
+     * Wartet die Mail auf die nächste Sammelmail, statt sofort zu gehen?
+     *
+     * Gesammelt wird, was in Schüben kommt: ein Kunde, der in ein paar
+     * Minuten fünfzig kleine Anliegen einstellt, oder wir, die abends zwanzig
+     * Tickets auf erledigt setzen. Fünfzig Mails sagen dasselbe wie eine mit
+     * fünfzig Zeilen, nur dass man die eine liest (NID-35).
+     *
+     * Sofort bleibt, was an einer Uhrzeit hängt (Treffen) oder an Geld
+     * (Angebot) — und die Meldungen des Planers, die ohnehin schon Berichte
+     * sind und zu ihrer eigenen festen Zeit kommen. Die Glocke ist von all
+     * dem nicht betroffen, sie meldet weiter sofort.
+     */
+    public function gesammelt(): bool
+    {
+        return in_array($this, [
+            self::Anliegen,
+            self::Antwort,
+            self::Nachricht,
+            self::Stammdaten,
+            self::Zuweisung,
+            self::AntwortAnKunde,
+            self::StandAnKunde,
+        ], true);
     }
 
     /** Kommt dieses Ereignis von außen zu uns? */

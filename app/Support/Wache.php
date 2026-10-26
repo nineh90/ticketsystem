@@ -5,11 +5,15 @@ namespace App\Support;
 use App\Enums\MailEreignis;
 use App\Enums\Rolle;
 use App\Filament\Resources\Tickets\TicketResource;
+use App\Mail\Wochenmeldung;
 use App\Models\Ticket;
 use App\Models\TimeEntry;
 use App\Models\User;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 /**
  * Was der Planer von sich aus meldet — die Meldungen zur Wache.
@@ -80,6 +84,58 @@ class Wache
             );
 
             $gemeldet++;
+        }
+
+        return $gemeldet;
+    }
+
+    /**
+     * Montags früh: deine Woche.
+     *
+     * Treffen, bei denen du dabei bist, deine fälligen Tickets, die
+     * Meilensteine deiner Projekte und — für Admins — die Fristen. Obenan,
+     * was schon überfällig ist. Um sieben und nicht am
+     * Sonntagabend: was sonntags noch eingeplant wird, soll mit drinstehen.
+     *
+     * Nur als Mail, nicht an der Glocke. Dieselbe Woche steht auf der Brücke
+     * als Wochenvorschau; eine Glockenmeldung "deine Woche" wäre ein Zettel,
+     * der auf eine Seite zeigt, die man ohnehin vor sich hat. Und wie bei
+     * der Morgenmeldung: eine leere Woche bekommt keine Mail.
+     *
+     * Der Schalter ist dennoch derselbe (bekommtMailMeldungen) — wer keine
+     * Mails will, bekommt auch diese nicht.
+     */
+    public static function wochenplan(): int
+    {
+        $gemeldet = 0;
+        $bis = today()->endOfWeek();
+
+        foreach (self::crew() as $nutzer) {
+            if (! $nutzer->bekommtMailMeldungen(MailEreignis::Wochenplan)) {
+                continue;
+            }
+
+            $termine = Wochenplan::persoenlich($nutzer, now(), $bis);
+            $ueberfaellig = Wochenplan::ueberfaellig($nutzer);
+
+            if ($termine->isEmpty() && $ueberfaellig->isEmpty()) {
+                continue;
+            }
+
+            try {
+                Mail::to($nutzer->mailZieladresse())->send(new Wochenmeldung(
+                    Str::before($nutzer->name, ' '),
+                    $termine,
+                    $ueberfaellig,
+                ));
+
+                $gemeldet++;
+            } catch (\Throwable $fehler) {
+                Log::warning('Wochenmail konnte nicht zugestellt werden.', [
+                    'empfaenger' => $nutzer->mailZieladresse(),
+                    'fehler' => $fehler->getMessage(),
+                ]);
+            }
         }
 
         return $gemeldet;

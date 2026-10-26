@@ -8,6 +8,7 @@ use App\Filament\Kunde\Resources\Anliegen\AnliegenResource;
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Mail\Glockenmeldung;
 use App\Models\Customer;
+use App\Models\Postausgang;
 use App\Models\Ticket;
 use App\Models\User;
 use Filament\Actions\Action;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 /**
  * Wer erfährt wovon.
@@ -207,11 +209,20 @@ class Benachrichtigung
             $daten['herkunft'] = $herkunft;
         }
 
+        // Die Kennung der Glockenmeldung wird vorab vergeben statt von Laravel
+        // beim Speichern: die Sammelmail muss später nachsehen können, ob
+        // genau diese Meldung schon gelesen ist. Laravel übernimmt eine
+        // gesetzte Kennung unverändert (NotificationSender::sendToNotifiable).
+        $kennungen = [];
+
         foreach ($empfaenger as $nutzer) {
-            $nutzer->notifyNow(new DatabaseNotification($daten));
+            $glocke = new DatabaseNotification($daten);
+            $glocke->id = $kennungen[$nutzer->getKey()] = (string) Str::uuid();
+
+            $nutzer->notifyNow($glocke);
         }
 
-        self::perMailNachreichen($empfaenger, $daten, $kunde, $ereignis);
+        self::perMailNachreichen($empfaenger, $daten, $kunde, $ereignis, $herkunft, $kennungen);
 
         // Filaments DatabaseNotificationsSent wird hier bewusst NICHT
         // ausgelöst. Das Ereignis ist ein ShouldBroadcast und landet damit
@@ -244,14 +255,23 @@ class Benachrichtigung
      * dass ein Mailserver gerade nicht erreichbar ist. Wer wissen will,
      * warum keine Mail ankam, findet die Zeile im Protokoll.
      *
+     * **Nicht alles geht sofort.** Was in Schüben kommt
+     * (MailEreignis::gesammelt), landet im Postausgang und geht mit der
+     * nächsten Sammelmail hinaus — siehe Support\Sammelmail. Die Prüfung, ob
+     * der Empfänger das überhaupt bekommen will, steht trotzdem schon hier:
+     * was ohnehin nicht hinausgeht, muss nicht einen Tag lang warten.
+     *
      * @param  Collection<int, User>  $empfaenger
      * @param  array<string, mixed>  $daten
+     * @param  array<int, string>  $kennungen  Glockenmeldung je Empfänger
      */
     private static function perMailNachreichen(
         Collection $empfaenger,
         array $daten,
         ?Customer $kunde = null,
         ?MailEreignis $ereignis = null,
+        ?string $herkunft = null,
+        array $kennungen = [],
     ): void {
         $ziele = $empfaenger->filter(fn (User $nutzer) => $nutzer->bekommtMailMeldungen($ereignis));
 
@@ -271,6 +291,24 @@ class Benachrichtigung
         // Die Farbe der Meldung wandert mit: sie färbt den Streifen über der
         // Mail, so wie sie an der Glocke den Punkt am Rand färbt.
         $farbe = $daten['color'] ?? null;
+
+        if ($ereignis?->gesammelt()) {
+            foreach ($ziele as $nutzer) {
+                Postausgang::create([
+                    'user_id' => $nutzer->getKey(),
+                    'ereignis' => $ereignis,
+                    'herkunft' => $herkunft,
+                    'notification_id' => $kennungen[$nutzer->getKey()] ?? null,
+                    'customer_id' => $kunde?->getKey(),
+                    'titel' => $titel,
+                    'text' => $text,
+                    'url' => $url,
+                    'farbe' => $farbe,
+                ]);
+            }
+
+            return;
+        }
 
         // Das Logo hier auflösen und nicht erst im Versand: danach laeuft
         // alles ausserhalb der Anfrage, und eine Datenbankabfrage dort

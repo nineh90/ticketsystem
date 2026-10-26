@@ -60,6 +60,51 @@ class Wochenplan
     }
 
     /**
+     * Was davon an diesem Nutzer hängt — für die Wochenmail am Montag.
+     *
+     * Enger als fuer(): die Vorschau auf der Brücke zeigt, was in seinem
+     * Bereich ansteht, die Mail nur, was er selbst tun muss. Tickets also nur
+     * die ihm zugeteilten, Treffen nur die, bei denen er in der Crew ist —
+     * oder die er angesetzt hat, solange niemand eingetragen ist (dieselbe
+     * Regel wie bei der Erinnerung, Messe::crewOderErsteller). Meilensteine
+     * und Fristen bleiben, wie sie sind: sie gehören einem Projekt bzw. der
+     * Buchhaltung, nicht einer Person.
+     *
+     * @return Collection<int, Termin>
+     */
+    public static function persoenlich(User $nutzer, Carbon $von, Carbon $bis): Collection
+    {
+        return collect()
+            ->concat(self::treffen($nutzer, $von, $bis, nurEigene: true))
+            ->concat(self::meilensteine($nutzer, $bis))
+            ->concat(self::fristen($nutzer, $bis))
+            ->concat(self::tickets($nutzer, $bis, nurEigene: true))
+            ->sortBy(fn (Termin $termin) => $termin->zeitpunkt->getTimestamp())
+            ->values();
+    }
+
+    /**
+     * Seine offenen Tickets, deren Termin schon vorbei ist.
+     *
+     * Sie stehen in der Wochenmail obenan: was letzte Woche hätte fertig
+     * sein sollen, gehört in die Planung dieser Woche, nicht unter sie.
+     *
+     * @return Collection<int, Termin>
+     */
+    public static function ueberfaellig(User $nutzer): Collection
+    {
+        return Ticket::query()
+            ->sichtbarFuer($nutzer)
+            ->offen()
+            ->where('assigned_to', $nutzer->getKey())
+            ->whereDate('faellig_am', '<', today())
+            ->with('customer')
+            ->orderBy('faellig_am')
+            ->get()
+            ->map(fn (Ticket $ticket) => self::alsTermin($ticket));
+    }
+
+    /**
      * Nach Tagen gruppiert, wie die Vorschau sie ausgibt.
      *
      * Der Schlüssel ist das Datum als Y-m-d — ein Carbon als Schlüssel würde
@@ -75,13 +120,19 @@ class Wochenplan
     }
 
     /** @return Collection<int, Termin> */
-    private static function treffen(User $nutzer, Carbon $von, Carbon $bis): Collection
+    private static function treffen(User $nutzer, Carbon $von, Carbon $bis, bool $nurEigene = false): Collection
     {
         return Treffen::query()
             ->sichtbarFuer($nutzer)
             ->nichtAbgesagt()
             ->bevorstehend()
+            ->where('beginnt_am', '>=', $von)
             ->where('beginnt_am', '<=', $bis)
+            ->when($nurEigene, fn (Builder $q) => $q->where(fn (Builder $dabei) => $dabei
+                ->whereHas('crew', fn (Builder $c) => $c->whereKey($nutzer->getKey()))
+                ->orWhere(fn (Builder $angesetzt) => $angesetzt
+                    ->whereDoesntHave('crew')
+                    ->where('erstellt_von', $nutzer->getKey()))))
             ->with('customer')
             ->get()
             ->map(fn (Treffen $treffen) => new Termin(
@@ -153,23 +204,31 @@ class Wochenplan
     }
 
     /** @return Collection<int, Termin> */
-    private static function tickets(User $nutzer, Carbon $bis): Collection
+    private static function tickets(User $nutzer, Carbon $bis, bool $nurEigene = false): Collection
     {
         return Ticket::query()
             ->sichtbarFuer($nutzer)
             ->offen()
             ->whereNotNull('faellig_am')
             ->whereBetween('faellig_am', [today(), $bis])
+            ->when($nurEigene, fn (Builder $q) => $q->where('assigned_to', $nutzer->getKey()))
             ->with('customer')
             ->get()
-            ->map(fn (Ticket $ticket) => new Termin(
-                art: Termin::TICKET,
-                zeitpunkt: $ticket->faellig_am->copy()->startOfDay(),
-                titel: $ticket->titel,
-                kunde: $ticket->customer?->name,
-                url: TicketResource::getUrl('view', ['record' => $ticket]),
-                ganztaegig: true,
-                zusatz: $ticket->kennung(),
-            ));
+            ->map(fn (Ticket $ticket) => self::alsTermin($ticket));
+    }
+
+    private static function alsTermin(Ticket $ticket): Termin
+    {
+        return new Termin(
+            art: Termin::TICKET,
+            zeitpunkt: $ticket->faellig_am->copy()->startOfDay(),
+            titel: $ticket->titel,
+            kunde: $ticket->customer?->name,
+            // Das Panel ausdrücklich: aus dem Planer heraus gibt es kein
+            // aktives, und die Mail braucht eine Adresse, die außen funktioniert.
+            url: TicketResource::getUrl('view', ['record' => $ticket], panel: 'admin'),
+            ganztaegig: true,
+            zusatz: $ticket->kennung(),
+        );
     }
 }

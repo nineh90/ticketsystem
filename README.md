@@ -494,10 +494,13 @@ Der Fahrplan steht in `routes/console.php`, die Meldungen in `Support\Wache`
 | --- | --- | --- |
 | jede Minute | Erinnerung an Treffen, 24 h und 1 h vorher | Crew und eingeladene Kunden |
 | stündlich | Anliegen ohne Antwort seit über 24 h | den Innenkreis des Tickets |
+| montags 07:00 | die Woche: eigene Treffen, fällige Tickets, Meilensteine, Überfälliges — nur als Mail (`Wochenmeldung`) | jedem seine eigenen |
 | werktags 07:45 | was heute fällig ist und was überfällig | jedem seine eigenen |
 | täglich 18:30 | deine Uhr läuft noch | dem, der sie laufen hat |
 | montags 08:00 | ruhende Tickets, unzugeteilte Tickets | Zuständige bzw. Administratoren |
 | montags 08:15 | überfällige Rechnungen, liegende Angebote | Administratoren |
+| täglich 09:00 und 17:00 | Sammelmail der gesammelten Meldungen | intern |
+| Mo–Fr 07:00, Sa 10:00 | Sammelmail der gesammelten Meldungen | Kundenzugänge |
 | 1. des Monats 08:30 | Zeit, die auf keiner Rechnung steht | Administratoren |
 
 Jede Meldung geht an genau den, der etwas tun kann, und niemals an alle: eine
@@ -655,6 +658,29 @@ ein bis zwei Sekunden; synchron hinge die daran, die das Ereignis ausgelöst
 hat — beim gemeldeten Anliegen also der Kunde. Eine Warteschlange bräuchte
 einen Worker, den es hier nicht gibt. Scheitert der Versand, steht das im
 Protokoll und die Glocke bleibt trotzdem stehen.
+
+### Gesammelt statt einzeln (NID-35)
+
+Nicht jede Meldung geht sofort. Was in Schüben kommt — neue Anliegen,
+Antworten, Nachrichten, Stammdaten, Zuweisungen, unsere Antworten und
+Stadienwechsel an den Kunden (`MailEreignis::gesammelt`) —, landet in
+`mail_postausgang` und geht als **eine Mail je Empfänger** hinaus
+(`Support\Sammelmail`, `post:sammelmail intern|kunden`):
+
+- **intern** täglich um 9 und 17 Uhr, auch am Wochenende,
+- **an Kunden** werktags um 7 Uhr, samstags um 10, sonntags nie — früh,
+  weil vieles abends und nachts erledigt wird.
+
+Sofort bleiben Treffen, Angebote und die Berichte des Planers. Die Glocke
+meldet weiter alles sofort.
+
+Beim Leeren wird neu geprüft: Schalter und Themen, ob die Glockenmeldung
+inzwischen gelesen ist (dann keine Mail; aus der Glocke *gelöscht* zählt
+nicht als gelesen), ob das Projekt für den Kunden noch freigegeben ist. Intern
+fällt Erledigtes heraus, und ein Mitarbeiter bekommt keine Tickets, die
+inzwischen ein anderer hat — Admins sehen alles. Zur selben Sache und zum
+selben Thema bleibt nur die letzte Meldung. Jede Zeile geht genau einmal
+hinaus; danach ist sie gelöscht.
 
 **Ausprobieren ohne Mailserver:** `MAIL_MAILER=log` (die Vorgabe) schreibt
 jede Mail vollständig nach `storage/logs/laravel.log` — Betreff, Text, Link.

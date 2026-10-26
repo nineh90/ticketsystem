@@ -191,7 +191,10 @@ class Profil extends EditProfile
                             ->mapWithKeys(fn (MailEreignis $e) => [$e->value => $e->getKundenDescription()])
                             ->all())
                         ->default(array_map(fn (MailEreignis $e) => $e->value, MailEreignis::fuerKunden()))
-                        ->visible(fn (Get $get) => (bool) $get('mail_benachrichtigungen')),
+                        ->visible(fn (Get $get) => (bool) $get('mail_benachrichtigungen'))
+                        // Sonst wundert er sich, warum nach dem Erledigen
+                        // nichts kommt — siehe Support\Sammelmail.
+                        ->helperText('Antworten und neue Stände fassen wir einmal am Morgen in einer Mail zusammen, sonntags gar nicht. Einladungen zu Treffen kommen sofort.'),
                 ]),
 
             Section::make('Passwort ändern')
